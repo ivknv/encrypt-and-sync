@@ -227,11 +227,14 @@ class RmWorker(SynchronizerWorker):
             logger.exception("An error occured")
 
 class ScanWorker(Worker):
-    def __init__(self, dispatcher):
+    def __init__(self, dispatcher, force=False):
         Worker.__init__(self, dispatcher)
 
         self.encsync = dispatcher.encsync
         self.speed_limit = dispatcher.speed_limit
+        self.force = force
+
+        self.cur_path = None
 
         self.local_path = dispatcher.cur_target.local
         self.remote_path = dispatcher.cur_target.remote
@@ -245,18 +248,22 @@ class ScanWorker(Worker):
         return self.parent.cur_target.status == "suspended" or self.stopped
 
     def after_work(self):
+        self.cur_path = None
+
         # If the transaction was already closed, then this won't do anything
         self.synclist.rollback()
 
 class LocalScanWorker(ScanWorker):
     def get_info(self):
         return {"operation": "scanning locally",
-                "path": self.local_path}
+                "path": self.cur_path}
 
     def work(self):
         cur_target = self.parent.cur_target
 
-        if self.local_path in self.parent.scanned_local_dirs:
+        is_already_scanned = self.local_path in self.parent.scanned_local_dirs
+
+        if not self.force and is_already_scanned:
             return
 
         try:
@@ -266,10 +273,14 @@ class LocalScanWorker(ScanWorker):
                 self.synclist.remove_local_node_children(self.local_path)
 
                 for i in local_files:
+                    self.cur_path = i["path"]
+
                     if self.stop_condition():
                         return
 
                     self.synclist.insert_local_node(i)
+
+                self.cur_path = None
 
                 self.synclist.commit()
 
@@ -279,13 +290,9 @@ class LocalScanWorker(ScanWorker):
             logger.exception("An error occured")
 
 class RemoteScanWorker(ScanWorker):
-    def __init__(self, dispatcher, integrity_check=False):
-        ScanWorker.__init__(self, dispatcher)
-        self.integrity_check = integrity_check
-
     def get_info(self):
         return {"operation": "scanning remotely",
-                "path": self.remote_path}
+                "path": self.cur_path}
 
     def work(self):
         cur_target = self.parent.cur_target
@@ -293,16 +300,20 @@ class RemoteScanWorker(ScanWorker):
             with self.synclist:
                 is_empty = self.synclist.is_remote_list_empty(self.remote_path)
 
-                if self.integrity_check or is_empty:
+                if self.force or is_empty:
                     remote_files = SyncList.scan_files_ynd(self.remote_path, self.encsync)
                     self.synclist.remove_remote_node_children(self.remote_path)
 
                     for i in remote_files:
+                        self.cur_path = i["path"]
+
                         if self.stop_condition():
                             self.synclist.rollback()
                             return
 
                         self.synclist.insert_remote_node(i)
+
+                self.cur_path = None
 
                 self.synclist.commit()
         except Exception as e:

@@ -160,11 +160,12 @@ class SynchronizerDispatcher(StagedDispatcher):
                 difflist.rollback()
                 raise e
 
-        diff_count = difflist.get_difference_count(self.cur_target.local,
-                                                   self.cur_target.remote)
-        n_done = self.cur_target.get_n_done()
+        if self.stage != "check":
+            diff_count = difflist.get_difference_count(self.cur_target.local,
+                                                       self.cur_target.remote)
+            n_done = self.cur_target.get_n_done()
 
-        self.cur_target.total_children = diff_count + n_done
+            self.cur_target.total_children = diff_count + n_done
 
     def work(self):
         try:
@@ -306,7 +307,7 @@ class SynchronizerDispatcher(StagedDispatcher):
 
             self.cur_target.change_status("pending")
 
-            self.start_worker(RemoteScanWorker, self, integrity_check=True)
+            self.start_worker(RemoteScanWorker, self, force=True)
         except:
             self.cur_target.change_status("failed")
             logger.exception("An error occured")

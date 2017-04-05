@@ -418,6 +418,7 @@ def scan_files_ynd(path, encsync):
             del dirs
             break
         except Exception as e:
+            print("j: {}".format(j))
             if j == 9:
                 raise e
 
@@ -458,12 +459,15 @@ def scan_files_ynd(path, encsync):
                         data["name"] = paths.join(p, data["name"])
                         data["dec_name"], data["IVs"] = encsync.decrypt_path(data["name"], path)
                         new_flist.append(data)
+
+                    new_flist.sort(key=lambda x: x["dec_name"], reverse=True)
+                    flist.extend(new_flist)
+                    del new_flist
+                    break
                 except Exception as e:
+                    print("j: {}".format(j))
                     if j == 9:
                         raise e
-
-            new_flist.sort(key=lambda x: x["dec_name"], reverse=True)
-            flist.extend(new_flist)
 
 class Comparator(object):
     def __init__(self, encsync, prefix1, prefix2):

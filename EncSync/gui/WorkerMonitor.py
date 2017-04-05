@@ -25,7 +25,7 @@ class WorkerMonitor(gtk.ScrolledWindow):
             column = gtk.TreeViewColumn(column_name, cell, text=i)
             self.treeview.append_column(column)
 
-        glib.timeout_add(1000, self.update_rows, weakref.finalize(self, lambda: None))
+        glib.timeout_add(300, self.update_rows, weakref.finalize(self, lambda: None))
 
         self.add_with_viewport(self.treeview)
 

@@ -126,17 +126,15 @@ class StagedDispatcher(Dispatcher):
     def exit_stage(self):
         assert(self.stage is not None)
 
-        stage = self.stage
-
-        self.stage = None
-
         self.available = False
 
         self.stop_workers()
 
-        self.emit_event("exited_stage", stage)
+        exit_callback = self.stage["exit"]
 
-        exit_callback = stage["exit"]
-
-        if exit_callback:
-            exit_callback()
+        try:
+            if exit_callback:
+                exit_callback()
+        finally:
+            self.emit_event("exited_stage", self.stage)
+            self.stage = None

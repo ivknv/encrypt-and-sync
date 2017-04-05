@@ -3,6 +3,8 @@
 
 import time
 
+BLOCK_SIZE = 8192
+
 class SyncFileInterrupt(BaseException):
     pass
 
@@ -10,7 +12,7 @@ class SyncFile(object):
     def __init__(self, file, speed_limit, stop_condition):
         self.file = file
         self.limit = speed_limit
-        self.last_read = 0
+        self.last_delay = 0
         self.cur_read = 0
         self.stop_condition = stop_condition
 
@@ -18,8 +20,6 @@ class SyncFile(object):
         return self
 
     def __next__(self):
-        BLOCK_SIZE = 4096
-
         content = self.read(BLOCK_SIZE)
 
         if not content:
@@ -36,12 +36,13 @@ class SyncFile(object):
     def delay(self):
         if self.cur_read > self.limit:
             ratio = float(self.cur_read) / float(self.limit)
-            sleep_duration = (1.0 * ratio) - (time.time() - self.last_read)
+            sleep_duration = (1.0 * ratio) - (time.time() - self.last_delay)
 
             if sleep_duration > 0.0:
                 time.sleep(sleep_duration)
 
             self.cur_read = 0
+            self.last_delay = time.time()
 
     def read(self, size=-1):
         amount_read = 0
@@ -63,8 +64,6 @@ class SyncFile(object):
 
             if size != -1:
                 amount_to_read = min(size - amount_read, amount_to_read)
-
-            self.last_read = time.time()
 
             cur_content = self.file.read(amount_to_read)
 
