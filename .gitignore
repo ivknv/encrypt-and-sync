@@ -1,0 +1,7 @@
+.*.sw[a-z]
+*.py[co]
+*.log
+*.db
+TestDir/
+DownloadTest/
+config.json
