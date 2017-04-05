@@ -35,14 +35,26 @@ class DownloaderWorker(Worker):
 
     def get_info(self):
         if self.cur_task is not None:
+            try:
+                progress = float(self.cur_task.downloaded) / self.cur_task.size
+            except ZeroDivisionError:
+                progress = 1.0
+
             return {"operation": "downloading",
-                    "path": self.cur_task.dec_remote}
-        return {"operation": "downloading"}
+                    "path":      self.cur_task.dec_remote,
+                    "progress":  progress}
+
+        return {"operation": "downloading",
+                "progress":  0.0}
 
     def download_file(self, task, task_copy):
         logger.debug("Downloading file")
 
         try:
+            if os.path.exists(task_copy.local):
+                task.change_status("finished")
+                return
+
             recursive_mkdir(os.path.split(task_copy.local)[0])
 
             task.obtain_link(self.encsync.ynd)

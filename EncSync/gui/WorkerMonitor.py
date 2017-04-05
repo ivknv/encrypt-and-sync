@@ -12,17 +12,28 @@ class WorkerMonitor(gtk.ScrolledWindow):
     def __init__(self, obj):
         gtk.ScrolledWindow.__init__(self)
 
-        self.liststore = gtk.ListStore(str, str, str, str, gobject.TYPE_PYOBJECT)
+        self.liststore = gtk.ListStore(str, int, str, str, str, gobject.TYPE_PYOBJECT)
         self.treeview = gtk.TreeView(self.liststore)
-
-        cell = gtk.CellRendererText()
 
         self.obj = obj
 
-        columns = ("No.", "Operation", "Path")
+        cell_renderers = {"text":     gtk.CellRendererText(),
+                          "progress": gtk.CellRendererProgress()}
+        column_attributes = {"text":     "text",
+                             "progress": "value"}
 
-        for i, column_name in zip(range(len(columns)), columns):
-            column = gtk.TreeViewColumn(column_name, cell, text=i)
+        columns = (("No.", "text"),
+                   ("%", "progress"),
+                   ("Operation", "text"),
+                   ("Path", "text"))
+
+        for i, col in zip(range(len(columns)), columns):
+            column_name, column_type = col
+
+            cell = cell_renderers[column_type]
+            attr = column_attributes[column_type]
+
+            column = gtk.TreeViewColumn(column_name, cell, **{attr: i})
             self.treeview.append_column(column)
 
         glib.timeout_add(300, self.update_rows, weakref.finalize(self, lambda: None))
@@ -67,7 +78,7 @@ class WorkerMonitor(gtk.ScrolledWindow):
         for worker in workers:
             if worker.is_alive() and worker.ident not in cur_worker_ids:
                 cur_worker_ids.add(worker.ident)
-                liststore.append(["", "", "", "", worker])
+                liststore.append(["", 0, "", "", "", worker])
 
         for i, row in zip(range(len(liststore)), liststore):
             row[0] = str(i + 1)
@@ -75,5 +86,6 @@ class WorkerMonitor(gtk.ScrolledWindow):
             worker = row[-1]
             info = worker.get_info()
 
-            row[1] = info.get("operation", "N/A").capitalize()
-            row[2] = info.get("path", "N/A")
+            row[1] = int(info.get("progress", 0) * 100)
+            row[2] = info.get("operation", "N/A").capitalize()
+            row[3] = info.get("path", "N/A")

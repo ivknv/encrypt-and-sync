@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import threading
 import time
 import os
 
@@ -49,7 +48,7 @@ class SynchronizerWorker(Worker):
             node = self.synclist.find_remote_node(p)
 
         return node["IVs"]
-    
+
     def stop_condition(self):
         return self.parent.cur_target.status == "suspended" or self.stopped
 
@@ -69,7 +68,7 @@ class SynchronizerWorker(Worker):
                 logger.debug("SynchronizerWorker stopped")
                 break
 
-            difftype, nodetype, self.path = task.diff
+            self.path = task.diff[2]
 
             local_path = self.path.local
 
@@ -89,11 +88,17 @@ class SynchronizerWorker(Worker):
 
 class UploadWorker(SynchronizerWorker):
     def get_info(self):
-        if self.path is not None:
+        if self.cur_task is not None:
+            try:
+                progress = float(self.cur_task.uploaded) / self.cur_task.size
+            except ZeroDivisionError:
+                progress = 1.0
+
             return {"operation": "uploading file",
-                    "path": self.path.path}
-        else:
-            return {"operation": "uploading file"}
+                    "path": self.cur_task.path.path,
+                    "progress": progress}
+
+        return {"operation": "uploading file"}
 
     def work_func(self):
         remote_path = self.path.remote
@@ -112,8 +117,7 @@ class UploadWorker(SynchronizerWorker):
                 task.change_status("finished")
                 return
 
-            temp_file = SyncFile(self.encsync.temp_encrypt(local_path),
-                                 self.speed_limit, self.stop_condition)
+            temp_file = SyncFile(self.encsync.temp_encrypt(local_path), self, task)
 
             if task.status == "pending":
                 try:
@@ -285,7 +289,7 @@ class LocalScanWorker(ScanWorker):
                 self.synclist.commit()
 
                 self.parent.scanned_local_dirs.add(self.local_path)
-        except Exception as e:
+        except:
             cur_target.change_status("failed")
             logger.exception("An error occured")
 

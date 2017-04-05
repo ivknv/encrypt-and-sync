@@ -9,12 +9,13 @@ class SyncFileInterrupt(BaseException):
     pass
 
 class SyncFile(object):
-    def __init__(self, file, speed_limit, stop_condition):
+    def __init__(self, file, worker, task):
         self.file = file
-        self.limit = speed_limit
+        self.limit = worker.speed_limit
         self.last_delay = 0
         self.cur_read = 0
-        self.stop_condition = stop_condition
+        self.stop_condition = worker.stop_condition
+        self.task = task
 
     def __iter__(self):
         return self
@@ -49,6 +50,8 @@ class SyncFile(object):
 
         content = b""
 
+        self.task.uploaded = self.file.tell()
+
         if self.stop_condition():
             raise SyncFileInterrupt
 
@@ -73,6 +76,8 @@ class SyncFile(object):
 
             self.cur_read += l
             amount_read += l
+
+            self.task.uploaded = self.file.tell()
 
             if l < amount_to_read:
                 break

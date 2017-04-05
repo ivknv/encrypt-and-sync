@@ -32,7 +32,7 @@ class DownloadTask(Task):
         copy.dec_remote = self.dec_remote
         copy.local = self.local
         copy.size = self.size
-        self.downloaded = self.downloaded
+        copy.downloaded = self.downloaded
         copy.link = self.link
 
         return copy

@@ -2,7 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import threading
+import os
+
 from .. import SyncList
+from ..SyncList import pad_size
+from ..Encryption import MIN_ENC_SIZE
+from .. import paths
 from .SyncTask import SyncTask, SyncTarget
 from .Workers import UploadWorker, MkdirWorker, RmWorker
 from .Workers import LocalScanWorker, RemoteScanWorker
@@ -132,9 +137,13 @@ class SynchronizerDispatcher(StagedDispatcher):
             task = SyncTask()
             task.parent = self.cur_target
 
+            if diff[0] == "new" and diff[1] == "f":
+                size = os.path.getsize(paths.to_sys(diff[2].local))
+                task.size = pad_size(size) + MIN_ENC_SIZE
+
             task.diff = diff
 
-            self.path = diff[2]
+            task.path = diff[2]
 
             task.change_status("pending")
 

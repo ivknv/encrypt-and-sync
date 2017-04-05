@@ -8,6 +8,8 @@ class SyncTask(Task):
         Task.__init__(self)
         self.diff = None
         self.path = None
+        self.uploaded = 0
+        self.size = 0
 
 class SyncTarget(Task):
     def __init__(self, synchronizer, local=None, remote=None):
