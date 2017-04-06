@@ -368,7 +368,7 @@ def scan_files(path):
     path = os.path.abspath(os.path.expanduser(path))
 
     flist = [os.path.join(path, i) for i in os.listdir(path)]
-    flist.sort()
+    flist.sort(reverse=True) # reverse=True to counteract the stack ordering
 
     while len(flist):
         node = {}
@@ -394,7 +394,7 @@ def scan_files(path):
 
         if node["type"] == "d":
             new_flist = [os.path.join(p, i) for i in os.listdir(p)]
-            new_flist.sort()
+            new_flist.sort(reverse=True) # reverse=True to counteract the stack ordering
             flist.extend(new_flist)
 
 def scan_files_ynd(path, encsync):
@@ -418,7 +418,6 @@ def scan_files_ynd(path, encsync):
             del dirs
             break
         except Exception as e:
-            print("j: {}".format(j))
             if j == 9:
                 raise e
 
@@ -465,7 +464,6 @@ def scan_files_ynd(path, encsync):
                     del new_flist
                     break
                 except Exception as e:
-                    print("j: {}".format(j))
                     if j == 9:
                         raise e
 

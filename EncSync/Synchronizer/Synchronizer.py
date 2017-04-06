@@ -169,7 +169,7 @@ class SynchronizerDispatcher(StagedDispatcher):
                 difflist.rollback()
                 raise e
 
-        if self.stage != "check":
+        if self.cur_target.stage != "check":
             diff_count = difflist.get_difference_count(self.cur_target.local,
                                                        self.cur_target.remote)
             n_done = self.cur_target.get_n_done()
