@@ -3,7 +3,7 @@
 
 import time
 
-BLOCK_SIZE = 8192
+MIN_READ_SIZE = 512 * 1024 # Bytes
 
 class SyncFileInterrupt(BaseException):
     pass
@@ -16,17 +16,6 @@ class SyncFile(object):
         self.cur_read = 0
         self.stop_condition = worker.stop_condition
         self.task = task
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        content = self.read(BLOCK_SIZE)
-
-        if not content:
-            raise StopIteration
-
-        return content
 
     def seek(self, *args, **kwargs):
         self.file.seek(*args, **kwargs)
@@ -59,6 +48,7 @@ class SyncFile(object):
             amount_to_read = self.limit
             condition = lambda: cur_content
         else:
+            size = max(MIN_READ_SIZE, size)
             amount_to_read = min(self.limit, size)
             condition = lambda: amount_read < size
 

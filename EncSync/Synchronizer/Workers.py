@@ -254,7 +254,7 @@ class ScanWorker(Worker):
     def after_work(self):
         self.cur_path = None
 
-        # If the transaction was already closed, then this won't do anything
+        # If the transaction is already closed, then this won't do anything
         self.synclist.rollback()
 
 class LocalScanWorker(ScanWorker):

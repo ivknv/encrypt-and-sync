@@ -199,7 +199,7 @@ class YndApi(object):
         try:
             for i in range(max_retries + 1):
                 in_file.seek(fpos)
-                r = self.make_session().put(href, data=in_file)
+                r = self.make_session().put(href, data=in_file, stream=True)
 
                 if r.status_code not in RETRY_CODES:
                     break
