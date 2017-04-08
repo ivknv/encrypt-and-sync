@@ -53,7 +53,8 @@ def finalize():
 
     for i in t:
         if i is not None and i.is_alive():
-            i.stop()
+            i.change_status("suspended")
+            i.full_stop()
 
     for i in t:
         if i is not None and i.is_alive():

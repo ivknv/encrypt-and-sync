@@ -92,6 +92,11 @@ class Scanner(object):
         self.pool_lock = threading.Lock()
         self.workers_lock = threading.Lock()
 
+    def change_status(self, status):
+        with self.pool_lock:
+            for i in self.pool:
+                i.change_status(status)
+
     def add_dir(self, scan_type, path):
         task = ScanTask(scan_type, path)
 
@@ -129,6 +134,9 @@ class Scanner(object):
 
     def is_alive(self):
         return any(i.is_alive() for i in self.get_worker_list())
+
+    def full_stop(self):
+        self.stop()
 
     def stop(self):
         workers = [i for i in self.get_worker_list() if not i.stopped]

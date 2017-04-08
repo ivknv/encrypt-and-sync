@@ -29,6 +29,10 @@ class Synchronizer(object):
 
         self.scanned_local_dirs = set()
 
+    def change_status(self, status):
+        for i in self.get_targets():
+            i.change_status(status)
+
     def set_speed_limit(self, limit):
         self.speed_limit = int(limit / self.n_workers)
         self.dispatcher.set_speed_limit(limit)
@@ -63,6 +67,9 @@ class Synchronizer(object):
 
     def stop(self):
         self.dispatcher.stop()
+
+    def full_stop(self):
+        self.dispatcher.full_stop()
 
     def get_worker_list(self):
         return self.dispatcher.get_worker_list()
@@ -128,26 +135,30 @@ class SynchronizerDispatcher(StagedDispatcher):
                 logger.debug("Dispatcher is not available")
                 return
 
-            try:
-                diff = next(self.diffs)
-            except StopIteration:
-                logger.debug("Dispatcher.get_next_task(): no more diffs")
-                return
+            while True:
+                try:
+                    diff = next(self.diffs)
+                except StopIteration:
+                    logger.debug("Dispatcher.get_next_task(): no more diffs")
+                    return
 
-            task = SyncTask()
-            task.parent = self.cur_target
+                task = SyncTask()
+                task.parent = self.cur_target
 
-            if diff[0] == "new" and diff[1] == "f":
-                size = os.path.getsize(paths.to_sys(diff[2].local))
-                task.size = pad_size(size) + MIN_ENC_SIZE
+                try:
+                    if diff[0] == "new" and diff[1] == "f":
+                        size = os.path.getsize(paths.to_sys(diff[2].local))
+                        task.size = pad_size(size) + MIN_ENC_SIZE
+                except FileNotFoundError:
+                    continue
 
-            task.diff = diff
+                task.diff = diff
 
-            task.path = diff[2]
+                task.path = diff[2]
 
-            task.change_status("pending")
+                task.change_status("pending")
 
-            return task
+                return task
 
     def build_diffs_table(self):
         assert(self.cur_target is not None)

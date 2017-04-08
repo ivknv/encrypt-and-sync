@@ -19,6 +19,10 @@ class Downloader(object):
         self.targets_lock = threading.Lock()
         self.speed_limit = 1024**4 / n_workers # Bytes per second
 
+    def change_status(self, status):
+        for i in self.get_targets():
+            i.change_status("suspended")
+
     def get_worker_list(self):
         if self.dispatcher is not None:
             return self.dispatcher.get_worker_list()
@@ -71,3 +75,6 @@ class Downloader(object):
     def join(self):
         if self.dispatcher is not None:
             self.dispatcher.join()
+
+    def full_stop(self):
+        self.dispatcher.full_stop()
