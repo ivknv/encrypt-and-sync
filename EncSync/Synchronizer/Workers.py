@@ -265,9 +265,7 @@ class LocalScanWorker(ScanWorker):
     def work(self):
         cur_target = self.parent.cur_target
 
-        is_already_scanned = self.local_path in self.parent.scanned_local_dirs
-
-        if not self.force and is_already_scanned:
+        if not self.force and not cur_target.enable_scan:
             return
 
         try:
@@ -287,8 +285,6 @@ class LocalScanWorker(ScanWorker):
                 self.cur_path = None
 
                 self.synclist.commit()
-
-                self.parent.scanned_local_dirs.add(self.local_path)
         except:
             cur_target.change_status("failed")
             logger.exception("An error occured")
@@ -300,6 +296,10 @@ class RemoteScanWorker(ScanWorker):
 
     def work(self):
         cur_target = self.parent.cur_target
+
+        if not self.force and not cur_target.enable_scan:
+            return
+
         try:
             with self.synclist:
                 is_empty = self.synclist.is_remote_list_empty(self.remote_path)

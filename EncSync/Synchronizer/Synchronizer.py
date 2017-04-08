@@ -27,8 +27,6 @@ class Synchronizer(object):
 
         self.speed_limit = 1024**4 / self.n_workers # Bytes per second
 
-        self.scanned_local_dirs = set()
-
     def change_status(self, status):
         for i in self.get_targets():
             i.change_status(status)
@@ -56,8 +54,9 @@ class Synchronizer(object):
 
         return target
 
-    def add_target(self, local, remote, status="pending"):
+    def add_target(self, enable_scan, local, remote, status="pending"):
         target = SyncTarget(self, local, remote)
+        target.enable_scan = enable_scan
 
         target.change_status(status)
 
@@ -109,7 +108,6 @@ class SynchronizerDispatcher(StagedDispatcher):
 
         self.shared_synclist = SyncList.SyncList()
 
-        self.scanned_local_dirs = synchronizer.scanned_local_dirs
         self.speed_limit = synchronizer.speed_limit
 
         self.stage_order = ("scan", "rm", "dirs", "files", "check")
@@ -135,30 +133,29 @@ class SynchronizerDispatcher(StagedDispatcher):
                 logger.debug("Dispatcher is not available")
                 return
 
-            while True:
-                try:
-                    diff = next(self.diffs)
-                except StopIteration:
-                    logger.debug("Dispatcher.get_next_task(): no more diffs")
-                    return
+            try:
+                diff = next(self.diffs)
+            except StopIteration:
+                logger.debug("Dispatcher.get_next_task(): no more diffs")
+                return
 
-                task = SyncTask()
-                task.parent = self.cur_target
+            task = SyncTask()
+            task.parent = self.cur_target
 
-                try:
-                    if diff[0] == "new" and diff[1] == "f":
-                        size = os.path.getsize(paths.to_sys(diff[2].local))
-                        task.size = pad_size(size) + MIN_ENC_SIZE
-                except FileNotFoundError:
-                    continue
+            try:
+                if diff[0] == "new" and diff[1] == "f":
+                    size = os.path.getsize(paths.to_sys(diff[2].local))
+                    task.size = pad_size(size) + MIN_ENC_SIZE
+            except FileNotFoundError:
+                task.size = 0
 
-                task.diff = diff
+            task.diff = diff
 
-                task.path = diff[2]
+            task.path = diff[2]
 
-                task.change_status("pending")
+            task.change_status("pending")
 
-                return task
+            return task
 
     def build_diffs_table(self):
         assert(self.cur_target is not None)

@@ -18,6 +18,7 @@ class SyncTarget(Task):
         self.local, self.remote = local, remote
         self.skip_integrity_check = False
         self.total_children = 0
+        self.enable_scan = True
 
         self.add_event("scan_finished")
         self.add_event("integrity_check_finished")

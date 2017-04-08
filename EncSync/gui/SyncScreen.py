@@ -15,31 +15,73 @@ import threading
 
 class SyncTargetList(gtk.TreeView):
     def __init__(self):
-        self.liststore = gtk.ListStore(bool, str, str)
+        self.liststore = gtk.ListStore(bool, bool, str, str)
         gtk.TreeView.__init__(self, self.liststore)
 
         for i in GlobalState.encsync.targets:
-            self.liststore.append([True, i["local"], i["remote"]])
+            self.liststore.append([True, True, i["local"], i["remote"]])
 
         self.text_renderer = gtk.CellRendererText(xalign=0.0)
         self.toggle_renderer = gtk.CellRendererToggle(xalign=0.0)
 
-        column1 = gtk.TreeViewColumn("Local path")
-        column1.pack_start(self.toggle_renderer, False)
-        column1.pack_start(self.text_renderer, True)
+        renderers = {"text":   {"class": gtk.CellRendererText,
+                                "instances": []},
+                     "toggle": {"class": gtk.CellRendererToggle,
+                                "instances": []}}
 
-        column1.add_attribute(self.toggle_renderer, "active", 0)
-        column1.add_attribute(self.text_renderer, "text", 1)
+        attributes = {"text": "text",
+                      "toggle": "active"}
 
-        column2 = gtk.TreeViewColumn("Remote path", self.text_renderer, text=2)
+        columns = ({"name": "Scan?",
+                    "renderers": [{"type": "toggle",
+                                   "index": 0,
+                                   "properties": {},
+                                   "expand": True}]},
+                   {"name": "Local path",
+                    "renderers": [{"type": "toggle",
+                                   "index": 1,
+                                   "properties": {"xalign": 0.0},
+                                   "expand": False},
+                                  {"type": "text",
+                                   "index": 2,
+                                   "properties": {},
+                                   "expand": True}]},
+                   {"name": "Remote path",
+                    "renderers": [{"type": "text",
+                                   "index": 3,
+                                   "properties": {},
+                                   "expand": True}]})
 
-        self.append_column(column1)
-        self.append_column(column2)
+        for column_def in columns:
+            column = gtk.TreeViewColumn(column_def["name"])
+            for renderer_def in column_def["renderers"]:
+                renderer_type = renderer_def["type"]
+                expand        = renderer_def["expand"]
+                attr          = attributes[renderer_type]
+                idx           = renderer_def["index"]
+                renderer      = renderers[renderer_type]["class"]()
 
-        self.toggle_renderer.connect("toggled", self.toggle_handler)
+                renderer_def["object"] = renderer
 
-    def toggle_handler(self, widget, path):
-        self.liststore[path][0] = not self.liststore[path][0]
+                for prop, value in renderer_def["properties"].items():
+                    renderer.set_property(prop, value)
+
+                column.pack_start(renderer, expand)
+                column.add_attribute(renderer, attr, idx)
+
+            self.append_column(column)
+
+        for column_def in columns:
+            for renderer_def in column_def["renderers"]:
+                if renderer_def["type"] != "toggle":
+                    continue
+
+                renderer = renderer_def["object"]
+                idx      = renderer_def["index"]
+                renderer.connect("toggled", self.toggle_handler, idx)
+
+    def toggle_handler(self, widget, path, idx):
+        self.liststore[path][idx] = not self.liststore[path][idx]
 
 class AddSyncTargetDialog(gtk.Dialog):
     def __init__(self):
@@ -208,15 +250,16 @@ class EncSyncScreen(gtk.ScrolledWindow):
         liststore = add_dialog.target_list.liststore
 
         for row in liststore:
-            active = row[0]
+            enable_scan = row[0]
+            active = row[1]
 
             if not active:
                 continue
 
-            local = row[1]
-            remote = row[2]
+            local = row[2]
+            remote = row[3]
 
-            target = GlobalState.add_sync_target(remote, local)
+            target = GlobalState.add_sync_target(enable_scan, remote, local)
 
             target.add_receiver(self.scan_receiver)
             target.add_receiver(self.dialog_receiver)

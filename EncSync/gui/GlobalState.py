@@ -90,12 +90,12 @@ def add_download(target_type, remote_path, IVs, local_path, prefix):
 
     return target
 
-def add_sync_target(remote_path, local_path, status="pending"):
+def add_sync_target(enable_scan, remote_path, local_path, status="pending"):
     remote_path_enc = encsync.encrypt_path(remote_path)[0]
 
     local_path = paths.from_sys(local_path)
 
-    task = synchronizer.add_target(local_path, remote_path, status)
+    task = synchronizer.add_target(enable_scan, local_path, remote_path, status)
 
     row = (0, str(task.status).capitalize(), "None", remote_path, local_path, remote_path_enc, task)
 
