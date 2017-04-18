@@ -16,6 +16,7 @@ def parse_date(s):
 RETRY_CODES = {500, 503}
 
 DEFAULT_MAX_RETRIES = 10
+DEFAULT_GET_META_LIMIT = 5000
 
 class YndApi(object):
     def __init__(self, appId="", token="", secret=""):
@@ -80,6 +81,7 @@ class YndApi(object):
     def get_meta(self, path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
         baseURL = "https://cloud-api.yandex.net/v1/disk/resources"
         kwargs.setdefault("offset", 0)
+        kwargs.setdefault("limit", DEFAULT_GET_META_LIMIT)
         kwargs.setdefault("sort", "name")
         kwargs["path"] = path
         URL = baseURL + "?" + urlencode(kwargs)
@@ -104,7 +106,7 @@ class YndApi(object):
 
     def ls(self, path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
         kwargs.setdefault("offset", 0)
-        kwargs.setdefault("limit", 500)
+        kwargs.setdefault("limit", DEFAULT_GET_META_LIMIT)
 
         res = self.get_meta(path, max_retries, **kwargs)
 
@@ -266,3 +268,16 @@ class YndApi(object):
                 break
 
         return self.prepare_response(r, {201})
+
+    def files(self, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
+        baseURL = "https://cloud-api.yandex.net/v1/disk/resources/files"
+        kwargs.setdefault("limit", DEFAULT_GET_META_LIMIT)
+        URL = baseURL + "?" + urlencode(kwargs)
+
+        for i in range(max_retries + 1):
+            r = self.make_session().get(URL)
+
+            if r.status_code not in RETRY_CODES:
+                break
+
+        return self.prepare_response(r)

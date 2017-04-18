@@ -6,7 +6,6 @@ import os
 
 from .Logging import logger
 from .SyncFile import SyncFile, SyncFileInterrupt
-from .. import SyncList
 from ..SyncList import pad_size
 from .. import paths
 
@@ -228,99 +227,4 @@ class RmWorker(SynchronizerWorker):
                 logger.debug("Remove task failed")
         except:
             task.change_status("failed")
-            logger.exception("An error occured")
-
-class ScanWorker(Worker):
-    def __init__(self, dispatcher, force=False):
-        Worker.__init__(self, dispatcher)
-
-        self.encsync = dispatcher.encsync
-        self.speed_limit = dispatcher.speed_limit
-        self.force = force
-
-        self.cur_path = None
-
-        self.local_path = dispatcher.cur_target.local
-        self.remote_path = dispatcher.cur_target.remote
-
-        self.synclist = SyncList.SyncList()
-
-    def before_work(self):
-        self.synclist.begin_transaction()
-
-    def stop_condition(self):
-        return self.parent.cur_target.status == "suspended" or self.stopped
-
-    def after_work(self):
-        self.cur_path = None
-
-        # If the transaction is already closed, then this won't do anything
-        self.synclist.rollback()
-
-class LocalScanWorker(ScanWorker):
-    def get_info(self):
-        return {"operation": "scanning locally",
-                "path": self.cur_path}
-
-    def work(self):
-        cur_target = self.parent.cur_target
-
-        if not self.force and not cur_target.enable_scan:
-            return
-
-        try:
-            with self.synclist:
-                local_files = SyncList.scan_files(self.local_path)
-
-                self.synclist.remove_local_node_children(self.local_path)
-
-                for i in local_files:
-                    self.cur_path = i["path"]
-
-                    if self.stop_condition():
-                        return
-
-                    self.synclist.insert_local_node(i)
-
-                self.cur_path = None
-
-                self.synclist.commit()
-        except:
-            cur_target.change_status("failed")
-            logger.exception("An error occured")
-
-class RemoteScanWorker(ScanWorker):
-    def get_info(self):
-        return {"operation": "scanning remotely",
-                "path": self.cur_path}
-
-    def work(self):
-        cur_target = self.parent.cur_target
-
-        if not self.force and not cur_target.enable_scan:
-            return
-
-        try:
-            with self.synclist:
-                is_empty = self.synclist.is_remote_list_empty(self.remote_path)
-
-                if self.force or is_empty:
-                    remote_files = SyncList.scan_files_ynd(self.remote_path, self.encsync)
-                    self.synclist.remove_remote_node_children(self.remote_path)
-
-                    for i in remote_files:
-                        self.cur_path = i["path"]
-
-                        if self.stop_condition():
-                            self.synclist.rollback()
-                            return
-
-                        self.synclist.insert_remote_node(i)
-
-                self.cur_path = None
-
-                self.synclist.commit()
-        except Exception as e:
-            self.synclist.rollback()
-            cur_target.change_status("failed")
             logger.exception("An error occured")

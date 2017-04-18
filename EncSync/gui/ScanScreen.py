@@ -5,6 +5,7 @@ from gi.repository import Gtk as gtk
 from gi.repository import GLib as glib
 
 from .TextSelectList import TextSelectList
+from .WorkerMonitor import WorkerMonitor
 from . import GlobalState
 import weakref
 import threading
@@ -17,12 +18,12 @@ class ScanDialog(gtk.Dialog):
             title = "Scan local directories"
         else:
             title = "Scan yandex disk directories"
- 
+
 
         gtk.Dialog.__init__(self, title, GlobalState.window, 0,
                             (gtk.STOCK_OK, gtk.ResponseType.OK,
                              gtk.STOCK_CANCEL, gtk.ResponseType.CANCEL))
-        
+ 
         box = self.get_content_area()
 
         self.dir_list = TextSelectList("Directory")
@@ -51,10 +52,13 @@ class EncScanScreen(gtk.ScrolledWindow):
 
         self.scan_progress = EncScanProgress()
 
+        self.monitor = WorkerMonitor(GlobalState.scanner)
+
         self.hbox.pack_start(self.scan_remote_button, False, True, 0)
         self.hbox.pack_start(self.scan_local_button, False, True, 0)
         self.vbox.pack_start(self.hbox, False, True, 0)
         self.vbox.pack_start(self.scan_progress, True, True, 0)
+        self.vbox.pack_start(self.monitor, True, True, 0)
 
         self.add(self.vbox)
 
@@ -81,9 +85,9 @@ class EncScanScreen(gtk.ScrolledWindow):
                 break
 
         for i in dialog.get_enabled():
-            GlobalState.add_scan_task(scan_type, i)
+            GlobalState.add_scan_target(scan_type, i)
 
-        GlobalState.scanner.start()
+        GlobalState.scanner.start_if_not_alive()
 
         dialog.destroy()
 
@@ -97,7 +101,7 @@ class EncScanProgress(gtk.VBox):
     def __init__(self):
         gtk.VBox.__init__(self, spacing=10)
 
-        self.treeview = gtk.TreeView(GlobalState.scan_tasks)
+        self.treeview = gtk.TreeView(GlobalState.scan_targets)
 
         self.cell1 = gtk.CellRendererText()
 
@@ -135,9 +139,9 @@ class EncScanProgress(gtk.VBox):
             return
 
         row = model[treeiter]
-        task = row[-1]
-        if task.status is None or task.status == "pending":
-            task.change_status("suspended")
+        target = row[-1]
+        if target.status is None or target.status == "pending":
+            target.change_status("suspended")
 
     def resume_handler(self, widget):
         model, treeiter = self.treeview.get_selection().get_selected()
@@ -146,23 +150,23 @@ class EncScanProgress(gtk.VBox):
             return
 
         row = model[treeiter]
-        task = row[-1]
-        if task.status == "suspended":
-            task.change_status("pending")
-            if task not in GlobalState.scanner.pool:
-                GlobalState.scanner.add_task(task)
-            GlobalState.scanner.start()
+        target = row[-1]
+        if target.status == "suspended":
+            target.change_status("pending")
+            if target not in GlobalState.scanner.targets:
+                GlobalState.scanner.add_target(target)
+            GlobalState.scanner.start_if_not_alive()
 
     @staticmethod # that's not a typo
     def update_rows(weak_self):
         if not weak_self.alive:
             return False
 
-        for row in GlobalState.scan_tasks:
-            task = row[3]
-            row[0] = str(task.status).capitalize()
-            row[1] = task.type.capitalize()
-            row[2] = task.path
+        for row in GlobalState.scan_targets:
+            target = row[3]
+            row[0] = str(target.status).capitalize()
+            row[1] = target.type.capitalize()
+            row[2] = target.path
 
         return True
 

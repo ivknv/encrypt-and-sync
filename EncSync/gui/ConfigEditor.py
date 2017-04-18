@@ -66,10 +66,16 @@ class EncEditNumThreadsDialog(gtk.Dialog):
         self.synchronizer_entry = gtk.Entry(placeholder_text="Synchronizer threads")
         self.synchronizer_entry.set_text(str(GlobalState.encsync.sync_threads))
 
+        self.label3 = gtk.Label(label="Scanner threads:", xalign=0.0)
+        self.scanner_entry = gtk.Entry(placeholder_text="Scanner threads")
+        self.scanner_entry.set_text(str(GlobalState.encsync.scan_threads))
+
         box.pack_start(self.label1, False, True, 0)
         box.pack_start(self.downloader_entry, False, True, 0)
         box.pack_start(self.label2, False, True, 0)
         box.pack_start(self.synchronizer_entry, False, True, 0)
+        box.pack_start(self.label3, False, True, 0)
+        box.pack_start(self.scanner_entry, False, True, 0)
 
         self.show_all()
 
@@ -79,10 +85,14 @@ class EncEditNumThreadsDialog(gtk.Dialog):
     def get_n_synchronizer_threads(self):
         return int(self.synchronizer_entry.get_text())
 
+    def get_n_scanner_threads(self):
+        return int(self.scanner_entry.get_text())
+
     def validate(self):
         try:
             return all([self.get_n_downloader_threads() > 0,
-                        self.get_n_synchronizer_threads() > 0])
+                        self.get_n_synchronizer_threads() > 0,
+                        self.get_n_scanner_threads() > 0])
         except ValueError:
             return False
 
@@ -98,7 +108,6 @@ class EncEditTargetDialog(gtk.Dialog):
         self.local_entry = gtk.Entry(placeholder_text="Local path")
         self.local_choose = gtk.Button(label="Choose")
         self.remote_entry = gtk.Entry(placeholder_text="Remote path")
-        self.remote_choose = gtk.Button(label="Choose")
 
         self.hbox1 = gtk.HBox(spacing=5)
         self.hbox2 = gtk.HBox(spacing=5)
@@ -106,7 +115,6 @@ class EncEditTargetDialog(gtk.Dialog):
         self.hbox1.pack_start(self.local_entry, False, True, 0)
         self.hbox1.pack_start(self.local_choose, False, True, 0)
         self.hbox2.pack_start(self.remote_entry, False, True, 0)
-#        self.hbox2.pack_start(self.remote_choose, False, True, 0)
 
         box.pack_start(self.hbox1, False, True, 0)
         box.pack_start(self.hbox2, False, True, 0)
@@ -362,6 +370,7 @@ class EncConfigEditor(gtk.ScrolledWindow):
 
         GlobalState.encsync.download_threads = dialog.get_n_downloader_threads()
         GlobalState.encsync.sync_threads = dialog.get_n_synchronizer_threads()
+        GlobalState.encsync.scan_threads = dialog.get_n_scanner_threads()
 
         dialog.destroy()
 

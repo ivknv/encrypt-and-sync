@@ -26,7 +26,7 @@ APP_SECRET = "faca3ddd1d574e54a258aa5d8e521c8d"
 
 AUTH_URL = "https://oauth.yandex.ru/authorize?response_type=code&client_id=" + APP_ID
 
-UPLOAD_BUFFER_LIMIT = 80 * 1024**2 # In bytes
+TEMP_ENCRYPT_BUFFER_LIMIT = 80 * 1024**2 # In bytes
 
 class EncSync(object):
     def __init__(self, master_key):
@@ -42,6 +42,7 @@ class EncSync(object):
         self.download_limit = 1024**4
         self.sync_threads = 2
         self.download_threads = 2
+        self.scan_threads = 2
 
     def set_token(self, token):
         self.ynd_token = token
@@ -69,6 +70,7 @@ class EncSync(object):
                          "key": self.plain_key,
                          "nSyncThreads": self.sync_threads,
                          "nDownloadThreads": self.download_threads,
+                         "nScanThreads": self.scan_threads,
                          "yandexAppToken": self.ynd_token}).encode("utf8")
         with open(path, "wb") as f:
             f.write(Encryption.encrypt_data(js, self.master_key))
@@ -78,16 +80,18 @@ class EncSync(object):
             d = json.loads(Encryption.decrypt_data(f.read(), self.master_key).decode("utf8"))
             self.targets = d["targets"]
             self.set_key(d["key"])
+
             self.ynd_token = d["yandexAppToken"]
-            self.download_limit = d["downloadSpeedLimit"]
-            self.upload_limit = d["uploadSpeedLimit"]
-            self.sync_threads = d["nSyncThreads"]
-            self.download_threads = d["nDownloadThreads"]
+            self.download_limit = d.get("downloadSpeedLimit", self.download_limit)
+            self.upload_limit = d.get("uploadSpeedLimit", self.upload_limit)
+            self.sync_threads = d.get("nSyncThreads", self.sync_threads)
+            self.download_threads = d.get("nDownloadThreads", self.download_threads)
+            self.scan_threads = d.get("nScanThreads", self.scan_threads)
             self.ynd = YandexDiskApi.YndApi(self.ynd_id, self.ynd_token, self.ynd_secret)
 
     def temp_encrypt(self, path):
         size = os.path.getsize(path)
-        if size < UPLOAD_BUFFER_LIMIT:
+        if size < TEMP_ENCRYPT_BUFFER_LIMIT:
             f = io.BytesIO()
         else:
             f = tempfile.TemporaryFile(mode="w+b")

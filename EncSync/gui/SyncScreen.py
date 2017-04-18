@@ -238,12 +238,12 @@ class EncSyncScreen(gtk.ScrolledWindow):
                 add_dialog.destroy()
                 return
 
+            msg_template = "Synchronizer and {} can't be run at the same time"
+
             if GlobalState.scanner.is_alive():
-                msg = "Synchronizer and scanner cannot run at the same time"
-                dialog = gtk.MessageDialog(GlobalState.window, 0, gtk.MessageType.INFO,
-                                           gtk.ButtonsType.OK, msg)
-                dialog.run()
-                dialog.destroy()
+                GlobalState.show_error(msg_template.format("scanner"))
+            elif GlobalState.downloader.is_alive():
+                GlobalState.show_error(msg_template.format("downloader"))
             else:
                 break
 

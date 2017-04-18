@@ -120,6 +120,10 @@ class FileList(gtk.Overlay):
                 self.update_thread.start()
 
     def download_handler(self, widget):
+        if GlobalState.synchronizer.is_alive():
+            GlobalState.show_error("Synchronizer and downloader can't be run at the same time")
+            return
+
         model, treeiter = self.treeview.get_selection().get_selected()
 
         if treeiter is None:

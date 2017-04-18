@@ -7,27 +7,31 @@ import os
 from .. import paths
 
 from .Dispatcher import DownloaderDispatcher
+from ..Dispatcher import DispatcherProxy
 
 from .Logging import logger
 
-class Downloader(object):
+class Downloader(DispatcherProxy):
     def __init__(self, encsync, n_workers=2):
+        DispatcherProxy.__init__(self)
+
         self.encsync = encsync
         self.targets = []
         self.n_workers = n_workers
-        self.dispatcher = None
         self.targets_lock = threading.Lock()
         self.speed_limit = 1024**4 / n_workers # Bytes per second
+
+    @property
+    def dispatcher(self):
+        return self.worker
+
+    @dispatcher.setter
+    def dispatcher(self, value):
+        self.worker = value
 
     def change_status(self, status):
         for i in self.get_targets():
             i.change_status("suspended")
-
-    def get_worker_list(self):
-        if self.dispatcher is not None:
-            return self.dispatcher.get_worker_list()
-        else:
-            return []
 
     def set_speed_limit(self, limit):
         self.speed_limit = limit / self.n_workers
@@ -52,29 +56,5 @@ class Downloader(object):
         with self.targets_lock:
             self.targets.append(target)
 
-    def start_dispatcher(self):
-        logger.debug("Starting dispatcher")
-        self.dispatcher = DownloaderDispatcher(self)
-        self.dispatcher.start()
-        logger.debug("Done starting dispatcher")
-
-    def start(self):
-        self.start_dispatcher()
-
-    def start_if_not_alive(self):
-        if not self.is_alive():
-            self.start()
-
-    def stop(self):
-        if self.dispatcher is not None:
-            self.dispatcher.stop()
-
-    def is_alive(self):
-        return self.dispatcher is not None and self.dispatcher.is_alive()
-
-    def join(self):
-        if self.dispatcher is not None:
-            self.dispatcher.join()
-
-    def full_stop(self):
-        self.dispatcher.full_stop()
+    def setup_worker(self):
+        self.worker = DownloaderDispatcher(self)

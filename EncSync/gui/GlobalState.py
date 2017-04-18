@@ -18,7 +18,7 @@ downloads = gtk.ListStore(int, str, str, str, str, gobject.TYPE_PYOBJECT)
 synchronizer = None
 sync_targets = gtk.ListStore(int, str, str, str, str, str, gobject.TYPE_PYOBJECT)
 scanner = None
-scan_tasks = gtk.ListStore(str, str, str, gobject.TYPE_PYOBJECT)
+scan_targets = gtk.ListStore(str, str, str, gobject.TYPE_PYOBJECT)
 difflist = None
 
 def wrap_ret(f, v):
@@ -36,11 +36,13 @@ def initialize(esync):
     downloader.set_speed_limit(encsync.download_limit)
 
     global synchronizer
-    synchronizer = Synchronizer(encsync, n_workers=encsync.sync_threads)
+    synchronizer = Synchronizer(encsync,
+                                n_workers=encsync.sync_threads,
+                                n_scan_workers=encsync.scan_threads)
     synchronizer.set_speed_limit(encsync.upload_limit)
 
     global scanner
-    scanner = Scanner(encsync)
+    scanner = Scanner(encsync, n_workers=encsync.scan_threads)
 
     global difflist
     difflist = SyncList.DiffList(encsync)
@@ -68,7 +70,7 @@ def show_error(message, secondary_message=""):
                                gtk.ButtonsType.OK, message)
 
     dialog.format_secondary_text(secondary_message)
-    
+
     dialog.run()
     dialog.destroy()
 
@@ -103,11 +105,11 @@ def add_sync_target(enable_scan, remote_path, local_path, status="pending"):
 
     return task
 
-def add_scan_task(scan_type, path):
-    task = scanner.add_dir(scan_type, path)
+def add_scan_target(scan_type, path):
+    target = scanner.add_dir(scan_type, path)
 
-    row = (str(task.status).capitalize(), scan_type.capitalize(), path, task)
+    row = (str(target.status).capitalize(), scan_type.capitalize(), path, target)
 
-    glib.idle_add(wrap_ret(scan_tasks.append, False), row)
+    glib.idle_add(wrap_ret(scan_targets.append, False), row)
 
-    return task
+    return target

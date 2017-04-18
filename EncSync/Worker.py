@@ -5,14 +5,12 @@ import threading
 
 from .Event import Emitter
 
-class Worker(threading.Thread, Emitter):
-    def __init__(self, parent, daemon=False):
-        threading.Thread.__init__(self, daemon=daemon)
+class WorkerBase(Emitter):
+    def __init__(self, parent):
         Emitter.__init__(self)
 
-        self.stopped = False
-
         self.parent = parent
+        self.stopped = False
 
         # Synchronization lock
         if parent is not None:
@@ -23,6 +21,14 @@ class Worker(threading.Thread, Emitter):
         self.add_event("started")
         self.add_event("stopping")
         self.add_event("finished")
+
+        self.retval = None
+
+    def get_siblings(self):
+        if self.parent is None:
+            return []
+
+        return [i for i in self.parent.get_workers() if i is not self]
 
     def get_info(self):
         return {}
@@ -50,8 +56,61 @@ class Worker(threading.Thread, Emitter):
             self.before_work()
 
             try:
-                self.work()
+                self.retval = self.work()
             finally:
                 self.after_work()
         finally:
             self.emit_event("finished")
+
+    def start(self):
+        raise NotImplementedError
+
+    def join(self):
+        raise NotImplementedError
+
+    def is_alive(self):
+        raise NotImplementedError
+
+    def start_if_not_alive(self):
+        if not self.is_alive():
+            self.start()
+
+class WorkerProxy(WorkerBase):
+    def __init__(self, parent):
+        WorkerBase.__init__(self, parent)
+        self._worker = None
+
+    def setup_worker(self):
+        raise NotImplementedError
+
+    @property
+    def worker(self):
+        if self._worker is None:
+            self.setup_worker()
+
+        return self._worker
+
+    @worker.setter
+    def worker(self, value):
+        self._worker = value
+
+    def start(self):
+        if not self.is_alive():
+            self.setup_worker()
+
+        self.worker.start()
+
+    def join(self):
+        if self.is_alive():
+            self.worker.join()
+
+    def is_alive(self):
+        return self.worker.is_alive()
+
+class Worker(threading.Thread, WorkerBase):
+    def __init__(self, parent, daemon=False):
+        threading.Thread.__init__(self, daemon=daemon)
+        WorkerBase.__init__(self, parent)
+
+    def run(self):
+        WorkerBase.run(self)

@@ -364,108 +364,175 @@ def try_next(it, default=None):
     except StopIteration:
         return default
 
-def scan_files(path):
-    path = os.path.abspath(os.path.expanduser(path))
+class BaseScannable(object):
+    def __init__(self, path=None, type=None, modified=0, size=0):
+        self.path = path
+        self.type = type
+        self.modified = modified
+        self.size = size
 
-    flist = [os.path.join(path, i) for i in os.listdir(path)]
-    flist.sort(reverse=True) # reverse=True to counteract the stack ordering
+    def identify(self):
+        raise NotImplementedError
 
-    while len(flist):
-        node = {}
-        p = flist.pop()
+    def listdir(self):
+        raise NotImplementedError
 
-        node["path"] = p
+    def to_node(self):
+        raise NotImplementedError
 
-        if os.path.isfile(p):
-            node["type"] = "f"
-            node["padded_size"] = pad_size(os.path.getsize(p))
-        elif os.path.isdir(p):
-            node["type"] = "d"
-            node["padded_size"] = 0
+    def __repr__(self):
+        return "<{} {}>".format(self.__class__.__name__, self.path)
+
+    def scan(self, *sort_args, **sort_kwargs):
+        if self.type is None:
+            self.identify()
+
+        res = {"f": [], "d": []}
+
+        if self.type != "d":
+            return res
+
+        content = list(self.listdir())
+
+        for i in content:
+            if i.type is None:
+                i.identify()
+
+        sort_kwargs.setdefault("key", lambda x: x.path)
+        content.sort(*sort_args, **sort_kwargs)
+
+        for i in content:
+            if i.type in ("f", "d"):
+                res[i.type].append(i)
+
+        return res
+
+    def full_scan(self):
+        flist = self.scan()
+        flist["d"].reverse()
+
+        while True:
+            for s in flist["f"][::-1]:
+                yield s
+
+            flist["f"].clear()
+
+            if len(flist["d"]) == 0:
+                break
+
+            s = flist["d"].pop()
+
+            yield s
+
+            scan_result = s.scan()
+            scan_result["d"].reverse()
+
+            flist["f"] = scan_result["f"]
+            flist["d"] += scan_result["d"]
+            del scan_result
+
+class LocalScannable(BaseScannable):
+    def identify(self):
+        self.path = os.path.abspath(self.path)
+        self.path = os.path.expanduser(self.path)
+
+        if os.path.isfile(self.path):
+            self.type = "f"
+        elif os.path.isdir(self.path):
+            self.type = "d"
         else:
-            continue
+            self.type = None
+            return
 
-        node["modified"] = datetime.utcfromtimestamp(os.path.getmtime(p)).timestamp()
-        node["IVs"] = b""
+        if self.type == "f":
+            self.size = pad_size(os.path.getsize(self.path))
+        else:
+            self.size = 0
 
+        m = os.path.getmtime(self.path)
+
+        self.modified = datetime.utcfromtimestamp(m).timestamp()
+
+    def listdir(self):
+        for i in os.listdir(self.path):
+            yield LocalScannable(os.path.join(self.path, i))
+
+    def to_node(self):
+        node = {"type": self.type,
+                "path": self.path,
+                "modified": self.modified,
+                "padded_size": self.size,
+                "IVs": b""}
         normalize_node(node)
 
-        yield node
+        return node
 
-        if node["type"] == "d":
-            new_flist = [os.path.join(p, i) for i in os.listdir(p)]
-            new_flist.sort(reverse=True) # reverse=True to counteract the stack ordering
-            flist.extend(new_flist)
+class RemoteScannable(BaseScannable):
+    def __init__(self, encsync, prefix, data=None):
+        if data is not None:
+            path = data["path"]
+            enc_path = data["enc_path"]
+            type = data["type"][0]
 
-def scan_files_ynd(path, encsync):
-    dec_path = path
+            modified = data["modified"]
+            modified = time.mktime(parse_date(modified))
 
-    yn = encsync.ynd
+            size = max(data["size"] - MIN_ENC_SIZE, 0)
 
-    flist = []
+            IVs = data["IVs"]
+        else:
+            path = prefix
+            enc_path = prefix
+            type = "d"
+            modified = None
+            size = 0
+            IVs = b""
 
-    data = None
+        BaseScannable.__init__(self, path, type, modified, size)
+        self.enc_path = enc_path
+        self.IVs = IVs
+        self.prefix = prefix
 
-    for j in range(10):
+        self.encsync = encsync
+        self.ynd = encsync.ynd
+
+    def listdir(self):
         dirs = []
-        try:
-            for i in yn.ls(path):
-                data = i["data"]
-                data["name"] = paths.join(path, data["name"])
-                data["dec_name"], data["IVs"] = encsync.decrypt_path(data["name"], path)
-                dirs.append(data)
-            flist.extend(dirs)
-            del dirs
-            break
-        except Exception as e:
-            if j == 9:
-                raise e
+        for j in range(10):
+            try:
+                for i in self.ynd.ls(self.enc_path):
+                    data = i["data"]
+                    enc_path = paths.join(self.enc_path, data["name"])
+                    path, IVs = self.encsync.decrypt_path(enc_path, self.prefix)
 
-    flist.sort(key=lambda x: x["dec_name"], reverse=True)
+                    dirs.append({"path": path,
+                                 "enc_path": enc_path,
+                                 "type": data["type"],
+                                 "modified": data["modified"],
+                                 "size": data.get("size", 0),
+                                 "IVs": IVs})
+                break
+            except Exception as e:
+                dirs.clear()
+                if j == 9:
+                    raise e
 
-    while len(flist):
-        node = {}
-        i = flist.pop()
-        p = i["name"]
-        dec_p = i["dec_name"]
+        for i in dirs:
+            yield RemoteScannable(self.encsync, self.prefix, i)
 
-        node["path"] = dec_p
-        node["IVs"] = i["IVs"]
-
-        if i["type"] == "file":
-            node["type"] = "f"
-            node["padded_size"] = i["size"] - MIN_ENC_SIZE
-        elif i["type"] == "dir":
-            node["type"] = "d"
-            node["padded_size"] = 0
-        else:
-            continue
-
-        date = i["modified"]
-
-        node["modified"] = time.mktime(parse_date(date))
-
+    def to_node(self):
+        node = {"type": self.type,
+                "path": self.path,
+                "modified": self.modified,
+                "padded_size": self.size,
+                "IVs": self.IVs}
         normalize_node(node)
 
-        yield node
+        return node
 
-        if node["type"] == "d":
-            for j in range(10):
-                new_flist = []
-                try:
-                    for i in yn.ls(p):
-                        data = i["data"]
-                        data["name"] = paths.join(p, data["name"])
-                        data["dec_name"], data["IVs"] = encsync.decrypt_path(data["name"], path)
-                        new_flist.append(data)
-
-                    new_flist.sort(key=lambda x: x["dec_name"], reverse=True)
-                    flist.extend(new_flist)
-                    del new_flist
-                    break
-                except Exception as e:
-                    if j == 9:
-                        raise e
+def scan_files(scannable):
+    for i in scannable.full_scan():
+        yield (i, i.to_node())
 
 class Comparator(object):
     def __init__(self, encsync, prefix1, prefix2):
