@@ -4,6 +4,7 @@
 import sqlite3
 import threading
 import os
+import time
 
 DEFAULT_FETCH_SIZE = 1000
 
@@ -45,6 +46,8 @@ class Connection(object):
         self._with_thread_id = None
         self._with_count = 0
 
+        self.last_commit = time.time()
+
         cdb.inc_connection_count()
 
     def __enter__(self):
@@ -57,6 +60,9 @@ class Connection(object):
 
         self._using_with = True
         self._with_count += 1
+
+    def time_since_last_commit(self):
+        return time.time() - self.last_commit
 
     def __exit__(self, *args, **kwargs):
         self._with_count -= 1
@@ -91,13 +97,28 @@ class Connection(object):
 
         return self.execute("BEGIN {} TRANSACTION".format(transaction_type))
 
+    def seamless_commit(self):
+        with self:
+            if not self.conn.in_transaction:
+                return
+
+            self.commit()
+            self.begin_transaction("IMMEDIATE")
+
+    def _execute(self, *args, **kwargs):
+        self.cur.execute(*args, **kwargs)
+
     @get_queue_result
     def execute(self, *args, **kwargs):
-        return self.add_to_queue(self.cur.execute, args, kwargs)
+        return self.add_to_queue(self._execute, args, kwargs)
+
+    def _commit(self):
+        self.conn.commit()
+        self.last_commit = time.time()
 
     @get_queue_result
     def commit(self):
-        return self.add_to_queue(self.conn.commit, tuple(), dict())
+        return self.add_to_queue(self._commit, tuple(), dict())
 
     @get_queue_result
     def rollback(self):

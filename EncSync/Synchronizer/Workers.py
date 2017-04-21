@@ -11,6 +11,8 @@ from .. import paths
 
 from ..Worker import Worker
 
+COMMIT_INTERVAL = 7.5 * 60 # Seconds
+
 def check_filename_length(path):
     return len(paths.split(path)[1]) < 160
 
@@ -25,6 +27,10 @@ class SynchronizerWorker(Worker):
         self.path = None
 
         self.synclist = dispatcher.shared_synclist
+
+    def autocommit(self):
+        if self.synclist.conn.time_since_last_commit() >= COMMIT_INTERVAL:
+            self.synclist.conn.seamless_commit()
 
     def work_func(self):
         pass
@@ -112,6 +118,7 @@ class UploadWorker(SynchronizerWorker):
         try:
             if not os.path.exists(local_path):
                 self.synclist.remove_local_node(local_path)
+                self.autocommit()
 
                 task.change_status("finished")
                 return
@@ -127,8 +134,9 @@ class UploadWorker(SynchronizerWorker):
                         logger.debug("Upload task failed")
                 except SyncFileInterrupt:
                     logger.debug("Upload was interrupted")
+                    return
 
-            if task.status != "pending" or self.stop_condition():
+            if task.status != "pending":
                 return
 
             new_size = pad_size(os.path.getsize(local_path))
@@ -142,6 +150,7 @@ class UploadWorker(SynchronizerWorker):
             with self.synclist:
                 self.synclist.insert_remote_node(newnode)
                 self.synclist.update_local_size(local_path, new_size)
+                self.autocommit()
 
             task.change_status("finished")
         except:
@@ -169,6 +178,7 @@ class MkdirWorker(SynchronizerWorker):
         try:
             if not os.path.exists(local_path):
                 self.synclist.remove_local_node(local_path)
+                self.autocommit()
 
                 task.change_status("finished")
                 return
@@ -191,6 +201,7 @@ class MkdirWorker(SynchronizerWorker):
                        "IVs": IVs}
 
             self.synclist.insert_remote_node(newnode)
+            self.autocommit()
 
             task.change_status("finished")
         except:
@@ -221,6 +232,7 @@ class RmWorker(SynchronizerWorker):
                 with self.synclist:
                     self.synclist.remove_remote_node_children(remote_path)
                     self.synclist.remove_remote_node(remote_path)
+                    self.autocommit()
                 task.change_status("finished")
             else:
                 task.change_status("failed")

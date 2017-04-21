@@ -284,13 +284,11 @@ class SynchronizerDispatcher(StagedDispatcher):
         self.join_workers()
 
         if target.status == "pending" and self.cur_target.status == "pending":
-            logger.debug("SCAN:COMMIT")
             self.shared_synclist.commit()
         else:
             if self.cur_target.status == "pending":
                 self.cur_target.change_status("failed")
             self.shared_synclist.rollback()
-            logger.debug("SCAN:ROLLBACK")
 
     def init_scan_stage(self):
         try:
