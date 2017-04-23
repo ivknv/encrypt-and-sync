@@ -7,7 +7,7 @@ from ..Dispatcher import Dispatcher
 from .Workers import LocalScanWorker, RemoteScanWorker
 from .Logging import logger
 from .. import SyncList
-from ..SyncList import LocalScannable, RemoteScannable
+from ..Scannable import LocalScannable, RemoteScannable
 
 class ScannerDispatcher(Dispatcher):
     def __init__(self, scanner):

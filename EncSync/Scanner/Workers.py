@@ -3,7 +3,7 @@
 
 from ..Waiter import Waiter
 from .Logging import logger
-from .. import SyncList
+from ..Scannable import scan_files
 
 class ScanWorker(Waiter):
     def __init__(self, parent, target):
@@ -59,7 +59,7 @@ class LocalScanWorker(ScanWorker):
     def do_scan(self, scannable):
         assert(self.cur_target.type == "local")
 
-        local_files = SyncList.scan_files(scannable)
+        local_files = scan_files(scannable)
 
         for s, n in local_files:
             self.cur_path = n["path"]

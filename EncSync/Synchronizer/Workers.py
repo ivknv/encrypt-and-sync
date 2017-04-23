@@ -6,7 +6,7 @@ import os
 
 from .Logging import logger
 from .SyncFile import SyncFile, SyncFileInterrupt
-from ..SyncList import pad_size
+from ..Encryption import pad_size
 from .. import paths
 
 from ..Worker import Worker

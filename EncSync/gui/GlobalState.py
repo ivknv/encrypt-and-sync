@@ -4,7 +4,7 @@
 from ..Downloader import Downloader, DownloadTarget
 from ..Synchronizer import Synchronizer
 from ..Scanner import Scanner
-from .. import SyncList
+from ..DiffList import DiffList
 
 from gi.repository import Gtk as gtk
 from gi.repository import GObject as gobject
@@ -45,7 +45,7 @@ def initialize(esync):
     scanner = Scanner(encsync, n_workers=encsync.scan_threads)
 
     global difflist
-    difflist = SyncList.DiffList(encsync)
+    difflist = DiffList(encsync)
     with difflist:
         difflist.create()
         difflist.commit()

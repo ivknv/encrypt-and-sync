@@ -13,6 +13,12 @@ chunksize = 4096
 # Minimum encrypted file size
 MIN_ENC_SIZE = struct.calcsize("Q") + 16
 
+def pad_size(size):
+    if size % 16 == 0:
+        return size
+
+    return size + 16 - (size % 16)
+
 def encrypt_file(in_file, out_file, key, filesize=None):
     ivlen = 16
     iv = Random.get_random_bytes(ivlen)

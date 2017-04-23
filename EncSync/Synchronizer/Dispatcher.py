@@ -14,10 +14,12 @@ from ..Dispatcher import StagedDispatcher
 
 from .Logging import logger
 
-from .. import SyncList
-from ..SyncList import pad_size, LocalScannable, RemoteScannable
-from ..Encryption import MIN_ENC_SIZE
+from ..SyncList import SyncList
+from ..DiffList import DiffList
+from ..Scannable import LocalScannable, RemoteScannable
+from ..Encryption import pad_size, MIN_ENC_SIZE
 from .. import paths
+from .. import FileComparator
 
 class SynchronizerDispatcher(StagedDispatcher):
     def __init__(self, synchronizer):
@@ -35,7 +37,7 @@ class SynchronizerDispatcher(StagedDispatcher):
         self.cur_target = None
         self.diffs = None
 
-        self.shared_synclist = SyncList.SyncList()
+        self.shared_synclist = SyncList()
 
         self.speed_limit = synchronizer.speed_limit
 
@@ -92,12 +94,12 @@ class SynchronizerDispatcher(StagedDispatcher):
     def build_diffs_table(self):
         assert(self.cur_target is not None)
 
-        difflist = SyncList.DiffList(self.encsync)
+        difflist = DiffList(self.encsync)
 
         with difflist:
-            diffs = SyncList.compare_lists(self.encsync,
-                                           self.cur_target.local,
-                                           self.cur_target.remote)
+            diffs = FileComparator.compare_lists(self.encsync,
+                                                 self.cur_target.local,
+                                                 self.cur_target.remote)
 
             try:
                 difflist.begin_transaction()
@@ -120,10 +122,10 @@ class SynchronizerDispatcher(StagedDispatcher):
         try:
             logger.debug("Dispatcher started working")
 
-            synclist = SyncList.SyncList()
+            synclist = SyncList()
             synclist.create()
 
-            difflist = SyncList.DiffList(self.encsync)
+            difflist = DiffList(self.encsync)
             difflist.create()
 
             while not self.stopped:
@@ -184,7 +186,7 @@ class SynchronizerDispatcher(StagedDispatcher):
     def init_rm_stage(self):
         logger.debug("Dispatcher began initializing stage 'rm'")
 
-        d = SyncList.DiffList(self.encsync)
+        d = DiffList(self.encsync)
         self.diffs = d.select_rm_differences(self.cur_target.local,
                                              self.cur_target.remote)
 
@@ -200,7 +202,7 @@ class SynchronizerDispatcher(StagedDispatcher):
     def init_dirs_stage(self):
         logger.debug("Dispatcher began initializing stage 'dirs'")
 
-        d = SyncList.DiffList(self.encsync)
+        d = DiffList(self.encsync)
         self.diffs = d.select_dirs_differences(self.cur_target.local,
                                                self.cur_target.remote)
 
@@ -216,7 +218,7 @@ class SynchronizerDispatcher(StagedDispatcher):
     def init_files_stage(self):
         logger.debug("Dispatcher began initializing stage 'files'")
 
-        d = SyncList.DiffList(self.encsync)
+        d = DiffList(self.encsync)
         self.diffs = d.select_files_differences(self.cur_target.local,
                                                 self.cur_target.remote)
 
@@ -345,7 +347,7 @@ class SynchronizerDispatcher(StagedDispatcher):
 
             self.cur_target.emit_event("integrity_check_finished")
 
-            difflist = SyncList.DiffList(self.encsync)
+            difflist = DiffList(self.encsync)
 
             if difflist.get_difference_count(self.cur_target.local, self.cur_target.remote):
                 self.cur_target.change_status("failed")
