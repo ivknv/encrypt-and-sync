@@ -29,8 +29,8 @@ class SynchronizerWorker(Worker):
         self.synclist = dispatcher.shared_synclist
 
     def autocommit(self):
-        if self.synclist.conn.time_since_last_commit() >= COMMIT_INTERVAL:
-            self.synclist.conn.seamless_commit()
+        if self.synclist.time_since_last_commit() >= COMMIT_INTERVAL:
+            self.synclist.seamless_commit()
 
     def work_func(self):
         pass
