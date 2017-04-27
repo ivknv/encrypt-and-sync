@@ -61,7 +61,7 @@ class EncPath(object):
         prefix = self.local_prefix
         path = self.path
         if None not in {prefix, path}:
-            return os.path.join(prefix, paths.to_sys(path))
+            return paths.join(prefix, path)
 
     def get_remote(self):
         prefix = self.remote_prefix
