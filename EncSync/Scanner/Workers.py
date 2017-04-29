@@ -4,6 +4,7 @@
 from ..Waiter import Waiter
 from .Logging import logger
 from ..Scannable import scan_files
+from .. import paths
 
 class ScanWorker(Waiter):
     def __init__(self, parent, target):
@@ -15,6 +16,7 @@ class ScanWorker(Waiter):
         self.cur_path = None
 
         self.synclist = parent.shared_synclist
+        self.duplist = parent.shared_duplist
 
     def do_scan(self, scannable):
         raise NotImplementedError
@@ -98,11 +100,25 @@ class RemoteScanWorker(ScanWorker):
         scan_result["d"].reverse()
 
         while True:
-            for s in scan_result["f"]:
+            scannables = {}
+
+            while len(scan_result["f"]) > 0:
+                s = scan_result["f"].pop(0)
+
+                path = paths.dir_denormalize(s.path)
+
+                scannables.setdefault(path, [])
+                scannables[path].append(s)
+
                 if not self.insert_remote_scannable(s):
                     return False
 
-            scan_result["f"].clear()
+            for i in scannables.values():
+                if len(i) > 1:
+                    for s in i:
+                        self.duplist.insert(s.type, s.enc_path)
+
+            del scannables
 
             if len(scan_result["d"]) == 0:
                 break

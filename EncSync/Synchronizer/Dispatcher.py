@@ -14,7 +14,7 @@ from ..Dispatcher import StagedDispatcher
 
 from .Logging import logger
 
-from ..SyncList import SyncList
+from ..SyncList import SyncList, DuplicateList
 from ..DiffList import DiffList
 from ..Scannable import LocalScannable, RemoteScannable
 from ..Encryption import pad_size, MIN_ENC_SIZE
@@ -38,6 +38,7 @@ class SynchronizerDispatcher(StagedDispatcher):
         self.diffs = None
 
         self.shared_synclist = SyncList()
+        self.shared_duplist = DuplicateList()
 
         self.speed_limit = synchronizer.speed_limit
 

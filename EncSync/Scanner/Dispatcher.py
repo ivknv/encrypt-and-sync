@@ -6,7 +6,7 @@ import threading
 from ..Dispatcher import Dispatcher
 from .Workers import LocalScanWorker, RemoteScanWorker
 from .Logging import logger
-from .. import SyncList
+from ..SyncList import SyncList, DuplicateList
 from ..Scannable import LocalScannable, RemoteScannable
 
 class ScannerDispatcher(Dispatcher):
@@ -22,7 +22,8 @@ class ScannerDispatcher(Dispatcher):
 
         self.cur_target = None
 
-        self.shared_synclist = SyncList.SyncList()
+        self.shared_synclist = SyncList()
+        self.shared_duplist = DuplicateList()
 
         self.pool = []
         self.pool_lock = threading.Lock()
@@ -81,6 +82,7 @@ class ScannerDispatcher(Dispatcher):
         logger.debug("Dispatcher is working")
 
         self.shared_synclist.create()
+        self.shared_duplist.create()
 
         while not self.stop_condition():
             target = self.get_next_target()
@@ -99,29 +101,35 @@ class ScannerDispatcher(Dispatcher):
                 target.change_status("pending")
 
                 self.shared_synclist.begin_transaction()
+                self.shared_duplist.begin_transaction()
 
                 if target.type == "local":
                     self.start_worker(LocalScanWorker, self, target)
                     self.begin_local_scan(target)
                 elif target.type == "remote":
+                    self.shared_duplist.remove_children(target.path)
+
                     self.start_workers(self.n_workers, RemoteScanWorker, self, target)
                     self.begin_remote_scan(target)
 
                     self.wait_workers()
                     self.stop_workers()
 
-                logger.debug("Joining workers")
                 self.join_workers()
-                logger.debug("Done joining workers")
 
                 if target.status == "pending":
                     self.shared_synclist.commit()
+                    self.shared_duplist.commit()
                     target.change_status("finished")
+
+                    target.emit_event("scan_finished")
                 else:
                     self.shared_synclist.rollback()
+                    self.shared_duplist.rollback()
             except:
                 target.change_status("failed")
                 self.shared_synclist.rollback()
+                self.shared_duplist.rollback()
                 logger.exception("An error occured")
             finally:
                 self.cur_target = None

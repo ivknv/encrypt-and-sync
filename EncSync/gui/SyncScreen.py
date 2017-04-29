@@ -13,63 +13,39 @@ from .DiffDisplayer import DiffDisplayer
 import weakref
 import threading
 
+from .gtk_setup import gtk_setup
+
 class SyncTargetList(gtk.TreeView):
     def __init__(self):
         self.liststore = gtk.ListStore(bool, bool, str, str)
-        gtk.TreeView.__init__(self, self.liststore)
+        gtk.TreeView.__init__(self)
 
         for i in GlobalState.encsync.targets:
             self.liststore.append([True, True, i["local"], i["remote"]])
 
-        self.text_renderer = gtk.CellRendererText(xalign=0.0)
-        self.toggle_renderer = gtk.CellRendererToggle(xalign=0.0)
-
-        renderers = {"text":   {"class": gtk.CellRendererText,
-                                "instances": []},
-                     "toggle": {"class": gtk.CellRendererToggle,
-                                "instances": []}}
-
-        attributes = {"text": "text",
-                      "toggle": "active"}
-
-        columns = ({"name": "Scan?",
+        columns = ({"properties": {"title": "Scan?"},
                     "renderers": [{"type": "toggle",
                                    "index": 0,
-                                   "properties": {},
                                    "expand": True}]},
-                   {"name": "Local path",
+                   {"properties": {"title": "Local path"},
                     "renderers": [{"type": "toggle",
                                    "index": 1,
                                    "properties": {"xalign": 0.0},
                                    "expand": False},
                                   {"type": "text",
                                    "index": 2,
-                                   "properties": {},
                                    "expand": True}]},
-                   {"name": "Remote path",
+                   {"properties": {"title": "Remote path"},
                     "renderers": [{"type": "text",
                                    "index": 3,
-                                   "properties": {},
                                    "expand": True}]})
+        
+        treeview_def = {"type": "treeview",
+                        "object": self,
+                        "model": self.liststore,
+                        "columns": columns}
 
-        for column_def in columns:
-            column = gtk.TreeViewColumn(column_def["name"])
-            for renderer_def in column_def["renderers"]:
-                renderer_type = renderer_def["type"]
-                expand        = renderer_def["expand"]
-                attr          = attributes[renderer_type]
-                idx           = renderer_def["index"]
-                renderer      = renderers[renderer_type]["class"]()
-
-                renderer_def["object"] = renderer
-
-                for prop, value in renderer_def["properties"].items():
-                    renderer.set_property(prop, value)
-
-                column.pack_start(renderer, expand)
-                column.add_attribute(renderer, attr, idx)
-
-            self.append_column(column)
+        gtk_setup(treeview_def)
 
         for column_def in columns:
             for renderer_def in column_def["renderers"]:
@@ -85,16 +61,21 @@ class SyncTargetList(gtk.TreeView):
 
 class AddSyncTargetDialog(gtk.Dialog):
     def __init__(self):
-        gtk.Dialog.__init__(self, "Add sync targets", GlobalState.window, 0,
-                            (gtk.STOCK_OK, gtk.ResponseType.OK,
-                             gtk.STOCK_CANCEL, gtk.ResponseType.CANCEL))
-        
-        box = self.get_content_area()
+        gtk.Dialog.__init__(self, "Add sync targets", GlobalState.window)
 
         self.target_list = SyncTargetList()
 
-        box.pack_start(self.target_list, False, True, 0)
+        definition = {"type": "dialog",
+                      "object": self,
+                      "buttons": (gtk.STOCK_OK, gtk.ResponseType.OK,
+                                  gtk.STOCK_CANCEL, gtk.ResponseType.CANCEL),
+                      "children": [{"type": "syncTargetList",
+                                   "object": self.target_list,
+                                   "expand": False,
+                                   "fill": True}]}
 
+        gtk_setup(definition)
+        
         self.show_all()
 
 class IntegrityCheckDialog(gtk.Dialog):

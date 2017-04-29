@@ -7,10 +7,9 @@ from .. import CentDB
 from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 
 class RemoteFileList(FileList):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, path="remote_filelist.db", *args, **kwargs):
         FileList.__init__(self)
         kwargs.setdefault("isolation_level", None)
-        path = "remote_filelist.db"
         self.conn = CentDB.connect(path, *args, **kwargs)
 
     def __enter__(self):
@@ -28,7 +27,7 @@ class RemoteFileList(FileList):
                                  path TEXT UNIQUE ON CONFLICT REPLACE,
                                  IVs TEXT)""")
             self.conn.execute("""CREATE INDEX IF NOT EXISTS path_index
-                                ON filelist(path ASC)""")
+                                 ON filelist(path ASC)""")
 
     def insert_node(self, node):
         node = dict(node)

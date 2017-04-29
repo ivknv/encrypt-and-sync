@@ -12,3 +12,5 @@ class ScanTarget(Task):
         self.type = scan_type
 
         self.path = path
+
+        self.add_event("scan_finished")

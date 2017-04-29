@@ -6,7 +6,11 @@ from gi.repository import GLib as glib
 
 from .TextSelectList import TextSelectList
 from .WorkerMonitor import WorkerMonitor
+from .gtk_setup import gtk_setup
 from . import GlobalState
+from ..Event import ReceiverThread
+from ..SyncList import DuplicateList
+
 import weakref
 import threading
 
@@ -40,6 +44,40 @@ class ScanDialog(gtk.Dialog):
     def get_enabled(self):
         return (i[1] for i in self.dir_list.liststore if i[0])
 
+class DuplicateListDialog(gtk.Dialog):
+    def __init__(self, target):
+        gtk.Dialog.__init__(self, "Duplicates", GlobalState.window)
+
+        self.liststore = gtk.ListStore(str, str)
+        self.treeview = gtk.TreeView()
+
+        duplist = DuplicateList()
+
+        for i in duplist.find_children(target.path):
+            path = GlobalState.encsync.decrypt_path(i[1], target.path)[0]
+            self.liststore.append([{"f": "File", "d": "Dir"}[i[0]], path])
+
+        definition = {"type": "dialog",
+                      "object": self,
+                      "properties": {},
+                      "buttons": (gtk.STOCK_OK, gtk.ResponseType.OK),
+                      "children": [{"type": "treeview",
+                                    "object": self.treeview,
+                                    "model": self.liststore,
+                                    "expand": True,
+                                    "fill": False,
+                                    "columns": [{"properties": {"title": "Type"},
+                                                 "renderers": [{"type": "text",
+                                                                "index": 0,
+                                                                "expand": False}]},
+                                                {"properties": {"title": "Path"},
+                                                 "renderers": [{"type": "text",
+                                                                "index": 1,
+                                                                "expand": True}]}]}]}
+        gtk_setup(definition)
+
+        self.show_all()
+
 class EncScanScreen(gtk.ScrolledWindow):
     def __init__(self):
         gtk.ScrolledWindow.__init__(self)
@@ -65,6 +103,41 @@ class EncScanScreen(gtk.ScrolledWindow):
         self.scan_local_button.connect("clicked", self.scan_local_button_handler)
         self.scan_remote_button.connect("clicked", self.scan_remote_button_handler)
 
+        self.dialog_lock = threading.Lock()
+        self.dialog_receiver = ReceiverThread()
+
+        self.dialog_receiver.add_callback("scan_finished", self.show_duplicates)
+
+        self.dialog_receiver.start()
+
+        self.connect("delete-event", self.on_delete)
+
+    def on_delete(self):
+        self.dialog_receiver.stop()
+
+    def show_duplicates(self, event):
+        target = event.emitter
+
+        if target.type != "remote":
+            return
+
+        duplist = DuplicateList()
+
+        if duplist.is_empty(target.path):
+            return
+
+        def func():
+            with self.dialog_lock:
+                dialog = DuplicateListDialog(target)
+                response = dialog.run()
+
+                dialog.destroy()
+
+            return False
+
+        with self.dialog_lock:
+            glib.idle_add(func)
+
     def scan_button_handler(self, scan_type, widget):
         dialog = ScanDialog(scan_type)
 
@@ -85,7 +158,8 @@ class EncScanScreen(gtk.ScrolledWindow):
                 break
 
         for i in dialog.get_enabled():
-            GlobalState.add_scan_target(scan_type, i)
+            target = GlobalState.add_scan_target(scan_type, i)
+            target.add_receiver(self.dialog_receiver)
 
         GlobalState.scanner.start_if_not_alive()
 
