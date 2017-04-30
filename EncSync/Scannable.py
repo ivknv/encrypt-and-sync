@@ -96,7 +96,10 @@ class LocalScannable(BaseScannable):
 
         m = os.path.getmtime(self.path)
 
-        self.modified = datetime.utcfromtimestamp(m).timestamp()
+        try:
+            self.modified = datetime.utcfromtimestamp(m).timestamp()
+        except OverflowError:
+            self.modified = 0
 
     def listdir(self):
         for i in os.listdir(self.path):
