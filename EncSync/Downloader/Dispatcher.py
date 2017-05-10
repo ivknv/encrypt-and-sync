@@ -42,31 +42,7 @@ class DownloaderDispatcher(Dispatcher):
             logger.debug("Scanning download target")
 
             if target.total_children == 0:
-                if target.type == "f":
-                    new_target = DownloadTask()
-
-                    synclist = SyncList.SyncList()
-
-                    node = synclist.find_remote_node(target.dec_remote)
-
-                    if node["padded_size"] is None:
-                        target.change_status("failed")
-                        continue
-
-                    new_target.type = "f"
-                    new_target.remote = target.remote
-                    new_target.dec_remote = target.dec_remote
-                    new_target.local = target.local
-                    new_target.parent = target
-                    new_target.IVs = target.IVs
-                    new_target.size = node["padded_size"]
-
-                    with target.lock:
-                        target.total_children += 1
-                        target.size = new_target.size
-                        target.children.append(new_target)
-                else:
-                    self.scan(target)
+                self.scan(target)
 
             logger.debug("Done scanning download target")
 
@@ -109,32 +85,30 @@ class DownloaderDispatcher(Dispatcher):
             target.change_status("failed")
             return
 
-        if nodes[0]["type"] == "f":
-            return
+        target.type = nodes[0]["type"]
 
         with target.lock:
             target.total_children = 0
 
         for node in nodes:
-            new_target = DownloadTask()
+            new_task = DownloadTask()
 
             enc_path = self.encsync.encrypt_path(node["path"], target.prefix, node["IVs"])[0]
-            enc_name = paths.cut_prefix(enc_path, target.remote)
-            name = self.encsync.decrypt_path(enc_name)[0]
+            name = paths.cut_prefix(node["path"], target.dec_remote)
 
-            new_target.type = node["type"]
-            new_target.remote = enc_path
-            new_target.dec_remote = node["path"]
-            new_target.local = os.path.join(target.local, name)
-            new_target.parent = target
-            new_target.IVs = node["IVs"]
+            new_task.type = node["type"]
+            new_task.remote = enc_path
+            new_task.dec_remote = node["path"]
+            new_task.local = os.path.join(target.local, name)
+            new_task.parent = target
+            new_task.IVs = node["IVs"]
 
-            if new_target.type == "f":
-                new_target.size = node["padded_size"] + MIN_ENC_SIZE
+            if new_task.type == "f":
+                new_task.size = node["padded_size"] + MIN_ENC_SIZE
             else:
-                new_target.size = 0
+                new_task.size = 0
 
             with target.lock:
                 target.total_children += 1
-                target.size += new_target.size
-                target.children.append(new_target)
+                target.size += new_task.size
+                target.children.append(new_task)

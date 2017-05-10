@@ -29,12 +29,12 @@ class EncPath(object):
 
     def get_path(self):
         if None not in {self._local_prefix, self._local}:
-            return paths.cut_prefix(self._local, self._local_prefix, sep=os.path.sep)
+            return paths.from_sys(paths.cut_prefix(self._local, self._local_prefix, sep=os.path.sep)) or "/"
         elif self._remote_prefix is not None:
             if self._remote is not None:
-                return paths.cut_prefix(self._remote, self._remote_prefix)
+                return paths.cut_prefix(self._remote, self._remote_prefix) or "/"
             elif self._remote_enc is not None:
-                return paths.cut_prefix(self._remote_enc, self._remote_prefix)
+                return paths.cut_prefix(self._remote_enc, self._remote_prefix) or "/"
 
         if self._path_enc is not None:
             if self._IVs is None or self._IVs == b"":
@@ -42,7 +42,7 @@ class EncPath(object):
             else:
                 path = self.encsync.decrypt_path(self._path_enc, IVs=self._IVs)
 
-            return path
+            return path or "/"
 
     def get_path_enc(self):
         if self.path is None:

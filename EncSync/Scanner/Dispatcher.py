@@ -68,12 +68,16 @@ class ScannerDispatcher(Dispatcher):
         self.shared_synclist.remove_remote_node_children(target.path)
 
         scannable = RemoteScannable(self.encsync, target.path)
+        scannable.identify()
+        self.shared_synclist.insert_remote_node(scannable.to_node())
         self.add_scannable(scannable)
 
     def begin_local_scan(self, target):
         self.shared_synclist.remove_local_node_children(target.path)
 
         scannable = LocalScannable(target.path)
+        scannable.identify()
+        self.shared_synclist.insert_local_node(scannable.to_node())
         self.add_scannable(scannable)
 
     def work(self):

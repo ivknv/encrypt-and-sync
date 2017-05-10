@@ -85,7 +85,7 @@ class FileComparator(object):
                 self.padded_size1 = None
             else:
                 self.type1 = self.node1["type"]
-                self.path1 = paths.cut_prefix(self.node1["path"], self.prefix1)
+                self.path1 = paths.cut_prefix(self.node1["path"], self.prefix1) or "/"
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
 
@@ -102,7 +102,7 @@ class FileComparator(object):
                 self.IVs = b""
             else:
                 self.type2 = self.node2["type"]
-                self.path2 = paths.cut_prefix(self.node2["path"], self.prefix2)
+                self.path2 = paths.cut_prefix(self.node2["path"], self.prefix2) or "/"
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
                 self.IVs = self.node2["IVs"]

@@ -1,66 +1,99 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
+import sys
+import argparse
 
-import gi
-gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
+from .cli import common
+from .cli.scan import do_scan
+from .cli.show_diffs import show_diffs
+from .cli.sync import do_sync
+from .cli.download import download
+from .cli.check_token import check_token
+from .cli.encrypt import encrypt, encrypt_config, encrypt_filename
+from .cli.decrypt import decrypt, decrypt_config, decrypt_filename
+from .cli.show_duplicates import show_duplicates
+from .cli.Console import run_console
 
-from gi.repository import Gtk as gtk
-from gi.repository import GObject as gobject
+global_vars = common.global_vars
 
-from .gui.LoginForm import LoginForm
-from .gui.Viewer import EncViewer
-from .gui.Wizard import EncWizard
-from .gui import GlobalState
+def main(ns):
+    global_vars["verbose"] = ns.verbose
+    global_vars["n_workers"] = ns.n_workers
+    global_vars["master_password"] = ns.master_password
+    global_vars["config"] = ns.config
+    global_vars["local_prefix"] = ns.local_prefix
+    global_vars["remote_prefix"] = ns.remote_prefix
 
-class EncWindow(gtk.Window):
-    def __init__(self):
-        gtk.Window.__init__(self, title="EncSync")
+    if ns.scan or ns.show_diffs or ns.sync or ns.download:
+        check_token()
 
-        self.connect("delete-event", self.window_close_handler)
-        self.connect("delete-event", gtk.main_quit)
+    if ns.scan is not None:
+        do_scan(ns.scan)
+    elif ns.show_diffs is not None:
+        show_diffs(*ns.show_diffs[:2])
+    elif ns.sync is not None:
+        do_sync(ns.sync)
+    elif ns.download is not None:
+        download(ns.download)
+    elif ns.encrypt is not None:
+        encrypt(ns.encrypt)
+    elif ns.decrypt is not None:
+        decrypt(ns.decrypt)
+    elif ns.encrypt_filename is not None:
+        encrypt_filename(ns.encrypt_filename, ns.prefix or "/")
+    elif ns.decrypt_filename is not None:
+        decrypt_filename(ns.decrypt_filename, ns.prefix or "/")
+    elif ns.encrypt_config is not None:
+        in_path = ns.encrypt_config[0]
+        try:
+            out_path = ns.encrypt_config[1]
+        except IndexError:
+            out_path = in_path
+        encrypt_config(in_path, out_path)
+    elif ns.decrypt_config is not None:
+        in_path = ns.decrypt_config[0]
+        try:
+            out_path = ns.decrypt_config[1]
+        except IndexError:
+            out_path = in_path
+        decrypt_config(in_path, out_path)
+    elif ns.show_duplicates is not None:
+        show_duplicates(ns.show_duplicates)
+    elif ns.console:
+        run_console()
 
-        self.set_default_size(640, 480)
-        self.set_border_width(10)
+def positive_int(arg):
+    try:
+        n = int(arg)
+        if n > 0:
+            return n
+    except ValueError:
+        pass
 
-        self.viewer = EncViewer()
-
-        GlobalState.window = self
-
-        if not os.path.exists("config.json"):
-            self.show_setup_wizard()
-        else:
-            self.show_viewer()
-
-    def show_viewer(self):
-        for i in self.get_children():
-            self.remove(i)
-
-        self.add(self.viewer)
-
-        self.show_all()
-
-    def show_setup_wizard(self):
-        wizard = EncWizard()
-
-        wizard.connect("setup-completed", lambda widget: self.show_viewer())
-
-        self.add(wizard)
-
-        self.show_all()
-
-    def window_close_handler(self, widget, *args, **kwargs):
-        GlobalState.finalize()
-
-        return False
+    raise argparse.ArgumentTypeError("%r is not a positive integer" % arg)
 
 if __name__ == "__main__":
-    gobject.threads_init()
+    parser = argparse.ArgumentParser(description="Synchronizes encrypted files")
+    parser.add_argument("--config", metavar="PATH", default="config.json")
+    parser.add_argument("--master-password", default=None)
+    parser.add_argument("-v", "--verbose", action="store_true", default=False)
+    parser.add_argument("--silent", action="store_true", default=False)
+    parser.add_argument("--n-workers", type=positive_int, default=1)
+    parser.add_argument("-s", "--scan", default=None, nargs="+")
+    parser.add_argument("-d", "--show-diffs", default=None, nargs=2)
+    parser.add_argument("-S", "--sync", default=None, nargs=2)
+    parser.add_argument("-D", "--download", default=None, nargs="+")
+    parser.add_argument("--local-prefix", default=None)
+    parser.add_argument("--remote-prefix", default=None)
+    parser.add_argument("--prefix", default=None)
+    parser.add_argument("--encrypt", default=None, nargs="+")
+    parser.add_argument("--decrypt", default=None, nargs="+")
+    parser.add_argument("--encrypt-filename", default=None, nargs="+")
+    parser.add_argument("--decrypt-filename", default=None, nargs="+")
+    parser.add_argument("--encrypt-config", default=None, nargs="+")
+    parser.add_argument("--decrypt-config", default=None, nargs="+")
+    parser.add_argument("--show-duplicates", default=None, nargs="+")
+    parser.add_argument("--console", default=False, action="store_true")
 
-    LoginForm.register()
-    EncWizard.register()
-    window = EncWindow()
-    window.show_all()
-    gtk.main()
+    main(parser.parse_args(sys.argv[1:]))

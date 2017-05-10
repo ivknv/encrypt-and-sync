@@ -73,6 +73,9 @@ class SynchronizerWorker(Worker):
                 logger.debug("SynchronizerWorker stopped")
                 break
 
+            if task.status is None:
+                task.change_status("pending")
+
             self.path = task.diff[2]
 
             local_path = self.path.local

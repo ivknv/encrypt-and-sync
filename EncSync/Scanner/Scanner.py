@@ -42,6 +42,10 @@ class Scanner(DispatcherProxy):
         with self.targets_lock:
             self.targets.append(target)
 
+    def get_targets(self):
+        with self.targets_lock:
+            return list(self.targets)
+
     def add_local_dir(self, path):
         return self.add_dir("local", path)
 

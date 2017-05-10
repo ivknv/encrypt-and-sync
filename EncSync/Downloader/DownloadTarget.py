@@ -9,9 +9,8 @@ class DownloadTarget(Task):
         Task.__init__(self)
 
         self.type = None
-        self.prefix = "/"
-        self.remote = ""
-        self.dec_remote = None
+        self.prefix = "/" # Remote prefix
+        self.remote = "" # Must be unencrypted
         self.local = ""
         self.size = 0
         self.downloaded = 0

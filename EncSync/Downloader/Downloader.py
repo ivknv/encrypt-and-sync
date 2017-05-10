@@ -8,8 +8,7 @@ from .. import paths
 
 from .Dispatcher import DownloaderDispatcher
 from ..Dispatcher import DispatcherProxy
-
-from .Logging import logger
+from .DownloadTarget import DownloadTarget
 
 class Downloader(DispatcherProxy):
     def __init__(self, encsync, n_workers=2):
@@ -31,7 +30,7 @@ class Downloader(DispatcherProxy):
 
     def change_status(self, status):
         for i in self.get_targets():
-            i.change_status("suspended")
+            i.change_status(status)
 
     def set_speed_limit(self, limit):
         self.speed_limit = limit / self.n_workers
@@ -42,19 +41,21 @@ class Downloader(DispatcherProxy):
         with self.targets_lock:
             return list(self.targets)
 
+    def add_download(self, remote_prefix, remote, local):
+        target = DownloadTarget()
+        target.local = paths.to_sys(local)
+        target.dec_remote = remote
+        target.prefix = remote_prefix
+
+        self.add_target(target)
+
+        return target
+
     def add_target(self, target):
-        target.local = paths.to_sys(target.local)
-        if target.dec_remote is None:
-            target.dec_remote, target.IVs = self.encsync.decrypt_path(target.remote, target.prefix)
-
-        if target.status is None:
-            target.change_status("pending")
-        if target.type == "file" and os.path.isdir(target.local):
-            name = paths.split(target.dec_remote)[1]
-            target.local = os.path.join(target.local, name)
-
         with self.targets_lock:
             self.targets.append(target)
+
+        return target
 
     def setup_worker(self):
         self.worker = DownloaderDispatcher(self)

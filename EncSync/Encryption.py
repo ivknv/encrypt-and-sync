@@ -12,6 +12,7 @@ chunksize = 4096
 
 # Minimum encrypted file size
 MIN_ENC_SIZE = struct.calcsize("Q") + 16
+DUMMY_IV = b"0" * 16
 
 def pad_size(size):
     if size % 16 == 0:
@@ -160,10 +161,13 @@ def encrypt_filename(filename, key, iv=b""):
     ivlen = 16
     padding = b" "
 
-    filename = filename.encode("utf8")
-
     if len(iv) == 0:
         iv = Random.get_random_bytes(ivlen)
+
+    if filename in (".", ".."):
+        return filename, DUMMY_IV
+
+    filename = filename.encode("utf8")
 
     encryptor = AES.new(key, AES.MODE_CBC, iv)
 
@@ -204,6 +208,9 @@ def gen_IV():
 def decrypt_filename(encrypted, key):
     chunksize = 16
     ivlen = 16
+
+    if encrypted in (".", ".."):
+        return encrypted, DUMMY_IV
 
     encrypted = b64d(encrypted)
 

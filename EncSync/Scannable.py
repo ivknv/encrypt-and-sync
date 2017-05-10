@@ -144,6 +144,22 @@ class RemoteScannable(BaseScannable):
         self.encsync = encsync
         self.ynd = encsync.ynd
 
+    def identify(self):
+        response = self.ynd.get_meta(self.enc_path, max_retries=30)
+
+        if not response["success"]:
+            raise Exception()
+
+        data = response["data"]
+
+        modified = data["modified"]
+        modified = time.mktime(parse_date(modified))
+
+        self.modified = modified
+
+        self.size = data.get("size", 0)
+        self.type = data["type"][0]
+
     def listdir(self):
         dirs = []
         for j in range(10):

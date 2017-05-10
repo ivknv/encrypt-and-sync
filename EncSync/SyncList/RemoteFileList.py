@@ -65,15 +65,18 @@ class RemoteFileList(FileList):
             return node_tuple_to_dict(self.conn.fetchone())
 
     def find_node_children(self, path):
-        path = paths.dir_normalize(path)
+        path_n = paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
+        path_n = path_n.replace("%", "\\%")
+        path_n = path_n.replace("_", "\\_")
 
         with self.conn:
             self.conn.execute("""SELECT * FROM filelist
-                                WHERE path LIKE ? ESCAPE '\\' ORDER BY path ASC""",
-                              (path + "%",))
+                                WHERE path LIKE ? ESCAPE '\\'
+                                      OR path=? OR path=? ORDER BY path ASC""",
+                              (path_n + "%", path, path_n))
 
             return (node_tuple_to_dict(i) for i in self.conn.genfetch())
 

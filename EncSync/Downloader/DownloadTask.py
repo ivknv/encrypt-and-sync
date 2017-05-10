@@ -11,7 +11,7 @@ class DownloadTask(Task):
 
         self.type = None
         self.prefix = "/"
-        self.remote = ""
+        self.remote = "" # TODO make it an instance of EncPath
         self.dec_remote = None
         self.IVs = None
         self.local = ""

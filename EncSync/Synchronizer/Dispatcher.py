@@ -154,7 +154,9 @@ class SynchronizerDispatcher(StagedDispatcher):
                     idx = self.stage_order.index(target.stage)
                     stages = self.stage_order[idx:]
 
-                if target.stage not in {None, "scan", "check"}:
+                if target.stage is None and target.enable_scan == False:
+                    self.build_diffs_table()
+                elif target.stage not in {None, "scan", "check"}:
                     self.build_diffs_table()
 
                 for stage in stages:

@@ -7,7 +7,9 @@ def dir_normalize(path, sep="/"):
     return path if path.endswith(sep) else path + sep
 
 def dir_denormalize(path, sep="/"):
-    return path[:-1] if path.endswith(sep) else path
+    while path.endswith(sep):
+        path = path[:-1]
+    return path
 
 def contains(container, path, sep="/"):
     container = dir_normalize(container, sep)
@@ -27,6 +29,22 @@ def join(path1, path2, sep="/"):
         path2 = path2[1:]
 
     return path1 + path2
+
+def join_properly(path1, path2, sep="/"):
+    if path2.startswith(sep):
+        new_path = sep
+    else:
+        new_path = path1
+
+    for i in path2.split(sep):
+        if i == "..":
+            new_path = split(new_path)[0]
+        elif i in (".", ""):
+            continue
+        else:
+            new_path = join(new_path, i)
+
+    return new_path
 
 def cut_off(path, prefix, sep="/"):
     prefix = dir_normalize(prefix, sep)

@@ -99,13 +99,26 @@ class EncSync(object):
         f.seek(0)
         return f
 
+    def temp_decrypt(self, path):
+        size = os.path.getsize(path)
+        if size < TEMP_ENCRYPT_BUFFER_LIMIT:
+            f = io.BytesIO()
+        else:
+            f = tempfile.TemporaryFile(mode="w+b")
+        Encryption.decrypt_file(path, f, self.key)
+        f.seek(0)
+        return f
+
     def decrypt_file(self, in_path, out_path):
         Encryption.decrypt_file(in_path, out_path, self.key)
 
     def encrypt_path(self, path, prefix=None, IVs=b""):
         if prefix is not None:
             enc_path, IVs = self.encrypt_path(paths.cut_prefix(path, prefix), IVs=IVs)
-            return paths.join(prefix, enc_path), IVs
+            if path.startswith(paths.dir_normalize(prefix)):
+                return paths.join(prefix, enc_path), IVs
+            else:
+                return enc_path, IVs
         elif path == "":
             return "", b""
         else:
@@ -129,7 +142,10 @@ class EncSync(object):
     def decrypt_path(self, path, prefix=None):
         if prefix is not None:
             dec_path, IVs = self.decrypt_path(paths.cut_prefix(path, prefix))
-            return paths.join(prefix, dec_path), IVs
+            if path.startswith(paths.dir_normalize(prefix)):
+                return paths.join(prefix, dec_path), IVs
+            else:
+                return dec_path, IVs
         else:
             f = lambda x: Encryption.decrypt_filename(x, self.key) if x else ("", b"")
             IVs = b""
