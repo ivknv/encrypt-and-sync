@@ -21,6 +21,7 @@ class Console(object):
                          "cd":         commands.cmd_cd,
                          "cat":        commands.cmd_cat,
                          "exit":       commands.cmd_exit,
+                         "quit":       commands.cmd_exit,
                          "echo":       commands.cmd_echo,
                          "download":   commands.cmd_download,
                          "scan":       commands.cmd_scan,
