@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .. import paths
+from .. import Paths
 from .. import CentDB
 
 class DuplicateList(object):
@@ -29,10 +29,10 @@ class DuplicateList(object):
 
     def remove(self, path_enc):
         self.conn.execute("DELETE FROM duplicates WHERE path_enc=? OR path_enc=?",
-                          (path_enc, paths.dir_normalize(path_enc)))
+                          (path_enc, Paths.dir_normalize(path_enc)))
 
     def remove_children(self, path):
-        path = paths.dir_normalize(path)
+        path = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -47,11 +47,11 @@ class DuplicateList(object):
         with self.conn:
             self.conn.execute("""SELECT * FROM duplicates
                                  WHERE path_enc=? OR path_enc=? LIMIT 1""",
-                              (path_enc, paths.dir_normalize(path_enc)))
+                              (path_enc, Paths.dir_normalize(path_enc)))
             return self.conn.fetchone()
 
     def find_children(self, path):
-        path = paths.dir_normalize(path)
+        path = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -75,7 +75,7 @@ class DuplicateList(object):
             return self.conn.fetchone()[0]
 
     def is_empty(self, path="/"):
-        path = paths.dir_normalize(path)
+        path = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")

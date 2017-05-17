@@ -4,7 +4,7 @@
 import threading
 import os
 
-from .. import paths
+from .. import Paths
 
 from .Dispatcher import DownloaderDispatcher
 from ..Dispatcher import DispatcherProxy
@@ -43,7 +43,7 @@ class Downloader(DispatcherProxy):
 
     def add_download(self, remote_prefix, remote, local):
         target = DownloadTarget()
-        target.local = paths.to_sys(local)
+        target.local = Paths.to_sys(local)
         target.dec_remote = remote
         target.prefix = remote_prefix
 

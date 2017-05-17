@@ -4,7 +4,7 @@
 import os
 import time
 from datetime import datetime
-from . import paths
+from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
 from .Node import normalize_node
 from .YandexDiskApi import parse_date
@@ -166,7 +166,7 @@ class RemoteScannable(BaseScannable):
             try:
                 for i in self.ynd.ls(self.enc_path):
                     data = i["data"]
-                    enc_path = paths.join(self.enc_path, data["name"])
+                    enc_path = Paths.join(self.enc_path, data["name"])
                     path, IVs = self.encsync.decrypt_path(enc_path, self.prefix)
 
                     dirs.append({"path": path,

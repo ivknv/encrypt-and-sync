@@ -17,25 +17,24 @@ from .cli.Console import run_console
 
 global_vars = common.global_vars
 
-def main(ns):
+def main(args):
+    ns = parse_args(args)
+
     global_vars["verbose"] = ns.verbose
-    global_vars["n_workers"] = ns.n_workers
     global_vars["master_password"] = ns.master_password
     global_vars["config"] = ns.config
-    global_vars["local_prefix"] = ns.local_prefix
-    global_vars["remote_prefix"] = ns.remote_prefix
 
     if ns.scan or ns.show_diffs or ns.sync or ns.download:
         check_token()
 
     if ns.scan is not None:
-        do_scan(ns.scan)
+        do_scan(ns.scan, ns.n_workers)
     elif ns.show_diffs is not None:
         show_diffs(*ns.show_diffs[:2])
     elif ns.sync is not None:
-        do_sync(ns.sync)
+        do_sync(ns.sync, ns.n_workers)
     elif ns.download is not None:
-        download(ns.download)
+        download(ns.download, ns.n_workers)
     elif ns.encrypt is not None:
         encrypt(ns.encrypt)
     elif ns.decrypt is not None:
@@ -73,8 +72,9 @@ def positive_int(arg):
 
     raise argparse.ArgumentTypeError("%r is not a positive integer" % arg)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Synchronizes encrypted files")
+def parse_args(args):
+    parser = argparse.ArgumentParser(description="Synchronizes encrypted files",
+                                     prog=args[0])
     parser.add_argument("--config", metavar="PATH", default="config.json")
     parser.add_argument("--master-password", default=None)
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
@@ -96,4 +96,7 @@ if __name__ == "__main__":
     parser.add_argument("--show-duplicates", default=None, nargs="+")
     parser.add_argument("--console", default=False, action="store_true")
 
-    main(parser.parse_args(sys.argv[1:]))
+    return parser.parse_args(args[1:])
+
+if __name__ == "__main__":
+    main(sys.argv)

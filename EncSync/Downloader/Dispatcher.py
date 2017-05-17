@@ -4,7 +4,7 @@
 import os
 from ..Encryption import MIN_ENC_SIZE
 from .. import SyncList
-from .. import paths
+from .. import Paths
 from ..Dispatcher import Dispatcher
 from .Logging import logger
 from .Worker import DownloaderWorker
@@ -94,12 +94,16 @@ class DownloaderDispatcher(Dispatcher):
             new_task = DownloadTask()
 
             enc_path = self.encsync.encrypt_path(node["path"], target.prefix, node["IVs"])[0]
-            name = paths.cut_prefix(node["path"], target.dec_remote)
+            name = Paths.cut_prefix(node["path"], target.dec_remote)
 
             new_task.type = node["type"]
             new_task.remote = enc_path
             new_task.dec_remote = node["path"]
-            new_task.local = os.path.join(target.local, name)
+            if os.path.isdir(target.local) or target.type == "d":
+                new_task.local = os.path.join(target.local, name)
+            elif target.type == "f":
+                new_task.local = target.local
+
             new_task.parent = target
             new_task.IVs = node["IVs"]
 

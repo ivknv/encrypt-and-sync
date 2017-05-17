@@ -3,7 +3,7 @@
 
 import argparse
 
-from .... import paths
+from .... import Paths
 
 def cmd_cd(console, args):
     parser = argparse.ArgumentParser(description="Change directory", prog=args[0])
@@ -18,4 +18,4 @@ def _cmd_cd(console, ns):
 
     console.pwd = console.cwd
 
-    console.cwd = paths.join_properly(console.cwd, ns.directory)
+    console.cwd = Paths.join_properly(console.cwd, ns.directory)

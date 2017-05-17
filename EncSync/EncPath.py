@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from . import paths
+from . import Paths
 from . import Encryption
+from .SyncList import SyncList
 import os
 
 class EncPath(object):
@@ -27,14 +28,21 @@ class EncPath(object):
 
         return copy
 
+    def get_IVs_from_db(self):
+        synclist = SyncList()
+
+        node = synclist.find_remote_node(self.remote)
+
+        return node["IVs"]
+
     def get_path(self):
         if None not in {self._local_prefix, self._local}:
-            return paths.from_sys(paths.cut_prefix(self._local, self._local_prefix, sep=os.path.sep)) or "/"
+            return Paths.from_sys(Paths.cut_prefix(self._local, self._local_prefix, sep=os.path.sep)) or "/"
         elif self._remote_prefix is not None:
             if self._remote is not None:
-                return paths.cut_prefix(self._remote, self._remote_prefix) or "/"
+                return Paths.cut_prefix(self._remote, self._remote_prefix) or "/"
             elif self._remote_enc is not None:
-                return paths.cut_prefix(self._remote_enc, self._remote_prefix) or "/"
+                return Paths.cut_prefix(self._remote_enc, self._remote_prefix) or "/"
 
         if self._path_enc is not None:
             if self._IVs is None or self._IVs == b"":
@@ -61,27 +69,27 @@ class EncPath(object):
         prefix = self.local_prefix
         path = self.path
         if None not in {prefix, path}:
-            return paths.join(prefix, path)
+            return Paths.join(prefix, path)
 
     def get_remote(self):
         prefix = self.remote_prefix
         path = self.path
         if None not in {prefix, path}:
-            return paths.join(prefix, path)
+            return Paths.join(prefix, path)
 
     def get_local_prefix(self):
         if None not in {self.path, self.local}:
-            return paths.to_sys(paths.cut_off(paths.from_sys(self.local), self.path))
+            return Paths.to_sys(Paths.cut_off(Paths.from_sys(self.local), self.path))
 
     def get_remote_prefix(self):
         if None not in {self.path, self.remote}:
-            return paths.cut_off(self.remote, self.path)
+            return Paths.cut_off(self.remote, self.path)
         elif None not in {self.path_enc, self.remote_enc}:
-            return paths.cut_off(self.remote_enc, self.path_enc)
+            return Paths.cut_off(self.remote_enc, self.path_enc)
 
     def get_remote_enc(self):
         if None not in {self.remote_prefix, self.path_enc}:
-            return paths.join(self.remote_prefix, self.path_enc)
+            return Paths.join(self.remote_prefix, self.path_enc)
 
     def get_IVs(self):
         if self.path_enc is None:
@@ -115,7 +123,7 @@ class EncPath(object):
     @path.setter
     def path(self, value):
         if value is not None:
-            self._path = paths.from_sys(value)
+            self._path = Paths.from_sys(value)
             if self._path.startswith("/"):
                 self._path = self._path[1:]
         else:
@@ -173,7 +181,7 @@ class EncPath(object):
 
     @remote_prefix.setter
     def remote_prefix(self, value):
-        self._remote_prefix = value
+        self._remote_prefix = Paths.dir_normalize(value)
         self._remote = None
         self._remote_enc = None
 

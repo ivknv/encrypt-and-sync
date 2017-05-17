@@ -3,6 +3,7 @@
 
 from . import CentDB
 from .EncPath import EncPath
+from . import Paths
 
 class DiffList(object):
     def __init__(self, encsync, path=None, *args, **kwargs):
@@ -30,15 +31,19 @@ class DiffList(object):
 
     def insert_difference(self, diff):
         p = diff[2] # EncPath object
+        local_prefix = Paths.dir_normalize(p.local_prefix)
+        remote_prefix = Paths.dir_normalize(p.remote_prefix)
+
         self.conn.execute("""INSERT INTO differences VALUES
                             (?, ?, ?, ?, ?, ?)""",
-                          (diff[0], diff[1], p.path, p.local_prefix,
-                           p.remote_prefix, p.IVs))
+                          (diff[0], diff[1], p.path, local_prefix, remote_prefix, p.IVs))
 
     def clear_differences(self, local_prefix, remote_prefix):
         self.conn.execute("""DELETE FROM differences
-                             WHERE local_prefix=? AND remote_prefix=?""",
-                          (local_prefix, remote_prefix))
+                             WHERE (local_prefix=? OR local_prefix=?) AND
+                                   (remote_prefix=? OR remote_prefix=?)""",
+                          (local_prefix, Paths.dir_normalize(local_prefix),
+                           remote_prefix, Paths.dir_normalize(remote_prefix)))
 
     def fetch_differences(self):
         for i in self.conn.genfetch():
@@ -52,16 +57,20 @@ class DiffList(object):
         with self.conn:
             self.conn.execute("""SELECT * FROM differences
                                  WHERE diff_type='rm' AND
-                                 local_prefix=? AND remote_prefix=? ORDER BY path ASC""",
-                              (local_prefix, remote_prefix))
+                                 (local_prefix=? OR local_prefix=?) AND
+                                 (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
+                              (local_prefix, Paths.dir_normalize(local_prefix),
+                               remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.fetch_differences()
 
     def select_dirs_differences(self, local_prefix, remote_prefix):
         with self.conn:
             self.conn.execute("""SELECT * FROM differences
                                  WHERE diff_type='new' AND type='d' AND
-                                 local_prefix=? AND remote_prefix=? ORDER BY path ASC""",
-                              (local_prefix, remote_prefix))
+                                 (local_prefix=? OR local_prefix=?) AND
+                                 (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
+                              (local_prefix, Paths.dir_normalize(local_prefix),
+                               remote_prefix, Paths.dir_normalize(remote_prefix)))
 
             return self.fetch_differences()
 
@@ -69,32 +78,40 @@ class DiffList(object):
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE diff_type='new' AND type='d' AND
-                                 local_prefix=? AND remote_prefix=?""",
-                              (local_prefix, remote_prefix))
+                                 (local_prefix=? OR local_prefix=?) AND
+                                 (remote_prefix=? OR remote_prefix=?)""",
+                              (local_prefix, Paths.dir_normalize(local_prefix),
+                               remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.conn.fetchone()[0]
 
     def count_files_differences(self, local_prefix, remote_prefix):
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE diff_type='new' AND type='f' AND
-                                 local_prefix=? AND remote_prefix=?""",
-                              (local_prefix, remote_prefix))
+                                 (local_prefix=? OR local_prefix=?) AND
+                                 (remote_prefix=? OR remote_prefix=?)""",
+                              (local_prefix, Paths.dir_normalize(local_prefix),
+                               remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.conn.fetchone()[0]
 
     def count_rm_differences(self, local_prefix, remote_prefix):
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE diff_type='rm' AND
-                                 local_prefix=? AND remote_prefix=?""",
-                              (local_prefix, remote_prefix))
+                                 (local_prefix=? OR local_prefix=?) AND
+                                 (remote_prefix=? OR remote_prefix=?)""",
+                              (local_prefix, Paths.dir_normalize(local_prefix),
+                               remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.conn.fetchone()[0]
 
     def select_files_differences(self, local_prefix, remote_prefix):
         with self.conn:
             self.conn.execute("""SELECT * FROM differences
                                  WHERE diff_type='new' AND type='f' AND
-                                 local_prefix=? AND remote_prefix=? ORDER BY path ASC""",
-                              (local_prefix, remote_prefix))
+                                 (local_prefix=? OR local_prefix=?) AND
+                                 (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
+                              (local_prefix, Paths.dir_normalize(local_prefix),
+                               remote_prefix, Paths.dir_normalize(remote_prefix)))
 
             return self.fetch_differences()
 
@@ -106,8 +123,10 @@ class DiffList(object):
     def get_difference_count(self, local_prefix, remote_prefix):
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
-                                 WHERE local_prefix=? AND remote_prefix=?""",
-                              (local_prefix, remote_prefix))
+                                 WHERE (local_prefix=? OR local_prefix=?) AND
+                                       (remote_prefix=? OR remote_prefix=?)""",
+                              (local_prefix, Paths.dir_normalize(local_prefix),
+                               remote_prefix, Paths.dir_normalize(remote_prefix)))
 
             return self.conn.fetchone()[0]
 

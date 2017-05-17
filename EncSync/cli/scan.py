@@ -20,7 +20,7 @@ class ScanTargetDisplay(TargetDisplay):
     def get_target_columns(self, target, idx):
         return [str(idx + 1), target.path, target.type, str(target.status)]
 
-def do_scan(paths):
+def do_scan(paths, n_workers):
     common.make_encsync()
 
     stdscr = curses.initscr()
@@ -31,12 +31,12 @@ def do_scan(paths):
         curses.noecho()
         curses.cbreak()
         stdscr.keypad(True)
-        _do_scan(stdscr, paths)
+        _do_scan(stdscr, paths, n_workers)
     finally:
         curses.endwin()
 
-def _do_scan(stdscr, paths):
-    scanner = Scanner(global_vars["encsync"], global_vars["n_workers"])
+def _do_scan(stdscr, paths, n_workers):
+    scanner = Scanner(global_vars["encsync"], n_workers)
 
     target_display = ScanTargetDisplay(stdscr, scanner)
     target_display.manager_name = "Scanner"

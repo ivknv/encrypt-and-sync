@@ -6,7 +6,7 @@ import tempfile
 import time
 
 from ..Worker import Worker
-from .. import paths
+from .. import Paths
 from .Logging import logger
 
 def recursive_mkdir(path, basedir="."):
@@ -52,7 +52,7 @@ class DownloaderWorker(Worker):
         logger.debug("Downloading file {} to {}".format(task_copy.dec_remote, task_copy.local))
 
         if os.path.isdir(task.local):
-            name = paths.split(task.dec_remote)[1]
+            name = Paths.split(task.dec_remote)[1]
             task.local = os.path.join(task.local, name)
             task_copy.local = task.local
 

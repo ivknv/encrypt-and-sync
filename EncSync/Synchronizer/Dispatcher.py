@@ -18,7 +18,7 @@ from ..SyncList import SyncList, DuplicateList
 from ..DiffList import DiffList
 from ..Scannable import LocalScannable, RemoteScannable
 from ..Encryption import pad_size, MIN_ENC_SIZE
-from .. import paths
+from .. import Paths
 from .. import FileComparator
 
 class SynchronizerDispatcher(StagedDispatcher):
@@ -79,7 +79,7 @@ class SynchronizerDispatcher(StagedDispatcher):
 
             try:
                 if diff[0] == "new" and diff[1] == "f":
-                    size = os.path.getsize(paths.to_sys(diff[2].local))
+                    size = os.path.getsize(Paths.to_sys(diff[2].local))
                     task.size = pad_size(size) + MIN_ENC_SIZE
             except FileNotFoundError:
                 task.size = 0
@@ -101,7 +101,6 @@ class SynchronizerDispatcher(StagedDispatcher):
             diffs = FileComparator.compare_lists(self.encsync,
                                                  self.cur_target.local,
                                                  self.cur_target.remote)
-
             try:
                 difflist.begin_transaction()
                 difflist.clear_differences(self.cur_target.local,
@@ -154,7 +153,7 @@ class SynchronizerDispatcher(StagedDispatcher):
                     idx = self.stage_order.index(target.stage)
                     stages = self.stage_order[idx:]
 
-                if target.stage is None and target.enable_scan == False:
+                if target.stage is None and not target.enable_scan:
                     self.build_diffs_table()
                 elif target.stage not in {None, "scan", "check"}:
                     self.build_diffs_table()

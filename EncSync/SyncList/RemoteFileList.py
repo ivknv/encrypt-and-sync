@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from .FileList import FileList
-from .. import paths
+from .. import Paths
 from .. import CentDB
 from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 
@@ -43,10 +43,10 @@ class RemoteFileList(FileList):
 
     def remove_node(self, path):
         self.conn.execute("""DELETE FROM filelist WHERE path=? OR path=?""",
-                          (path, paths.dir_normalize(path)))
+                          (path, Paths.dir_normalize(path)))
 
     def remove_node_children(self, path):
-        path = paths.dir_normalize(path)
+        path = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -61,11 +61,11 @@ class RemoteFileList(FileList):
         with self.conn:
             self.conn.execute("""SELECT * FROM filelist
                                  WHERE path=? OR path=? LIMIT 1""",
-                              (path, paths.dir_normalize(path)))
+                              (path, Paths.dir_normalize(path)))
             return node_tuple_to_dict(self.conn.fetchone())
 
     def find_node_children(self, path):
-        path_n = paths.dir_normalize(path)
+        path_n = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -87,7 +87,7 @@ class RemoteFileList(FileList):
             return (node_tuple_to_dict(i) for i in self.conn.genfetch())
 
     def is_empty(self, parent_dir="/"):
-        parent_dir = paths.dir_normalize(parent_dir)
+        parent_dir = Paths.dir_normalize(parent_dir)
 
         parent_dir = parent_dir.replace("%", "\\%")
         parent_dir = parent_dir.replace("_", "\\_")
@@ -100,7 +100,7 @@ class RemoteFileList(FileList):
             return self.conn.fetchone()[0] == 0
 
     def get_file_count(self, parent_dir="/"):
-        parent_dir = paths.dir_normalize(parent_dir)
+        parent_dir = Paths.dir_normalize(parent_dir)
 
         parent_dir = parent_dir.replace("%", "\\%")
         parent_dir = parent_dir.replace("_", "\\_")

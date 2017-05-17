@@ -4,7 +4,8 @@
 import argparse
 import sys
 
-from .... import paths
+from .... import Paths
+from ....EncPath import EncPath
 
 def cmd_ls(console, args):
     parser = argparse.ArgumentParser(description="List directory contents",
@@ -15,13 +16,38 @@ def cmd_ls(console, args):
 
 def _cmd_ls(console, ns): 
     filenames = ns.filenames
+    encsync = console.encsync
 
     for filename in filenames:
-        path = paths.join_properly(console.cwd, filename)
+        path = Paths.join_properly(console.cwd, filename)
+        prefix = encsync.find_encrypted_dir(path)
+
+        if prefix is not None:
+            encpath = EncPath(encsync)
+            encpath.remote_prefix = prefix
+            encpath.path = Paths.cut_prefix(path, prefix)
+            IVs = encpath.get_IVs_from_db()
+            encpath.IVs = IVs
+
+            if encpath.remote_prefix != encpath.remote and not IVs:
+                print("Error: requested path doesn't exist", file=sys.stderr)
+                continue
+
+            path = encpath.remote_enc
+
+        contents = []
 
         for response in console.encsync.ynd.ls(path):
             if response["success"]:
-                print(response["data"]["name"])
+                if prefix is not None:
+                    contents.append(encsync.decrypt_path(response["data"]["name"])[0])
+                else:
+                    contents.append(response["data"]["name"])
             else:
                 print("Error: failed to get list of files", file=sys.stderr)
                 return
+
+        contents.sort()
+
+        for i in contents:
+            print(i)

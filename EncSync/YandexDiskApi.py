@@ -104,6 +104,18 @@ class YndApi(object):
 
         return ret
 
+
+    def get_type(self, path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
+        r = self.get_meta(path, max_retries, **kwargs)
+        if r["success"]:
+            return r["data"]["type"]
+
+    def is_file(self, path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
+        return self.get_type(path, max_retries, **kwargs) == "file"
+
+    def is_dir(self, path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
+        return self.get_type(path, max_retries, **kwargs) == "dir"
+
     def ls(self, path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
         kwargs.setdefault("offset", 0)
         kwargs.setdefault("limit", DEFAULT_GET_META_LIMIT)
@@ -223,7 +235,7 @@ class YndApi(object):
 
         return self.prepare_response(r)
 
-    def download(self, in_path, out_path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
+    def download(self, in_path, out_file, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
         response = self.get_download_link(in_path, max_retries, **kwargs)
 
         if not response["success"]:
@@ -231,17 +243,30 @@ class YndApi(object):
 
         href = response["data"]["href"]
 
-        for i in range(max_retries + 1):
-            r = self.make_session().get(href, stream=True)
-            with open(out_path, 'wb') as f:
+        close_out = False
+
+        if isinstance(out_file, str):
+            out_file = open(out_file, "wb")
+            close_out = True
+
+        try:
+            fpos = out_file.tell()
+
+            for i in range(max_retries + 1):
+                r = self.make_session().get(href, stream=True)
+                out_file.seek(fpos)
+
                 for chunk in r.iter_content(chunk_size=4096):
                     if len(chunk):
-                        f.write(chunk)
+                        out_file.write(chunk)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
 
-        return self.prepare_response(r)
+            return self.prepare_response(r)
+        finally:
+            if close_out:
+                out_file.close()
 
     def rm(self, path, max_retries=DEFAULT_MAX_RETRIES, **kwargs):
         baseURL = "https://cloud-api.yandex.net/v1/disk/resources"

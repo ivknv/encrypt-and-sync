@@ -6,3 +6,8 @@ from .ls import cmd_ls
 from .cat import cmd_cat
 from .exit import cmd_exit
 from .echo import cmd_echo
+from .download import cmd_download
+from .scan import cmd_scan
+from .sync import cmd_sync
+from .diffs import cmd_diffs
+from .duplicates import cmd_duplicates

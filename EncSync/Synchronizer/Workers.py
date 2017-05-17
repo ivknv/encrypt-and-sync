@@ -7,14 +7,14 @@ import os
 from .Logging import logger
 from .SyncFile import SyncFile, SyncFileInterrupt
 from ..Encryption import pad_size
-from .. import paths
+from .. import Paths
 
 from ..Worker import Worker
 
 COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
 def check_filename_length(path):
-    return len(paths.split(path)[1]) < 160
+    return len(Paths.split(path)[1]) < 160
 
 class SynchronizerWorker(Worker):
     def __init__(self, dispatcher):
@@ -44,11 +44,11 @@ class SynchronizerWorker(Worker):
         if node["path"] is None:
             # Get parent IVs
             if path != "/":
-                p = paths.split(remote_path)[0]
+                p = Paths.split(remote_path)[0]
             else:
                 p = remote_prefix
 
-            p = paths.dir_normalize(p)
+            p = Paths.dir_normalize(p)
 
             node = self.synclist.find_remote_node(p)
 

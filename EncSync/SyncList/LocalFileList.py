@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from .FileList import FileList
-from .. import paths
+from .. import Paths
 from .. import CentDB
 from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 
@@ -48,10 +48,10 @@ class LocalFileList(FileList):
 
     def remove_node(self, path):
         self.conn.execute("""DELETE FROM filelist WHERE path=? OR path=?""",
-                          (path, paths.dir_normalize(path)))
+                          (path, Paths.dir_normalize(path)))
 
     def remove_node_children(self, path):
-        path = paths.dir_normalize(path)
+        path = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -66,11 +66,11 @@ class LocalFileList(FileList):
         with self.conn:
             self.conn.execute("""SELECT * FROM filelist
                                  WHERE path=? OR path=? LIMIT 1""",
-                              (path, paths.dir_normalize(path)))
+                              (path, Paths.dir_normalize(path)))
             return node_tuple_to_dict(self.conn.fetchone())
 
     def find_node_children(self, path):
-        path_n = paths.dir_normalize(path)
+        path_n = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")

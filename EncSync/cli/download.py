@@ -31,7 +31,7 @@ class DownloadTargetDisplay(TargetDisplay):
                 str(target.dec_remote),
                 str(target.local)]
 
-def download(paths):
+def download(paths, n_workers):
     common.make_encsync()
 
     stdscr = curses.initscr()
@@ -42,19 +42,18 @@ def download(paths):
         curses.noecho()
         curses.cbreak()
         stdscr.keypad(True)
-        _download(stdscr, paths)
+        _download(stdscr, paths, n_workers)
     finally:
         curses.endwin()
 
-def _download(stdscr, paths):
-    downloader = Downloader(global_vars["encsync"], global_vars["n_workers"])
+def _download(stdscr, paths, n_workers):
+    encsync = global_vars["encsync"]
+
+    downloader = Downloader(encsync, n_workers)
 
     target_display = DownloadTargetDisplay(stdscr, downloader)
     target_display.highlight_pair = curses.color_pair(1)
     target_display.manager_name = "Downloader"
-
-    if global_vars.get("remote_prefix", None) is None:
-        raise ValueError("--remote-prefix must be specified")
 
     if len(paths) == 1:
         local = os.getcwd()
@@ -64,7 +63,12 @@ def _download(stdscr, paths):
     for path in paths:
         path, path_type = common.recognize_path(path)
 
-        target = downloader.add_download(global_vars["remote_prefix"], path, local)
+        prefix = encsync.find_encrypted_dir(path)
+
+        if prefix is None:
+            raise ValueError("%r does not appear to be encrypted" % path)
+
+        target = downloader.add_download(prefix, path, local)
         target_display.targets.append(target)
 
     downloader.start()

@@ -4,7 +4,7 @@
 from ..Waiter import Waiter
 from .Logging import logger
 from ..Scannable import scan_files
-from .. import paths
+from .. import Paths
 
 class ScanWorker(Waiter):
     def __init__(self, parent, target):
@@ -105,7 +105,7 @@ class RemoteScanWorker(ScanWorker):
             while len(scan_result["f"]) > 0:
                 s = scan_result["f"].pop(0)
 
-                path = paths.dir_denormalize(s.path)
+                path = Paths.dir_denormalize(s.path)
 
                 scannables.setdefault(path, [])
                 scannables[path].append(s)

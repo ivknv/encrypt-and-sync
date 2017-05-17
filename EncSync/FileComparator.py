@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from . import paths
+from . import Paths
 from .SyncList import SyncList
 from .EncPath import EncPath
 
@@ -14,7 +14,7 @@ def try_next(it, default=None):
 class FileComparator(object):
     def __init__(self, encsync, prefix1, prefix2):
         self.encsync = encsync
-        self.prefix1 = paths.from_sys(prefix1)
+        self.prefix1 = Paths.from_sys(prefix1)
         self.prefix2 = prefix2
 
         synclist1, synclist2 = SyncList(), SyncList()
@@ -65,7 +65,7 @@ class FileComparator(object):
         self.node1 = try_next(self.it1)
         self.node2 = try_next(self.it2)
         diffs = []
-        if self.last_rm is None or not paths.contains(self.last_rm, self.path2):
+        if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
             if self.type2 == "d":
                 self.last_rm = self.path2
             diffs.append(("file <==> dir transition", "rm", self.type2, self.encpath2)[1:])
@@ -85,7 +85,7 @@ class FileComparator(object):
                 self.padded_size1 = None
             else:
                 self.type1 = self.node1["type"]
-                self.path1 = paths.cut_prefix(self.node1["path"], self.prefix1) or "/"
+                self.path1 = Paths.cut_prefix(self.node1["path"], self.prefix1) or "/"
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
 
@@ -102,7 +102,7 @@ class FileComparator(object):
                 self.IVs = b""
             else:
                 self.type2 = self.node2["type"]
-                self.path2 = paths.cut_prefix(self.node2["path"], self.prefix2) or "/"
+                self.path2 = Paths.cut_prefix(self.node2["path"], self.prefix2) or "/"
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
                 self.IVs = self.node2["IVs"]
@@ -113,7 +113,7 @@ class FileComparator(object):
                 self.encpath2.IVs = self.IVs
 
             if self.is_removed():
-                if self.last_rm is None or not paths.contains(self.last_rm, self.path2):
+                if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
                     return self.diff_rm()
                 else:
                     self.node2 = try_next(self.it2)

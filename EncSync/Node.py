@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime
-from . import paths
+from . import Paths
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -27,6 +27,6 @@ def node_tuple_to_dict(t):
 
 def normalize_node(node, local=True):
     if local:
-        node["path"] = paths.from_sys(node["path"])
+        node["path"] = Paths.from_sys(node["path"])
     if node["type"] == "d":
-        node["path"] = paths.dir_normalize(node["path"])
+        node["path"] = Paths.dir_normalize(node["path"])

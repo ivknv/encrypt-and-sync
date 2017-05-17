@@ -7,9 +7,8 @@ import subprocess
 import shlex
 
 from .parser import Parser
-from ... import paths
 from .. import common
-from .commands import cmd_cd, cmd_ls, cmd_cat, cmd_exit, cmd_echo
+from . import commands
 
 global_vars = common.global_vars
 
@@ -18,11 +17,16 @@ class Console(object):
         self.cwd = "/"
         self.pwd = "/"
         self.quit = False
-        self.commands = {"ls": cmd_ls,
-                         "cd": cmd_cd,
-                         "cat": cmd_cat,
-                         "exit": cmd_exit,
-                         "echo": cmd_echo}
+        self.commands = {"ls":         commands.cmd_ls,
+                         "cd":         commands.cmd_cd,
+                         "cat":        commands.cmd_cat,
+                         "exit":       commands.cmd_exit,
+                         "echo":       commands.cmd_echo,
+                         "download":   commands.cmd_download,
+                         "scan":       commands.cmd_scan,
+                         "sync":       commands.cmd_sync,
+                         "diffs":      commands.cmd_diffs,
+                         "duplicates": commands.cmd_duplicates}
         self.encsync = encsync
 
     def execute_command(self, command):
@@ -44,7 +48,6 @@ class Console(object):
     def input_loop(self):
         parser = Parser()
 
-        cur_line = ""
         prompt_more = False
 
         output = []

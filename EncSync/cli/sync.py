@@ -33,7 +33,7 @@ class SyncTargetDisplay(TargetDisplay):
                 str(target.status), stage,
                 target.local, target.remote]
 
-def do_sync(paths):
+def do_sync(paths, n_workers):
     common.make_encsync()
 
     stdscr = curses.initscr()
@@ -47,13 +47,12 @@ def do_sync(paths):
 
         stdscr.keypad(True)
 
-        _do_sync(stdscr, paths)
+        _do_sync(stdscr, paths, n_workers)
     finally:
         curses.endwin()
 
-def _do_sync(stdscr, paths):
-    synchronizer = Synchronizer(global_vars["encsync"],
-                                global_vars["n_workers"])
+def _do_sync(stdscr, paths, n_workers):
+    synchronizer = Synchronizer(global_vars["encsync"], n_workers)
 
     target_display = SyncTargetDisplay(stdscr, synchronizer)
     target_display.manager_name = "Synchronizer"

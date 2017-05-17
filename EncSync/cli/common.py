@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 from getpass import getpass
+import hashlib
 import json
 import sys
-import hashlib
 
 from ..EncSync import EncSync
 
@@ -15,16 +16,57 @@ except AttributeError:
 
 global_vars = {}
 
-def recognize_path(path):
+def positive_int(arg):
+    try:
+        n = int(arg)
+        if n > 0:
+            return n
+    except ValueError:
+        pass
+
+    raise argparse.ArgumentTypeError("%r is not a positive integer" % arg)
+
+def local_path(arg):
+    path, path_type = recognize_path(arg)
+
+    if path_type == "local":
+        return arg
+
+    raise argparse.ArgumentTypeError("%r is not a local path" % arg)
+
+def remote_path(arg):
+    path, path_type = recognize_path(arg)
+
+    if path_type == "remote":
+        return arg
+
+    raise argparse.ArgumentTypeError("%r is not a local path" % arg)
+
+def non_local_path(arg):
+    path, path_type = recognize_path(arg, "remote")
+
+    if path_type != "local":
+        return arg
+
+    raise argparse.ArgumentTypeError("%r is a local path" % arg)
+
+def non_remote_path(arg):
+    path, path_type = recognize_path(arg, "local")
+
+    if path_type != "remote":
+        return arg
+
+    raise argparse.ArgumentTypeError("%r is a remote path" % arg)
+
+def recognize_path(path, default="local"):
     if path.startswith("disk://"):
         path = path[7:]
         path_type = "remote"
-        if not path.startswith("/"):
-            path = "/" + path
-    else:
+    elif path.startswith("local://"):
         path_type = "local"
-        if path.startswith("local://"):
-            path = path[8:]
+        path = path[8:]
+    else:
+        path_type = default
 
     return (path, path_type)
 
