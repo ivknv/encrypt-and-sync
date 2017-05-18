@@ -5,11 +5,11 @@ import threading
 from collections import Counter
 import traceback
 
-from .Event import Emitter
+from .Event import EventHandler
 
-class Task(Emitter):
+class Task(EventHandler):
     def __init__(self):
-        Emitter.__init__(self)
+        EventHandler.__init__(self)
 
         self.status = None
         self.parent = None

@@ -3,11 +3,11 @@
 
 import threading
 
-from .Event import Emitter
+from .Event import EventHandler
 
-class WorkerBase(Emitter):
+class WorkerBase(EventHandler):
     def __init__(self, parent):
-        Emitter.__init__(self)
+        EventHandler.__init__(self)
 
         self.parent = parent
         self.stopped = False

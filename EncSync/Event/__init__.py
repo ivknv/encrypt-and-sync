@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .Emitter import Emitter
-from .Receiver import Receiver, ReceiverThread
+from .EventHandler import EventHandler, EventHandlerThread
 from .Event import Event

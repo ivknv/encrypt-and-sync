@@ -99,31 +99,32 @@ class RemoteScanWorker(ScanWorker):
         scan_result = scannable.scan()
         scan_result["d"].reverse()
 
-        while True:
-            scannables = {}
+        scannables = {}
 
+        for s in scan_result["f"] + scan_result["d"]:
+            path = Paths.dir_denormalize(s.path)
+            scannables.setdefault(path, [])
+            scannables[path].append(s)
+
+        for i in scannables.values():
+            if len(i) > 1:
+                for s in i:
+                    self.duplist.insert(s.type, s.enc_path)
+
+        del scannables
+
+        while True:
             while len(scan_result["f"]) > 0:
                 s = scan_result["f"].pop(0)
 
-                path = Paths.dir_denormalize(s.path)
-
-                scannables.setdefault(path, [])
-                scannables[path].append(s)
-
                 if not self.insert_remote_scannable(s):
                     return False
-
-            for i in scannables.values():
-                if len(i) > 1:
-                    for s in i:
-                        self.duplist.insert(s.type, s.enc_path)
-
-            del scannables
 
             if len(scan_result["d"]) == 0:
                 break
 
             s = scan_result["d"].pop()
+
             if not self.insert_remote_scannable(s):
                 return False
 

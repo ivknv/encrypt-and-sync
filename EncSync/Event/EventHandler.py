@@ -4,14 +4,19 @@
 import threading
 import traceback
 
+from .Exceptions import UnknownEventError, DuplicateEventError
 from .Event import Event
 
-class Receiver(object):
+class EventHandler(object):
     def __init__(self):
+        self._events = {}
+        self._events_lock = threading.Lock()
+
+        self._receivers = []
+        self._receivers_lock = threading.Lock()
+
         self._callbacks = {}
         self._callbacks_lock = threading.Lock()
-
-        self._active = True
 
     def add_callback(self, event_name, callback):
         with self._callbacks_lock:
@@ -19,15 +24,6 @@ class Receiver(object):
                 self._callbacks[event_name] = [callback]
             else:
                 self._callbacks[event_name].append(callback)
-
-    def activate(self):
-        self._active = True
-
-    def deactivate(self):
-        self._activate = False
-
-    def is_active(self):
-        return self._active
 
     def receive(self, emitter, event_name, *args, **kwargs):
         event = Event(emitter, self, event_name, args, kwargs)
@@ -62,9 +58,50 @@ class Receiver(object):
 
         event._event.set()
 
-class ReceiverThread(Receiver, threading.Thread):
+    def add_event(self, event_name):
+        with self._events_lock:
+            if event_name in self._events:
+                raise DuplicateEventError(event_name)
+
+            self._events[event_name] = threading.Event()
+
+    def check_event(self, event_name):
+        return event_name in self._events
+
+    def get_event(self, event_name):
+        try:
+            return self._events[event_name]
+        except KeyError:
+            raise UnknownEventError(event_name)
+
+    def wait_event(self, event_name):
+        self.get_event(event_name).wait()
+
+    def add_receiver(self, receiver):
+        with self._receivers_lock:
+            self._receivers.append(receiver)
+
+    def emit_event(self, event_name, *args, **kwargs):
+        ev = self.get_event(event_name)
+
+        ev.set()
+
+        try:
+            with self._receivers_lock:
+                receivers = list(self._receivers)
+
+            events = []
+
+            for receiver in receivers:
+                events.append(receiver.receive(self, event_name, *args, **kwargs))
+        finally:
+            ev.clear()
+
+        return events
+
+class EventHandlerThread(EventHandler, threading.Thread):
     def __init__(self, daemon=True):
-        Receiver.__init__(self)
+        EventHandler.__init__(self)
         threading.Thread.__init__(self, daemon=daemon)
 
         self._queue = []
@@ -76,7 +113,6 @@ class ReceiverThread(Receiver, threading.Thread):
 
     def stop(self):
         self._stopped = True
-        self.deactivate()
 
     def is_stopped(self):
         return self._stopped
@@ -97,6 +133,9 @@ class ReceiverThread(Receiver, threading.Thread):
             self._dirty.wait()
 
             with self._queue_lock:
+                if self._stopped:
+                    break
+
                 try:
                     event = self._queue.pop(0)
                 except IndexError:
