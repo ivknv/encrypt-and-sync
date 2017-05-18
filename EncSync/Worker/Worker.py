@@ -3,7 +3,7 @@
 
 import threading
 
-from ..Event import EventHandler
+from ..Event.EventHandler import EventHandler
 from .Exceptions import UnknownStageError, DuplicateStageError
 
 class WorkerBase(EventHandler):

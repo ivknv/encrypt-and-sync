@@ -5,7 +5,7 @@ import threading
 from collections import Counter
 import traceback
 
-from .Event import EventHandler
+from .Event.EventHandler import EventHandler
 
 class Task(EventHandler):
     def __init__(self):

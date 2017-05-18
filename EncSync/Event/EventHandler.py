@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import threading
-import traceback
 
 from .Exceptions import UnknownEventError, DuplicateEventError
 from .Event import Event
@@ -98,51 +97,3 @@ class EventHandler(object):
             ev.clear()
 
         return events
-
-class EventHandlerThread(EventHandler, threading.Thread):
-    def __init__(self, daemon=True):
-        EventHandler.__init__(self)
-        threading.Thread.__init__(self, daemon=daemon)
-
-        self._queue = []
-        self._queue_lock = threading.Lock()
-
-        self._dirty = threading.Event()
-
-        self._stopped = False
-
-    def stop(self):
-        self._stopped = True
-
-    def is_stopped(self):
-        return self._stopped
-
-    def receive(self, emitter, event_name, *args, **kwargs):
-        with self._queue_lock:
-            event = Event(emitter, self, event_name, args, kwargs)
-            self._queue.append(event)
-
-            self._dirty.set()
-
-            return event
-
-    def run(self):
-        self._dirty.set()
-
-        while not self._stopped:
-            self._dirty.wait()
-
-            with self._queue_lock:
-                if self._stopped:
-                    break
-
-                try:
-                    event = self._queue.pop(0)
-                except IndexError:
-                    self._dirty.clear()
-                    continue
-
-            try:
-                self.handle_event(event)
-            except:
-                traceback.print_exc()
