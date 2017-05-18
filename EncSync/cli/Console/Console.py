@@ -32,7 +32,11 @@ class Console(object):
 
     def execute_command(self, command):
         if command.is_shell:
-            subprocess.call(shlex.split(command[0]))
+            try:
+                subprocess.call(shlex.split(command[0]))
+            except (FileNotFoundError, subprocess.SubprocessError) as e:
+                print("Error: %s" %e)
+
             return
 
         try:
