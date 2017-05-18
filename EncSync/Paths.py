@@ -44,7 +44,7 @@ def join_properly(path1, path2, sep="/"):
         else:
             new_path = join(new_path, i)
 
-    if path2.endswith(sep):
+    if path2.endswith(sep) and not new_path.endswith(sep):
         new_path += sep
 
     return new_path
