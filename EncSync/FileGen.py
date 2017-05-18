@@ -14,18 +14,18 @@ def coinflip():
 def genfilename():
     nwords = random.randint(1, 6)
     s = ""
-    
+
     for i in range(nwords - 1):
-         if random.randint(0, 2) == 1:
-             s += random.choice(words)
-         else:
-             s += str(random.randint(0, 10000))
-         s += random.choice(separators)
+        if random.randint(0, 2) == 1:
+            s += random.choice(words)
+        else:
+            s += str(random.randint(0, 10000))
+        s += random.choice(separators)
 
     if coinflip() == 1:
-         s += random.choice(words)
+        s += random.choice(words)
     else:
-         s += str(random.randint(0, 10000))
+        s += str(random.randint(0, 10000))
 
     s += ".test"
 
@@ -33,14 +33,14 @@ def genfilename():
 
 def genfilecontent():
     nwords = random.randint(0, 30010)
-    
+
     for i in range(nwords - 1):
         s = ""
 
         if coinflip() == 1:
-             s += random.choice(words)
+            s += random.choice(words)
         else:
-             s += str(random.randint(0, 10000))
+            s += str(random.randint(0, 10000))
         s += random.choice(content_separators)
 
         yield s
@@ -61,7 +61,7 @@ def genfile(path):
     with open(newpath, 'w') as f:
         for chunk in genfilecontent():
             f.write(chunk)
-    
+
     return newpath
 
 def gendir(path):
