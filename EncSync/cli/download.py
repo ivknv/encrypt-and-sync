@@ -63,6 +63,8 @@ def _download(stdscr, paths, n_workers):
     for path in paths:
         path, path_type = common.recognize_path(path)
 
+        path = common.prepare_remote_path(path)
+
         prefix = encsync.find_encrypted_dir(path)
 
         if prefix is None:

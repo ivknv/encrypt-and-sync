@@ -4,6 +4,9 @@
 from .. import Paths
 from .. import CentDB
 
+def prepare_path(path):
+    return Paths.join_properly("/", path)
+
 class DuplicateList(object):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("isolation_level", None)
@@ -24,15 +27,19 @@ class DuplicateList(object):
                               path_enc TEXT UNIQUE ON CONFLICT REPLACE)""")
 
     def insert(self, node_type, path_enc):
+        path_enc = prepare_path(path_enc)
+
         self.conn.execute("INSERT INTO duplicates VALUES (?, ?)",
                           (node_type, path_enc))
 
     def remove(self, path_enc):
+        path_enc = prepare_path(path_enc)
+
         self.conn.execute("DELETE FROM duplicates WHERE path_enc=? OR path_enc=?",
                           (path_enc, Paths.dir_normalize(path_enc)))
 
     def remove_children(self, path):
-        path = Paths.dir_normalize(path)
+        path = prepare_path(Paths.dir_normalize(path))
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -44,6 +51,8 @@ class DuplicateList(object):
         self.conn.execute("DELETE FROM duplicates")
 
     def find(self, path_enc):
+        path_enc = prepare_path(path_enc)
+
         with self.conn:
             self.conn.execute("""SELECT * FROM duplicates
                                  WHERE path_enc=? OR path_enc=? LIMIT 1""",
@@ -51,7 +60,7 @@ class DuplicateList(object):
             return self.conn.fetchone()
 
     def find_children(self, path):
-        path = Paths.dir_normalize(path)
+        path = prepare_path(Paths.dir_normalize(path))
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -75,7 +84,7 @@ class DuplicateList(object):
             return self.conn.fetchone()[0]
 
     def is_empty(self, path="/"):
-        path = Paths.dir_normalize(path)
+        path = prepare_path(Paths.dir_normalize(path))
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")

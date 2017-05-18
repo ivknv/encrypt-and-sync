@@ -46,6 +46,8 @@ def _do_scan(stdscr, paths, n_workers):
         path, scan_type = common.recognize_path(path)
         if scan_type == "local":
             path = os.path.expanduser(os.path.realpath(path))
+        else:
+            path = common.prepare_remote_path(path)
 
         target_display.targets.append(scanner.add_dir(scan_type, path))
 

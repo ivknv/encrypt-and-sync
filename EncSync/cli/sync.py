@@ -71,6 +71,7 @@ def _do_sync(stdscr, paths, n_workers):
             local, remote = path2, path1
 
         local = os.path.expanduser(os.path.realpath(local))
+        remote = common.prepare_remote_path(remote)
 
         target = synchronizer.add_target(False, local, remote, None)
         target.skip_integrity_check = True

@@ -8,6 +8,7 @@ import json
 import sys
 
 from ..EncSync import EncSync
+from .. import Paths
 
 try:
     JSONDecodeError = json.JSONDecodeError
@@ -69,6 +70,9 @@ def recognize_path(path, default="local"):
         path_type = default
 
     return (path, path_type)
+
+def prepare_remote_path(path, cwd="/"):
+    return Paths.join(cwd, path)
 
 def make_encsync(config_path=None, master_password=None):
     encsync = global_vars.get("encsync", None)

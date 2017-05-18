@@ -6,6 +6,9 @@ from .. import Paths
 from .. import CentDB
 from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 
+def prepare_path(path):
+    return Paths.join_properly("/", path)
+
 class RemoteFileList(FileList):
     def __init__(self, path="remote_filelist.db", *args, **kwargs):
         FileList.__init__(self)
@@ -38,15 +41,17 @@ class RemoteFileList(FileList):
                           (node["type"],
                            format_timestamp(node["modified"]),
                            node["padded_size"],
-                           node["path"],
+                           prepare_path(node["path"]),
                            node["IVs"]))
 
     def remove_node(self, path):
+        path = prepare_path(path)
+
         self.conn.execute("""DELETE FROM filelist WHERE path=? OR path=?""",
                           (path, Paths.dir_normalize(path)))
 
     def remove_node_children(self, path):
-        path = Paths.dir_normalize(path)
+        path = prepare_path(Paths.dir_normalize(path))
 
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
@@ -58,6 +63,8 @@ class RemoteFileList(FileList):
         self.conn.execute("""DELETE FROM filelist""")
 
     def find_node(self, path):
+        path = prepare_path(path)
+
         with self.conn:
             self.conn.execute("""SELECT * FROM filelist
                                  WHERE path=? OR path=? LIMIT 1""",
@@ -65,6 +72,7 @@ class RemoteFileList(FileList):
             return node_tuple_to_dict(self.conn.fetchone())
 
     def find_node_children(self, path):
+        path = prepare_path(path)
         path_n = Paths.dir_normalize(path)
 
         path = path.replace("%", "\\%")
@@ -87,7 +95,7 @@ class RemoteFileList(FileList):
             return (node_tuple_to_dict(i) for i in self.conn.genfetch())
 
     def is_empty(self, parent_dir="/"):
-        parent_dir = Paths.dir_normalize(parent_dir)
+        parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
 
         parent_dir = parent_dir.replace("%", "\\%")
         parent_dir = parent_dir.replace("_", "\\_")
@@ -100,7 +108,7 @@ class RemoteFileList(FileList):
             return self.conn.fetchone()[0] == 0
 
     def get_file_count(self, parent_dir="/"):
-        parent_dir = Paths.dir_normalize(parent_dir)
+        parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
 
         parent_dir = parent_dir.replace("%", "\\%")
         parent_dir = parent_dir.replace("_", "\\_")
