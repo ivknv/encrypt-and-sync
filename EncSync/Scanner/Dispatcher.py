@@ -3,15 +3,15 @@
 
 import threading
 
-from ..Dispatcher import Dispatcher
+from ..Worker import Worker
 from .Workers import LocalScanWorker, RemoteScanWorker
 from .Logging import logger
 from ..SyncList import SyncList, DuplicateList
 from ..Scannable import LocalScannable, RemoteScannable
 
-class ScannerDispatcher(Dispatcher):
+class ScannerDispatcher(Worker):
     def __init__(self, scanner):
-        Dispatcher.__init__(self)
+        Worker.__init__(self)
 
         self.scanner = scanner
         self.encsync = scanner.encsync

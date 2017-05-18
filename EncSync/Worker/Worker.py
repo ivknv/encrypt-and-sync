@@ -2,30 +2,76 @@
 # -*- coding: utf-8 -*-
 
 import threading
-from .Worker import WorkerBase, WorkerProxy
 
-class DispatcherError(BaseException):
-    pass
+from ..Event import EventHandler
+from .Exceptions import UnknownStageError, DuplicateStageError
 
-class DuplicateStageError(DispatcherError):
-    def __init__(self, name):
-        self.name = name
-
-        msg = "Stage {} already exists".format(repr(name))
-
-        DispatcherError.__init__(self, msg)
-
-class UnknownStageError(DispatcherError):
-    def __init__(self, name):
-        self.name = name
-
-        msg = "Unknown stage {}".format(repr(name))
-
-        DispatcherError.__init__(self, msg)
-
-class DispatcherBase(WorkerBase):
+class WorkerBase(EventHandler):
     def __init__(self, parent=None):
-        WorkerBase.__init__(self, parent)
+        EventHandler.__init__(self)
+
+        self.parent = parent
+        self.stopped = False
+
+        # Synchronization lock
+        if parent is not None:
+            self.sync_lock = parent.get_sync_lock()
+        else:
+            self.sync_lock = threading.Lock()
+
+        self.add_event("started")
+        self.add_event("stopping")
+        self.add_event("finished")
+
+        self.retval = None
+
+    def get_info(self):
+        return {}
+
+    def get_sync_lock(self):
+        return self.sync_lock
+
+    def stop(self):
+        self.stopped = True
+        self.emit_event("stopping")
+
+        for worker in self.get_worker_list():
+            worker.stop()
+
+    def before_work(self):
+        pass
+
+    def work(self):
+        pass
+
+    def after_work(self):
+        pass
+
+    def run(self):
+        self.emit_event("started")
+
+        try:
+            self.before_work()
+
+            try:
+                self.retval = self.work()
+            finally:
+                self.after_work()
+        finally:
+            self.emit_event("finished")
+
+    def start(self):
+        raise NotImplementedError
+
+    def join(self):
+        raise NotImplementedError
+
+    def is_alive(self):
+        raise NotImplementedError
+
+    def start_if_not_alive(self):
+        if not self.is_alive():
+            self.start()
 
     def add_worker(self, worker):
         raise NotImplementedError
@@ -35,12 +81,6 @@ class DispatcherBase(WorkerBase):
 
     def join_worker(self, worker):
         raise NotImplementedError
-
-    def stop(self):
-        WorkerBase.stop(self)
-
-        for worker in self.get_worker_list():
-            worker.stop()
 
     def get_num_alive(self):
         return sum(1 for i in self.get_worker_list() if i.is_alive())
@@ -77,27 +117,54 @@ class DispatcherBase(WorkerBase):
 
         self.join()
 
-class DispatcherProxy(WorkerProxy, DispatcherBase):
+class WorkerProxy(WorkerBase):
     def __init__(self, parent=None):
-        WorkerProxy.__init__(self, parent)
-        DispatcherBase.__init__(self, parent)
+        WorkerBase.__init__(self, parent)
+        self._worker = None
+
+    def setup_worker(self):
+        raise NotImplementedError
+
+    @property
+    def worker(self):
+        if self._worker is None:
+            self.setup_worker()
+
+        return self._worker
+
+    @worker.setter
+    def worker(self, value):
+        self._worker = value
+
+    def start(self):
+        if not self.is_alive():
+            self.setup_worker()
+
+        self.worker.start()
+
+    def join(self):
+        if self.is_alive():
+            self.worker.join()
+
+    def is_alive(self):
+        return self.worker.is_alive()
 
     def add_worker(self, worker):
-        self.worker.add_worker(worker)
+        self._worker.add_worker(worker)
 
     def get_worker_list(self):
-        return self.worker.get_worker_list()
+        return self._worker.get_worker_list()
 
     def join_worker(self, worker):
-        if not self.worker.is_alive():
+        if not self._worker.is_alive():
             raise RuntimeError
 
-        self.worker.join_worker(worker)
+        self._worker.join_worker(worker)
 
-class Dispatcher(threading.Thread, DispatcherBase):
+class Worker(threading.Thread, WorkerBase):
     def __init__(self, parent=None, daemon=False):
         threading.Thread.__init__(self, daemon=daemon)
-        DispatcherBase.__init__(self, parent)
+        WorkerBase.__init__(self, parent)
 
         self.workers = {}
         self.workers_lock = threading.Lock()
@@ -107,10 +174,6 @@ class Dispatcher(threading.Thread, DispatcherBase):
             self.workers[worker.ident] = worker
 
         return worker
-
-    def join(self):
-        self.join_workers()
-        threading.Thread.join(self)
 
     def join_worker(self, worker):
         worker.join()
@@ -123,11 +186,11 @@ class Dispatcher(threading.Thread, DispatcherBase):
             return list(self.workers.values())
 
     def run(self):
-        DispatcherBase.run(self)
+        WorkerBase.run(self)
 
-class StagedDispatcher(Dispatcher):
+class StagedWorker(Worker):
     def __init__(self, parent=None, daemon=False):
-        Dispatcher.__init__(self, parent, daemon)
+        Worker.__init__(self, parent, daemon)
 
         self.stage = None
         self.available = True

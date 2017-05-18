@@ -10,7 +10,7 @@ from ..Scanner.Target import ScanTarget
 
 from .SyncTask import SyncTask
 
-from ..Dispatcher import StagedDispatcher
+from ..Worker import StagedWorker
 
 from .Logging import logger
 
@@ -21,9 +21,9 @@ from ..Encryption import pad_size, MIN_ENC_SIZE
 from .. import Paths
 from .. import FileComparator
 
-class SynchronizerDispatcher(StagedDispatcher):
+class SynchronizerDispatcher(StagedWorker):
     def __init__(self, synchronizer):
-        StagedDispatcher.__init__(self)
+        StagedWorker.__init__(self)
 
         self.synchronizer = synchronizer
 

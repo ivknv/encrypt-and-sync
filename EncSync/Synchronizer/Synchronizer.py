@@ -5,12 +5,12 @@ import threading
 
 from .SyncTask import SyncTarget
 
-from ..Dispatcher import DispatcherProxy
+from ..Worker import WorkerProxy
 from .Dispatcher import SynchronizerDispatcher
 
-class Synchronizer(DispatcherProxy):
+class Synchronizer(WorkerProxy):
     def __init__(self, encsync, n_workers=2, n_scan_workers=2):
-        DispatcherProxy.__init__(self)
+        WorkerProxy.__init__(self)
 
         self.encsync = encsync
         self.n_workers = n_workers

@@ -3,13 +3,13 @@
 
 import threading
 from .Dispatcher import ScannerDispatcher
-from ..Dispatcher import DispatcherProxy
+from ..Worker import WorkerProxy
 from .Target import ScanTarget
 from .Logging import logger
 
-class Scanner(DispatcherProxy):
+class Scanner(WorkerProxy):
     def __init__(self, encsync, n_workers=2):
-        DispatcherProxy.__init__(self)
+        WorkerProxy.__init__(self)
 
         self.encsync = encsync
         self.targets = []
@@ -23,7 +23,7 @@ class Scanner(DispatcherProxy):
 
     def start(self):
         logger.debug("Starting scanner")
-        DispatcherProxy.start(self)
+        WorkerProxy.start(self)
         logger.debug("Done starting scanner")
 
     def change_status(self, status):

@@ -7,12 +7,12 @@ import os
 from .. import Paths
 
 from .Dispatcher import DownloaderDispatcher
-from ..Dispatcher import DispatcherProxy
+from ..Worker import WorkerProxy
 from .DownloadTarget import DownloadTarget
 
-class Downloader(DispatcherProxy):
+class Downloader(WorkerProxy):
     def __init__(self, encsync, n_workers=2):
-        DispatcherProxy.__init__(self)
+        WorkerProxy.__init__(self)
 
         self.encsync = encsync
         self.targets = []

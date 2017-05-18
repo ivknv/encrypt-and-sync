@@ -5,14 +5,14 @@ import os
 from ..Encryption import MIN_ENC_SIZE
 from .. import SyncList
 from .. import Paths
-from ..Dispatcher import Dispatcher
+from ..Worker import Worker
 from .Logging import logger
 from .Worker import DownloaderWorker
 from .DownloadTask import DownloadTask
 
-class DownloaderDispatcher(Dispatcher):
+class DownloaderDispatcher(Worker):
     def __init__(self, downloader):
-        Dispatcher.__init__(self)
+        Worker.__init__(self)
 
         self.downloader = downloader
         self.encsync = downloader.encsync
