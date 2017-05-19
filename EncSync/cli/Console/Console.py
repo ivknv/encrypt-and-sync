@@ -27,7 +27,9 @@ class Console(object):
                          "scan":       commands.cmd_scan,
                          "sync":       commands.cmd_sync,
                          "diffs":      commands.cmd_diffs,
-                         "duplicates": commands.cmd_duplicates}
+                         "duplicates": commands.cmd_duplicates,
+                         "lscan":      commands.cmd_lscan,
+                         "rscan":      commands.cmd_rscan}
         self.encsync = encsync
 
     def execute_command(self, command):
