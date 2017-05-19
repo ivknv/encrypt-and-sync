@@ -122,30 +122,34 @@ class DownloaderWorker(Worker):
     def work(self):
         logger.debug("Worker began working")
 
-        while not self.stopped:
-            with self.lock:
-                if self.stopped or not len(self.pool):
-                    break
+        try:
+            while not self.stopped:
+                with self.lock:
+                    if self.stopped or not len(self.pool):
+                        break
 
-                task = self.pool.pop(0)
-                self.cur_task = task
+                    task = self.pool.pop(0)
+                    self.cur_task = task
 
-                if task.parent is not None and task.parent.status == "suspended":
+                    if task.parent is not None and task.parent.status == "suspended":
+                        continue
+
+                    if task.status is None:
+                        task.change_status("pending")
+                    elif task.status != "pending":
+                        continue
+
+                    task_copy = task.copy()
+
+                logger.debug("Downloading to {}".format(task_copy.local))
+
+                if task_copy.type == "d":
+                    recursive_mkdir(task_copy.local)
+                    task.change_status("finished")
                     continue
 
-                if task.status is None:
-                    task.change_status("pending")
-                elif task.status != "pending":
-                    continue
-
-                task_copy = task.copy()
-
-            logger.debug("Downloading to {}".format(task_copy.local))
-
-            if task_copy.type == "d":
-                recursive_mkdir(task_copy.local)
-                task.change_status("finished")
-                continue
-
-            self.download_file(task, task_copy)
-        logger.debug("Worker finished working")
+                self.download_file(task, task_copy)
+        except:
+            logger.exception("An error occured")
+        finally:
+            logger.debug("Worker finished working")
