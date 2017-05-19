@@ -32,7 +32,8 @@ class DownloadTargetDisplay(TargetDisplay):
                 str(target.local)]
 
 def download(paths, n_workers):
-    common.make_encsync()
+    if common.make_encsync() is None:
+        return
 
     stdscr = curses.initscr()
     try:

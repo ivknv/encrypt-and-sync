@@ -88,7 +88,10 @@ def make_encsync(config_path=None, master_password=None):
     while True:
         try:
             if master_password is None:
-                password = getpass("Master password: ")
+                try:
+                    password = getpass("Master password: ")
+                except (KeyboardInterrupt, EOFError):
+                    return
             else:
                 password = master_password
 

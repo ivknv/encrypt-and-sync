@@ -21,7 +21,8 @@ class ScanTargetDisplay(TargetDisplay):
         return [str(idx + 1), target.path, target.type, str(target.status)]
 
 def do_scan(paths, n_workers):
-    common.make_encsync()
+    if common.make_encsync() is None:
+        return
 
     stdscr = curses.initscr()
     try:

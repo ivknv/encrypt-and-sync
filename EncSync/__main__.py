@@ -24,8 +24,9 @@ def main(args):
     global_vars["master_password"] = ns.master_password
     global_vars["config"] = ns.config
 
-    if ns.scan or ns.show_diffs or ns.sync or ns.download:
-        check_token()
+    if ns.scan or ns.show_diffs or ns.sync or ns.download or ns.console:
+        if not check_token():
+            return
 
     if ns.scan is not None:
         do_scan(ns.scan, ns.n_workers)

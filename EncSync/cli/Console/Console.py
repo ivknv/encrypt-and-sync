@@ -93,6 +93,9 @@ class Console(object):
 def run_console():
     encsync = common.make_encsync()
 
+    if encsync is None:
+        return
+
     readline.parse_and_bind("tab: complete")
     console = Console(encsync)
     console.input_loop()

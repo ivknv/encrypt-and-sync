@@ -34,7 +34,8 @@ class SyncTargetDisplay(TargetDisplay):
                 target.local, target.remote]
 
 def do_sync(paths, n_workers):
-    common.make_encsync()
+    if common.make_encsync() is None:
+        return
 
     stdscr = curses.initscr()
 

@@ -14,6 +14,9 @@ READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 def encrypt(paths):
     encsync = common.make_encsync()
 
+    if encsync is None:
+        return
+
     assert(len(paths) > 0)
 
     if len(paths) == 1:
@@ -38,7 +41,9 @@ def encrypt(paths):
                 block = f.read(READ_BLOCK_SIZE)
 
 def encrypt_config(in_path, out_path):
-    common.make_encsync()
+    if common.make_encsync() is None:
+        return
+
     key = global_vars["master_password_sha256"]
 
     with open(in_path, "rb") as in_f:
@@ -48,6 +53,9 @@ def encrypt_config(in_path, out_path):
 
 def encrypt_filename(paths, prefix):
     encsync = common.make_encsync()
+
+    if encsync is None:
+        return
 
     for path in paths:
         print(encsync.encrypt_path(path, prefix)[0])
