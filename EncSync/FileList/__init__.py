@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .SyncList import SyncList
+from .LocalFileList import LocalFileList
+from .RemoteFileList import RemoteFileList
 from .DuplicateList import DuplicateList

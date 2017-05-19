@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from . import Paths
 from . import Encryption
-from .SyncList import SyncList
-import os
+from .FileList import RemoteFileList
 
 class EncPath(object):
     def __init__(self, encsync, path=None):
@@ -29,9 +30,9 @@ class EncPath(object):
         return copy
 
     def get_IVs_from_db(self):
-        synclist = SyncList()
+        rlist = RemoteFileList()
 
-        node = synclist.find_remote_node(self.remote)
+        node = rlist.find_node(self.remote)
 
         return node["IVs"]
 

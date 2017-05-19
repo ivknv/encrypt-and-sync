@@ -3,7 +3,7 @@
 
 import os
 from ..Encryption import MIN_ENC_SIZE
-from .. import SyncList
+from ..FileList import RemoteFileList
 from .. import Paths
 from ..Worker import Worker
 from .Logging import logger
@@ -70,14 +70,13 @@ class DownloaderDispatcher(Worker):
         logger.debug("Done starting workers")
 
     def scan(self, target):
-        synclist = SyncList.SyncList()
-        with synclist:
-            synclist.create()
-            synclist.commit()
+        rlist = RemoteFileList()
+
+        rlist.create()
 
         dec_remote = target.dec_remote
 
-        nodes = list(synclist.find_remote_node_children(dec_remote))
+        nodes = list(rlist.find_node_children(dec_remote))
 
         if len(nodes) == 0:
             # Fail if not found

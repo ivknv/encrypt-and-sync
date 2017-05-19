@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from . import common
-from ..SyncList import DuplicateList
+from ..FileList import DuplicateList
 
 global_vars = common.global_vars
 

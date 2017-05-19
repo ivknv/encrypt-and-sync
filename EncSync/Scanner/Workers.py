@@ -15,7 +15,8 @@ class ScanWorker(Waiter):
         self.cur_target = target
         self.cur_path = None
 
-        self.synclist = parent.shared_synclist
+        self.llist = parent.shared_llist
+        self.rlist = parent.shared_rlist
         self.duplist = parent.shared_duplist
 
     def do_scan(self, scannable):
@@ -69,7 +70,7 @@ class LocalScanWorker(ScanWorker):
             if self.stop_condition():
                 return False
 
-            self.synclist.insert_local_node(n)
+            self.llist.insert_node(n)
 
         return False
 
@@ -80,7 +81,7 @@ class RemoteScanWorker(ScanWorker):
         if self.stop_condition():
             return False
 
-        self.synclist.insert_remote_node(scannable.to_node())
+        self.rlist.insert_node(scannable.to_node())
 
         return True
 

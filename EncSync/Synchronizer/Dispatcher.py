@@ -14,7 +14,7 @@ from ..Worker import StagedWorker
 
 from .Logging import logger
 
-from ..SyncList import SyncList, DuplicateList
+from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..DiffList import DiffList
 from ..Scannable import LocalScannable, RemoteScannable
 from ..Encryption import pad_size, MIN_ENC_SIZE
@@ -37,7 +37,8 @@ class SynchronizerDispatcher(StagedWorker):
         self.cur_target = None
         self.diffs = None
 
-        self.shared_synclist = SyncList()
+        self.shared_llist = LocalFileList()
+        self.shared_rlist = RemoteFileList()
         self.shared_duplist = DuplicateList()
 
         self.speed_limit = synchronizer.speed_limit
@@ -122,8 +123,11 @@ class SynchronizerDispatcher(StagedWorker):
         try:
             logger.debug("Dispatcher started working")
 
-            synclist = SyncList()
-            synclist.create()
+            llist = LocalFileList()
+            rlist = RemoteFileList()
+
+            llist.create()
+            rlist.create()
 
             difflist = DiffList(self.encsync)
             difflist.create()
@@ -192,14 +196,16 @@ class SynchronizerDispatcher(StagedWorker):
         self.diffs = d.select_rm_differences(self.cur_target.local,
                                              self.cur_target.remote)
 
-        self.shared_synclist.begin_transaction()
+        self.shared_llist.begin_transaction()
+        self.shared_rlist.begin_transaction()
 
         self.start_workers(self.n_workers, RmWorker, self)
 
         logger.debug("Dispatcher finished initializing stage 'rm'")
 
     def finalize_rm_stage(self):
-        self.shared_synclist.commit()
+        self.shared_llist.commit()
+        self.shared_rlist.commit()
 
     def init_dirs_stage(self):
         logger.debug("Dispatcher began initializing stage 'dirs'")
@@ -208,14 +214,16 @@ class SynchronizerDispatcher(StagedWorker):
         self.diffs = d.select_dirs_differences(self.cur_target.local,
                                                self.cur_target.remote)
 
-        self.shared_synclist.begin_transaction()
+        self.shared_llist.begin_transaction()
+        self.shared_rlist.begin_transaction()
 
         self.start_worker(MkdirWorker, self)
 
         logger.debug("Dispatcher finished initializing stage 'dirs'")
 
     def finalize_dirs_stage(self):
-        self.shared_synclist.commit()
+        self.shared_llist.commit()
+        self.shared_rlist.commit()
 
     def init_files_stage(self):
         logger.debug("Dispatcher began initializing stage 'files'")
@@ -224,14 +232,16 @@ class SynchronizerDispatcher(StagedWorker):
         self.diffs = d.select_files_differences(self.cur_target.local,
                                                 self.cur_target.remote)
 
-        self.shared_synclist.begin_transaction()
+        self.shared_llist.begin_transaction()
+        self.shared_rlist.begin_transaction()
 
         self.start_workers(self.n_workers, UploadWorker, self)
 
         logger.debug("Dispatcher finished initializing stage 'files'")
 
     def finalize_files_stage(self):
-        self.shared_synclist.commit()
+        self.shared_llist.commit()
+        self.shared_rlist.commit()
 
     def get_next_scannable(self):
         with self.scannables_lock:
@@ -271,14 +281,17 @@ class SynchronizerDispatcher(StagedWorker):
 
         self.add_scannable(scannable)
 
-        self.shared_synclist.begin_transaction()
+        filelist = {"local":  self.shared_llist,
+                    "remote": self.shared_rlist}[scan_type]
+
+        filelist.begin_transaction()
 
         if scan_type == "local":
-            self.shared_synclist.remove_local_node_children(target.path)
+            self.shared_llist.remove_node_children(target.path)
 
             self.start_worker(LocalScanWorker, self, target)
         elif scan_type == "remote":
-            self.shared_synclist.remove_remote_node_children(target.path)
+            self.shared_rlist.remove_node_children(target.path)
 
             self.start_workers(self.n_scan_workers, RemoteScanWorker, self, target)
 
@@ -288,11 +301,11 @@ class SynchronizerDispatcher(StagedWorker):
         self.join_workers()
 
         if target.status == "pending" and self.cur_target.status == "pending":
-            self.shared_synclist.commit()
+            filelist.commit()
         else:
             if self.cur_target.status == "pending":
                 self.cur_target.change_status("failed")
-            self.shared_synclist.rollback()
+            filelist.rollback()
 
     def init_scan_stage(self):
         try:
@@ -304,12 +317,13 @@ class SynchronizerDispatcher(StagedWorker):
             if self.cur_target.status != "pending":
                 return
 
-            if self.shared_synclist.is_remote_list_empty(self.cur_target.remote):
+            if self.shared_rlist.is_empty(self.cur_target.remote):
                 self.do_scan("remote")
         except:
             logger.exception("An error occured")
             self.cur_target.change_status("failed")
-            self.shared_synclist.rollback()
+            self.shared_llist.rollback()
+            self.shared_rlist.rollback()
         finally:
             self.scannables.clear()
 

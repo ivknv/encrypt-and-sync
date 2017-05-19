@@ -6,7 +6,7 @@ import threading
 from ..Worker import Worker
 from .Workers import LocalScanWorker, RemoteScanWorker
 from .Logging import logger
-from ..SyncList import SyncList, DuplicateList
+from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..Scannable import LocalScannable, RemoteScannable
 
 class ScannerDispatcher(Worker):
@@ -22,7 +22,8 @@ class ScannerDispatcher(Worker):
 
         self.cur_target = None
 
-        self.shared_synclist = SyncList()
+        self.shared_llist = LocalFileList()
+        self.shared_rlist = RemoteFileList()
         self.shared_duplist = DuplicateList()
 
         self.pool = []
@@ -65,19 +66,19 @@ class ScannerDispatcher(Worker):
                 return self.pool.pop(0)
 
     def begin_remote_scan(self, target):
-        self.shared_synclist.remove_remote_node_children(target.path)
+        self.shared_rlist.remove_node_children(target.path)
 
         scannable = RemoteScannable(self.encsync, target.path)
         scannable.identify()
-        self.shared_synclist.insert_remote_node(scannable.to_node())
+        self.shared_rlist.insert_node(scannable.to_node())
         self.add_scannable(scannable)
 
     def begin_local_scan(self, target):
-        self.shared_synclist.remove_local_node_children(target.path)
+        self.shared_llist.remove_node_children(target.path)
 
         scannable = LocalScannable(target.path)
         scannable.identify()
-        self.shared_synclist.insert_local_node(scannable.to_node())
+        self.shared_llist.insert_node(scannable.to_node())
         self.add_scannable(scannable)
 
     def work(self):
@@ -85,7 +86,8 @@ class ScannerDispatcher(Worker):
 
         logger.debug("Dispatcher is working")
 
-        self.shared_synclist.create()
+        self.shared_llist.create()
+        self.shared_rlist.create()
         self.shared_duplist.create()
 
         while not self.stop_condition():
@@ -98,13 +100,16 @@ class ScannerDispatcher(Worker):
 
             assert(target.type in ("local", "remote"))
 
+            filelist = {"local":  self.shared_llist,
+                        "remote": self.shared_rlist}[target.type]
+
             try:
                 if target.status == "suspended":
                     continue
 
                 target.change_status("pending")
 
-                self.shared_synclist.begin_transaction()
+                filelist.begin_transaction()
                 self.shared_duplist.begin_transaction()
 
                 if target.type == "local":
@@ -122,17 +127,17 @@ class ScannerDispatcher(Worker):
                 self.join_workers()
 
                 if target.status == "pending":
-                    self.shared_synclist.commit()
+                    filelist.commit()
                     self.shared_duplist.commit()
                     target.change_status("finished")
 
                     target.emit_event("scan_finished")
                 else:
-                    self.shared_synclist.rollback()
+                    filelist.rollback()
                     self.shared_duplist.rollback()
             except:
                 target.change_status("failed")
-                self.shared_synclist.rollback()
+                filelist.rollback()
                 self.shared_duplist.rollback()
                 logger.exception("An error occured")
             finally:

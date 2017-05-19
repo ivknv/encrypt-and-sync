@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from . import Paths
-from .SyncList import SyncList
+from .FileList import LocalFileList, RemoteFileList
 from .EncPath import EncPath
 
 def try_next(it, default=None):
@@ -17,10 +17,10 @@ class FileComparator(object):
         self.prefix1 = Paths.from_sys(prefix1)
         self.prefix2 = prefix2
 
-        synclist1, synclist2 = SyncList(), SyncList()
+        llist, rlist = LocalFileList(), RemoteFileList()
 
-        self.nodes1 = synclist1.find_local_node_children(prefix1)
-        self.nodes2 = synclist2.find_remote_node_children(prefix2)
+        self.nodes1 = llist.find_node_children(prefix1)
+        self.nodes2 = rlist.find_node_children(prefix2)
 
         self.it1 = iter(self.nodes1)
         self.it2 = iter(self.nodes2)

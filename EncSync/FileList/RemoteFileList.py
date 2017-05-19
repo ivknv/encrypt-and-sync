@@ -15,6 +15,9 @@ class RemoteFileList(FileList):
         kwargs.setdefault("isolation_level", None)
         self.conn = CentDB.connect(path, *args, **kwargs)
 
+    def time_since_last_commit(self):
+        return self.conn.time_since_last_commit()
+
     def __enter__(self):
         self.conn.__enter__()
 

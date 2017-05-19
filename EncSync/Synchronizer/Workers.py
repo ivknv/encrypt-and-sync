@@ -26,11 +26,15 @@ class SynchronizerWorker(Worker):
 
         self.path = None
 
-        self.synclist = dispatcher.shared_synclist
+        self.llist = dispatcher.shared_llist
+        self.rlist = dispatcher.shared_rlist
 
     def autocommit(self):
-        if self.synclist.time_since_last_commit() >= COMMIT_INTERVAL:
-            self.synclist.seamless_commit()
+        if self.llist.time_since_last_commit() >= COMMIT_INTERVAL:
+            self.llist.seamless_commit()
+
+        if self.rlist.time_since_last_commit() >= COMMIT_INTERVAL:
+            self.rlist.seamless_commit()
 
     def work_func(self):
         pass
@@ -40,7 +44,7 @@ class SynchronizerWorker(Worker):
         remote_prefix = self.path.remote_prefix
         path = self.path.path
 
-        node = self.synclist.find_remote_node(remote_path)
+        node = self.rlist.find_node(remote_path)
         if node["path"] is None:
             # Get parent IVs
             if path != "/":
@@ -50,7 +54,7 @@ class SynchronizerWorker(Worker):
 
             p = Paths.dir_normalize(p)
 
-            node = self.synclist.find_remote_node(p)
+            node = self.rlist.find_node(p)
 
         return node["IVs"]
 
@@ -120,7 +124,7 @@ class UploadWorker(SynchronizerWorker):
 
         try:
             if not os.path.exists(local_path):
-                self.synclist.remove_local_node(local_path)
+                self.llist.remove_node(local_path)
                 self.autocommit()
 
                 task.change_status("finished")
@@ -150,9 +154,9 @@ class UploadWorker(SynchronizerWorker):
                        "modified": time.mktime(time.gmtime()),
                        "IVs": IVs}
 
-            with self.synclist:
-                self.synclist.insert_remote_node(newnode)
-                self.synclist.update_local_size(local_path, new_size)
+            with self.llist, self.rlist:
+                self.rlist.insert_node(newnode)
+                self.llist.update_size(local_path, new_size)
                 self.autocommit()
 
             task.change_status("finished")
@@ -180,7 +184,7 @@ class MkdirWorker(SynchronizerWorker):
 
         try:
             if not os.path.exists(local_path):
-                self.synclist.remove_local_node(local_path)
+                self.llist.remove_node(local_path)
                 self.autocommit()
 
                 task.change_status("finished")
@@ -203,7 +207,7 @@ class MkdirWorker(SynchronizerWorker):
                        "padded_size": 0,
                        "IVs": IVs}
 
-            self.synclist.insert_remote_node(newnode)
+            self.rlist.insert_node(newnode)
             self.autocommit()
 
             task.change_status("finished")
@@ -232,9 +236,9 @@ class RmWorker(SynchronizerWorker):
             r = self.encsync.ynd.rm(remote_path_enc)
 
             if r["success"]:
-                with self.synclist:
-                    self.synclist.remove_remote_node_children(remote_path)
-                    self.synclist.remove_remote_node(remote_path)
+                with self.rlist:
+                    self.rlist.remove_node_children(remote_path)
+                    self.rlist.remove_node(remote_path)
                     self.autocommit()
                 task.change_status("finished")
             else:
