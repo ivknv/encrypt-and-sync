@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ..Waiter import Waiter
+from ..Worker import Waiter
 from .Logging import logger
 from ..Scannable import scan_files
 from .. import Paths
