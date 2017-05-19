@@ -21,8 +21,11 @@ def recursive_mkdir(path, basedir="."):
         if not i:
             continue
         p = os.path.join(p, i)
-        if not os.path.exists(p):
+
+        try:
             os.mkdir(p)
+        except FileExistsError:
+            pass
 
 class DownloaderWorker(Worker):
     def __init__(self, dispatcher, target):
