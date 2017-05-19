@@ -3,6 +3,7 @@
 
 import curses
 import os
+import sys
 import time
 
 from . import common
@@ -48,9 +49,15 @@ def do_sync(paths, n_workers):
 
         stdscr.keypad(True)
 
-        _do_sync(stdscr, paths, n_workers)
-    finally:
+        try:
+            _do_sync(stdscr, paths, n_workers)
+            curses.endwin()
+        except ValueError as e:
+            curses.endwin()
+            print("Error: %s" %e, file=sys.stderr)
+    except Exception as e:
         curses.endwin()
+        raise e
 
 def _do_sync(stdscr, paths, n_workers):
     synchronizer = Synchronizer(global_vars["encsync"], n_workers)
@@ -64,7 +71,7 @@ def _do_sync(stdscr, paths, n_workers):
         path2, path2_type = common.recognize_path(path2)
 
         if path1_type == path2_type:
-            raise Exception("Expected a pair of both local and remote paths")
+            raise ValueError("Expected a pair of both local and remote paths")
 
         if path1_type == "local":
             local, remote = path1, path2

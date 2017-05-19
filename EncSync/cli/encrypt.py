@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 from .. import Encryption
 
@@ -24,7 +25,8 @@ def encrypt(paths):
     else:
         dest = paths.pop()
         if len(paths) > 2 and not os.path.isdir(dest):
-            raise ValueError("Destination must be a directory")
+            print("Error: Destination must be a directory", file=sys.stderr)
+            return
 
     for path in paths:
         f = encsync.temp_encrypt(path)

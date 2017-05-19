@@ -43,9 +43,15 @@ def download(paths, n_workers):
         curses.noecho()
         curses.cbreak()
         stdscr.keypad(True)
-        _download(stdscr, paths, n_workers)
-    finally:
+        try:
+            _download(stdscr, paths, n_workers)
+            curses.endwin()
+        except ValueError as e:
+            curses.endwin()
+            print("Error: %s" %e)
+    except Exception as e:
         curses.endwin()
+        raise e
 
 def _download(stdscr, paths, n_workers):
     encsync = global_vars["encsync"]
