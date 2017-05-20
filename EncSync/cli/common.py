@@ -6,8 +6,10 @@ from getpass import getpass
 import hashlib
 import json
 import sys
+import os
 
-from ..EncSync import EncSync
+from ..EncSync import EncSync, InvalidConfigError
+from ..Encryption import DecryptionError
 from .. import Paths
 
 try:
@@ -28,7 +30,7 @@ def positive_int(arg):
     raise argparse.ArgumentTypeError("%r is not a positive integer" % arg)
 
 def local_path(arg):
-    path, path_type = recognize_path(arg)
+    path_type = recognize_path(arg)[1]
 
     if path_type == "local":
         return arg
@@ -36,7 +38,7 @@ def local_path(arg):
     raise argparse.ArgumentTypeError("%r is not a local path" % arg)
 
 def remote_path(arg):
-    path, path_type = recognize_path(arg)
+    path_type = recognize_path(arg)[1]
 
     if path_type == "remote":
         return arg
@@ -44,7 +46,7 @@ def remote_path(arg):
     raise argparse.ArgumentTypeError("%r is not a local path" % arg)
 
 def non_local_path(arg):
-    path, path_type = recognize_path(arg, "remote")
+    path_type = recognize_path(arg, "remote")[1]
 
     if path_type != "local":
         return arg
@@ -52,7 +54,7 @@ def non_local_path(arg):
     raise argparse.ArgumentTypeError("%r is a local path" % arg)
 
 def non_remote_path(arg):
-    path, path_type = recognize_path(arg, "local")
+    path_type = recognize_path(arg, "local")[1]
 
     if path_type != "remote":
         return arg
@@ -74,36 +76,74 @@ def recognize_path(path, default="local"):
 def prepare_remote_path(path, cwd="/"):
     return Paths.join(cwd, path)
 
+def authenticate(config_path, master_password=None):
+    if not os.path.exists(config_path):
+        show_error("Error: file not found: %r" % config_path)
+        return
+    elif os.path.isdir(config_path):
+        show_error("Error: %r is a directory" % config_path)
+        return
+
+    if master_password is None:
+        master_password = global_vars.get("master_password", None)
+
+    if master_password is None:
+        master_password = ask_master_password()
+
+    while True:
+        key = hashlib.sha256(master_password.encode("utf8")).digest()
+
+        try:
+            if EncSync.check_master_key(key, config_path):
+                global_vars["master_password_sha256"] = key
+                return master_password
+            else:
+                show_error("Wrong master password. Try again")
+        except FileNotFoundError:
+            show_error("Error: file not found: %r" % config_path)
+            return
+        except IsADirectoryError:
+            show_error("Error: %r is a directory" % config_path)
+            return
+        except DecryptionError as e:
+            show_error("Error: failed to decrypt file %r: %s" % (config_path, e))
+            return
+
+        master_password = ask_master_password()
+
+        if master_password is None:
+            return
+
+def ask_master_password(msg="Master password: "):
+    try:
+        return getpass(msg)
+    except (KeyboardInterrupt, EOFError):
+        return
+
 def make_encsync(config_path=None, master_password=None):
     encsync = global_vars.get("encsync", None)
     if encsync is not None:
         return encsync
 
     if config_path is None:
-        config_path = global_vars.get("config", None)
+        config_path = global_vars["config"]
+
+    master_password = authenticate(config_path, master_password)
 
     if master_password is None:
-        master_password = global_vars.get("master_password", None)
+        return
 
-    while True:
-        try:
-            if master_password is None:
-                try:
-                    password = getpass("Master password: ")
-                except (KeyboardInterrupt, EOFError):
-                    return
-            else:
-                password = master_password
+    encsync = EncSync(master_password)
+    try:
+        config = encsync.load_config(config_path)
+        encsync.set_config(config)
+    except InvalidConfigError as e:
+        show_error("Error: %s" % e)
+        return
 
-            encsync = EncSync(password)
-            encsync.load_config(config_path)
+    global_vars["encsync"] = encsync
 
-            global_vars["encsync"] = encsync
-            global_vars["master_password_sha256"] = hashlib.sha256(password.encode("utf8")).digest()
-
-            return encsync
-        except (UnicodeDecodeError, JSONDecodeError):
-            show_error("Wrong master password. Try again")
+    return encsync
 
 def show_info(msg, verbose=False):
     if (verbose and global_vars.get("verbose", False)) or not verbose:
@@ -112,13 +152,13 @@ def show_info(msg, verbose=False):
 def show_error(msg):
     print(msg, file=sys.stderr)
 
-def display_table(y, x, stdscr, header, rows, colors=[]):
+def display_table(y, x, stdscr, header, rows, colors=tuple()):
     paddings = [1] * len(header)
     paddings[0] = 0
 
     max_width = 0
 
-    for row in ([header] + rows):
+    for row in [header] + rows:
         row_width = 0
         for col, i in zip(row, range(len(row))):
             width = len(col) + 1

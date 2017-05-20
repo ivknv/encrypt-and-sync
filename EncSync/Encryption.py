@@ -7,12 +7,20 @@ import os
 import struct
 import math
 import base64
+import binascii
 
 chunksize = 4096
 
 # Minimum encrypted file size
 MIN_ENC_SIZE = struct.calcsize("Q") + 16
+
 DUMMY_IV = b"0" * 16
+
+class EncryptionError(BaseException):
+    pass
+
+class DecryptionError(BaseException):
+    pass
 
 def pad_size(size):
     if size % 16 == 0:
@@ -23,7 +31,11 @@ def pad_size(size):
 def encrypt_file(in_file, out_file, key, filesize=None):
     ivlen = 16
     iv = Random.get_random_bytes(ivlen)
-    encryptor = AES.new(key, AES.MODE_CBC, iv)
+
+    try:
+        encryptor = AES.new(key, AES.MODE_CBC, iv)
+    except ValueError as e:
+        raise EncryptionError(str(e))
 
     close_in, close_out = False, False
 
@@ -68,8 +80,16 @@ def encrypt_file(in_file, out_file, key, filesize=None):
 
 def encrypt_data(in_data, key):
     ivlen = 16
+
+    if not isinstance(in_data, bytes):
+        raise EncryptionError("Input data must be bytes")
+
     iv = Random.get_random_bytes(ivlen)
-    encryptor = AES.new(key, AES.MODE_CBC, iv)
+
+    try:
+        encryptor = AES.new(key, AES.MODE_CBC, iv)
+    except ValueError as e:
+        raise EncryptionError(str(e))
 
     out_data = b""
 
@@ -96,12 +116,22 @@ def encrypt_data(in_data, key):
 def decrypt_data(in_data, key):
     ivlen = 16
 
+    if not isinstance(in_data, bytes):
+        raise EncryptionError("Input data must be bytes")
+
     llsize = struct.calcsize("Q")
 
-    size = struct.unpack("<Q", in_data[:llsize])[0]
+    try:
+        size = struct.unpack("<Q", in_data[:llsize])[0]
+    except struct.error:
+        raise DecryptionError("Invalid encrypted data")
+
     iv = in_data[llsize:llsize + ivlen]
 
-    decryptor = AES.new(key, AES.MODE_CBC, iv)
+    try:
+        decryptor = AES.new(key, AES.MODE_CBC, iv)
+    except ValueError as e:
+        raise DecryptionError(str(e))
 
     out_data = b""
 
@@ -130,10 +160,17 @@ def decrypt_file(in_file, out_file, key):
         close_out = True
 
     try:
-        out_filesize = struct.unpack("<Q", in_file.read(struct.calcsize("Q")))[0]
+        try:
+            out_filesize = struct.unpack("<Q", in_file.read(struct.calcsize("Q")))[0]
+        except struct.error:
+            raise DecryptionError("Invalid encrypted data")
+
         iv = in_file.read(ivlen)
 
-        decryptor = AES.new(key, AES.MODE_CBC, iv)
+        try:
+            decryptor = AES.new(key, AES.MODE_CBC, iv)
+        except ValueError as e:
+            raise DecryptionError(str(e))
 
         while True:
             chunk = in_file.read(chunksize)
@@ -161,15 +198,22 @@ def encrypt_filename(filename, key, iv=b""):
     ivlen = 16
     padding = b" "
 
+    if isinstance(filename, str):
+        filename = filename.encode("utf8")
+
+    if not isinstance(filename, bytes):
+        raise EncryptionError("Filename must be str or bytes")
+
+    if filename in (b".", b".."):
+        return filename.decode("utf8"), DUMMY_IV
+
     if len(iv) == 0:
         iv = Random.get_random_bytes(ivlen)
 
-    if filename in (".", ".."):
-        return filename, DUMMY_IV
-
-    filename = filename.encode("utf8")
-
-    encryptor = AES.new(key, AES.MODE_CBC, iv)
+    try:
+        encryptor = AES.new(key, AES.MODE_CBC, iv)
+    except ValueError as e:
+        raise EncryptionError(str(e))
 
     filename_len = len(filename)
 
@@ -209,20 +253,41 @@ def decrypt_filename(encrypted, key):
     chunksize = 16
     ivlen = 16
 
+    if isinstance(encrypted, bytes):
+        encrypted = encrypted.decode()
+
+    if not isinstance(encrypted, str):
+        raise DecryptionError("Filename must be str or bytes")
+
     if encrypted in (".", ".."):
         return encrypted, DUMMY_IV
 
-    encrypted = b64d(encrypted)
+    try:
+        encrypted = b64d(encrypted)
+    except binascii.Error:
+        raise DecryptionError("Invalid encrypted filename")
 
     llsize = struct.calcsize("B")
 
     iv = encrypted[llsize:llsize + ivlen]
 
-    encryptor = AES.new(key, AES.MODE_CBC, iv)
+    try:
+        encryptor = AES.new(key, AES.MODE_CBC, iv)
+    except ValueError as e:
+        raise DecryptionError(str(e))
 
     encrypted_len = len(encrypted) - llsize - ivlen
 
-    filename_len = encrypted_len - struct.unpack("<B", encrypted[:llsize])[0]
+    try:
+        length_diff = struct.unpack("<B", encrypted[:llsize])[0]
+    except struct.error:
+        raise DecryptionError("Invalid encrypted filename")
+
+    if length_diff < 0 or length_diff > 15:
+        raise DecryptionError("Invalid encrypted filename")
+
+    filename_len = encrypted_len - length_diff
+
     decrypted = "".encode("utf8")
 
     for i in range(encrypted_len // 16):
@@ -231,4 +296,7 @@ def decrypt_filename(encrypted, key):
 
         decrypted += encryptor.decrypt(chunk)
 
-    return decrypted[:filename_len].decode("utf8"), iv
+    try:
+        return decrypted[:filename_len].decode("utf8"), iv
+    except UnicodeDecodeError:
+        return decrypted[:filename_len], iv

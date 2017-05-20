@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import hashlib
 import os
 import sys
 
+from .common import show_error
 from . import common
-from .. import Encryption
+from ..EncSync import EncSync, InvalidConfigError, WrongMasterKeyError
 
 global_vars = common.global_vars
 
@@ -42,15 +44,43 @@ def decrypt(paths):
                 block = f.read(READ_BLOCK_SIZE)
 
 def decrypt_config(in_path, out_path):
-    if common.make_encsync() is None:
+    if os.path.isdir(out_path):
+        show_error("Error: %r is a directory" % out_path)
         return
 
-    key = global_vars["master_password_sha256"]
+    master_password = common.authenticate(in_path)
 
-    with open(in_path, "rb") as in_f:
-        data = Encryption.decrypt_data(in_f.read(), key)
-        with open(out_path, "wb") as out_f:
-            out_f.write(data)
+    if master_password is None:
+        return
+
+    key = hashlib.sha256(master_password.encode("utf8")).digest()
+
+    try:
+        config = EncSync.load_config(in_path, key)
+    except InvalidConfigError as e:
+        show_error("Error: invalid configuration: %s" % e)
+        return
+    except WrongMasterKeyError:
+        show_error("Error: wrong master password")
+        return
+    except FileNotFoundError:
+        show_error("Error: no such file or directory: %r" % in_path)
+        return
+    except IsADirectoryError:
+        show_error("Error: %r is a directory" % in_path)
+        return
+
+    valid, msg = EncSync.validate_config(config)
+
+    if not valid:
+        show_error("Warning: invalid configuration: %s" % msg)
+
+    try:
+        EncSync.store_config(config, out_path, None, False)
+    except IsADirectoryError:
+        show_error("Error: %r is a directory" % out_path)
+    except FileNotFoundError:
+        show_error("Error: no such file or directory: %r" % out_path)
 
 def decrypt_filename(paths, prefix):
     encsync = common.make_encsync()
