@@ -126,7 +126,7 @@ def make_encsync(config_path=None, master_password=None):
         return encsync
 
     if config_path is None:
-        config_path = global_vars["config"]
+        config_path = global_vars["config_path"]
 
     master_password = authenticate(config_path, master_password)
 
@@ -135,10 +135,10 @@ def make_encsync(config_path=None, master_password=None):
 
     encsync = EncSync(master_password)
     try:
-        config = encsync.load_config(config_path)
+        config = EncSync.load_config(config_path, encsync.master_key)
         encsync.set_config(config)
     except InvalidConfigError as e:
-        show_error("Error: %s" % e)
+        show_error("Error: invalid configuration: %s" % e)
         return
 
     global_vars["encsync"] = encsync

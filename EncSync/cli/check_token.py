@@ -4,7 +4,7 @@
 import sys
 
 from . import common
-from ..EncSync import AUTH_URL
+from ..EncSync import EncSync, AUTH_URL
 
 global_vars = common.global_vars
 
@@ -31,7 +31,8 @@ def check_token():
                 print("Failed to get token. Try again", file=sys.stderr)
 
         encsync.set_token(token)
-        encsync.store_config(global_vars["config"])
+        config = encsync.make_config()
+        EncSync.store_config(config, global_vars["config_path"], encsync.master_key)
 
         return True
     except (KeyboardInterrupt, EOFError):

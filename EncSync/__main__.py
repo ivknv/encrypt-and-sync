@@ -13,6 +13,7 @@ from .cli.check_token import check_token
 from .cli.encrypt import encrypt, encrypt_config, encrypt_filename
 from .cli.decrypt import decrypt, decrypt_config, decrypt_filename
 from .cli.show_duplicates import show_duplicates
+from .cli.make_config import make_config
 from .cli.Console import run_console
 
 global_vars = common.global_vars
@@ -22,7 +23,7 @@ def main(args):
 
     global_vars["verbose"] = ns.verbose
     global_vars["master_password"] = ns.master_password
-    global_vars["config"] = ns.config
+    global_vars["config_path"] = ns.config
 
     if ns.scan or ns.show_diffs or ns.sync or ns.download or ns.console:
         if not check_token():
@@ -62,6 +63,8 @@ def main(args):
         show_duplicates(ns.show_duplicates)
     elif ns.console:
         run_console()
+    elif ns.make_config:
+        make_config(ns.make_config)
 
 def positive_int(arg):
     try:
@@ -96,6 +99,7 @@ def parse_args(args):
     parser.add_argument("--decrypt-config", default=None, nargs="+")
     parser.add_argument("--show-duplicates", default=None, nargs="+")
     parser.add_argument("--console", default=False, action="store_true")
+    parser.add_argument("--make-config", default=None)
 
     return parser.parse_args(args[1:])
 
