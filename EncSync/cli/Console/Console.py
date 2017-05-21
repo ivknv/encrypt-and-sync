@@ -6,7 +6,8 @@ import readline
 import subprocess
 import shlex
 
-from .parser import Parser
+from .Parser import Parser, AST
+from .Tokenizer import Tokenizer
 from .. import common
 from . import commands
 
@@ -32,28 +33,44 @@ class Console(object):
                          "rscan":      commands.cmd_rscan}
         self.encsync = encsync
 
-    def execute_command(self, command):
-        if command.is_shell:
-            try:
-                subprocess.call(shlex.split(command[0]))
-            except (FileNotFoundError, subprocess.SubprocessError) as e:
-                print("Error: %s" %e)
+    def execute_commands(self, ast):
+        assert(ast.type == AST.PROGRAM)
 
+        for child in ast.children:
+            if child.type == AST.COMMAND:
+                self.execute_command(child)
+            elif child.type == AST.SYSCOMMAND:
+                self.execute_syscommand(child)
+
+    def execute_command(self, ast):
+        args = []
+        for child in ast.children:
+            if child.type == AST.WORD:
+                args.append(child.token.string)
+
+        if len(args) == 0:
             return
 
         try:
-            func = self.commands[command[0]]
+            func = self.commands[args[0]]
         except KeyError:
-            print("Error: unknown command %r" % command[0], file=sys.stderr)
+            print("Error: unknown command %r" % args[0], file=sys.stderr)
             return
 
         try:
-            func(self, command)
+            func(self, args)
         except SystemExit:
             pass
 
+    def execute_syscommand(self, ast):
+        try:
+            subprocess.call(shlex.split(ast.token.string))
+        except (FileNotFoundError, subprocess.SubprocessError) as e:
+            print("Error: %s" %e, file=sys.stderr)
+
     def input_loop(self):
         parser = Parser()
+        tokenizer = Tokenizer()
 
         prompt_more = False
 
@@ -70,21 +87,23 @@ class Console(object):
                 line = input(msg)
 
                 for i in line:
-                    parser.next_char(i, output)
+                    tokenizer.next_char(i, output)
 
-                if not parser.in_quotes and not parser.escape:
-                    parser.finalize(output)
+                if not tokenizer.in_quotes and not tokenizer.escape:
+                    tokenizer.end(output)
 
-                    for cmd in output:
-                        if self.quit:
-                            break
-                        self.execute_command(cmd)
+                    parser.tokens = output
+                    ast = parser.parse()
+
+                    self.execute_commands(ast)
+
                     output = []
 
+                    tokenizer.reset()
                     parser.reset()
                 else:
                     prompt_more = True
-                    parser.next_char("\n", output)
+                    tokenizer.next_char("\n", output)
             except KeyboardInterrupt:
                 output = []
                 parser.reset()

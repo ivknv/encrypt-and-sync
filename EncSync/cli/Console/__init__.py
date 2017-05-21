@@ -2,4 +2,3 @@
 # -*- coding: utf-8 -*-
 
 from .Console import run_console, Console
-from .parser import Parser
