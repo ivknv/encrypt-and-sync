@@ -15,7 +15,7 @@ def show_diffs(local, remote):
     encsync = common.make_encsync()
 
     if encsync is None:
-        return
+        return 130
 
     local = os.path.expanduser(os.path.abspath(local))
     if not remote.startswith("/"):
@@ -23,3 +23,5 @@ def show_diffs(local, remote):
 
     for diff in compare_lists(encsync, local, remote):
         print_diff(diff)
+
+    return 0

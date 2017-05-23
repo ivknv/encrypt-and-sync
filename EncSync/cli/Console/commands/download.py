@@ -21,4 +21,4 @@ def cmd_download(console, args):
     else:
         paths = [Paths.join_properly(console.cwd, ns.paths[0])]
 
-    download(paths, ns.n_workers)
+    return download(paths, ns.n_workers)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
 import readline
 import subprocess
 import shlex
@@ -9,6 +8,7 @@ import shlex
 from .Parser import Parser, AST
 from .Tokenizer import Tokenizer
 from .. import common
+from ..common import show_error
 from . import commands
 
 global_vars = common.global_vars
@@ -17,6 +17,7 @@ class Console(object):
     def __init__(self, encsync):
         self.cwd = "/"
         self.pwd = "/"
+        self.exit_code = 0
         self.quit = False
         self.commands = {"ls":         commands.cmd_ls,
                          "cd":         commands.cmd_cd,
@@ -36,37 +37,64 @@ class Console(object):
     def execute_commands(self, ast):
         assert(ast.type == AST.PROGRAM)
 
-        for child in ast.children:
-            if child.type == AST.COMMAND:
-                self.execute_command(child)
-            elif child.type == AST.SYSCOMMAND:
-                self.execute_syscommand(child)
+        ret = 0
+
+        try:
+            for child in ast.children:
+                if child.type == AST.COMMAND:
+                    ret = self.execute_command(child)
+                elif child.type == AST.SYSCOMMAND:
+                    ret = self.execute_syscommand(child)
+
+                if self.quit:
+                    break
+        except KeyboardInterrupt:
+            ret = 130
+
+        return ret
 
     def execute_command(self, ast):
         args = []
         for child in ast.children:
             if child.type == AST.WORD:
                 args.append(child.token.string)
+            elif child.type == AST.ANDOPERATOR:
+                ret = self.execute_args(args)
 
+                if ret or self.quit:
+                    return ret
+                args = []
+            elif child.type == AST.COMMAND:
+                return self.execute_command(child)
+            elif child.type == AST.SYSCOMMAND:
+                return self.execute_syscommand(child)
+
+        return self.execute_args(args)
+
+    def execute_args(self, args):
         if len(args) == 0:
-            return
+            return 0
 
         try:
             func = self.commands[args[0]]
         except KeyError:
-            print("Error: unknown command %r" % args[0], file=sys.stderr)
-            return
+            show_error("Error: unknown command %r" % args[0])
+            return 127
 
         try:
-            func(self, args)
-        except SystemExit:
-            pass
+            return func(self, args)
+        except SystemExit as e:
+            return e.code
 
     def execute_syscommand(self, ast):
         try:
-            subprocess.call(shlex.split(ast.token.string))
-        except (FileNotFoundError, subprocess.SubprocessError) as e:
-            print("Error: %s" %e, file=sys.stderr)
+            return subprocess.call(shlex.split(ast.token.string))
+        except FileNotFoundError as e:
+            show_error("Error: %s" % e)
+            return 127
+        except subprocess.SubprocessError as e:
+            show_error("Error: %s" % e)
+            return 1
 
     def input_loop(self):
         parser = Parser()
@@ -82,6 +110,7 @@ class Console(object):
                     msg = "...> "
                     prompt_more = False
                 else:
+                    self.exit_code = 0
                     msg = "{}\nEncSync console> ".format(self.cwd)
 
                 line = input(msg)
@@ -95,7 +124,7 @@ class Console(object):
                     parser.tokens = output
                     ast = parser.parse()
 
-                    self.execute_commands(ast)
+                    self.exit_code = self.execute_commands(ast)
 
                     output = []
 
@@ -111,12 +140,15 @@ class Console(object):
             except EOFError:
                 break
 
+        return self.exit_code
+
 def run_console():
     encsync = common.make_encsync()
 
     if encsync is None:
-        return
+        return 130
 
     readline.parse_and_bind("tab: complete")
     console = Console(encsync)
-    console.input_loop()
+
+    return console.input_loop()

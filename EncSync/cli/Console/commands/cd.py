@@ -9,13 +9,15 @@ def cmd_cd(console, args):
     parser = argparse.ArgumentParser(description="Change directory", prog=args[0])
     parser.add_argument("directory")
 
-    _cmd_cd(console, parser.parse_args(args[1:]))
+    return _cmd_cd(console, parser.parse_args(args[1:]))
 
 def _cmd_cd(console, ns): 
     if ns.directory == "-":
         console.cwd, console.pwd = console.pwd, console.cwd
-        return
+        return 0
 
     console.pwd = console.cwd
 
     console.cwd = Paths.join_properly(console.cwd, ns.directory)
+
+    return 0

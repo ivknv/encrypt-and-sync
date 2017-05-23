@@ -13,7 +13,7 @@ def cmd_cat(console, args):
                                      prog=args[0])
     parser.add_argument("filenames", nargs="+")
 
-    _cmd_cat(console, parser.parse_args(args[1:]))
+    return _cmd_cat(console, parser.parse_args(args[1:]))
 
 def _cmd_cat(console, ns):
     encsync = console.encsync
@@ -31,13 +31,13 @@ def _cmd_cat(console, ns):
 
             if encpath.remote_prefix != encpath.remote and not IVs:
                 print("Error: requested path doesn't exist", file=sys.stderr)
-                continue
+                return 1
 
             path = encpath.remote_enc
 
         if not encsync.ynd.is_file(path):
             print("Error: requested path is not a file or doesn't exist", file=sys.stderr)
-            continue
+            return 1
 
         enc_buf = BytesIO()
         dec_buf = BytesIO()
@@ -50,3 +50,5 @@ def _cmd_cat(console, ns):
 
         for line in dec_buf:
             print(line.decode("utf8"), end="")
+
+    return 0

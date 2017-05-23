@@ -17,7 +17,7 @@ def decrypt(paths):
     encsync = common.make_encsync()
 
     if encsync is None:
-        return
+        return 130
 
     assert(len(paths) > 0)
 
@@ -27,7 +27,7 @@ def decrypt(paths):
         dest = paths.pop()
         if len(paths) > 2 and not os.path.isdir(dest):
             print("Destination must be a directory", file=sys.stderr)
-            return
+            return 1
 
     for path in paths:
         f = encsync.temp_decrypt(path)
@@ -43,15 +43,17 @@ def decrypt(paths):
                 out.write(block)
                 block = f.read(READ_BLOCK_SIZE)
 
+    return 0
+
 def decrypt_config(in_path, out_path):
     if os.path.isdir(out_path):
         show_error("Error: %r is a directory" % out_path)
-        return
+        return 1
 
     master_password = common.authenticate(in_path)
 
     if master_password is None:
-        return
+        return 130
 
     key = hashlib.sha256(master_password.encode("utf8")).digest()
 
@@ -59,16 +61,16 @@ def decrypt_config(in_path, out_path):
         config = EncSync.load_config(in_path, key)
     except InvalidConfigError as e:
         show_error("Error: invalid configuration: %s" % e)
-        return
+        return 1
     except WrongMasterKeyError:
         show_error("Error: wrong master password")
-        return
+        return 1
     except FileNotFoundError:
         show_error("Error: no such file or directory: %r" % in_path)
-        return
+        return 1
     except IsADirectoryError:
         show_error("Error: %r is a directory" % in_path)
-        return
+        return 1
 
     valid, msg = EncSync.validate_config(config)
 
@@ -79,14 +81,20 @@ def decrypt_config(in_path, out_path):
         EncSync.store_config(config, out_path, None, False)
     except IsADirectoryError:
         show_error("Error: %r is a directory" % out_path)
+        return 1
     except FileNotFoundError:
         show_error("Error: no such file or directory: %r" % out_path)
+        return 1
+
+    return 0
 
 def decrypt_filename(paths, prefix):
     encsync = common.make_encsync()
 
     if encsync is None:
-        return
+        return 130
 
     for path in paths:
         print(encsync.decrypt_path(path, prefix)[0])
+
+    return 0

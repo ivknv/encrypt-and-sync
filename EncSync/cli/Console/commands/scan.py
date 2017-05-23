@@ -25,4 +25,4 @@ def cmd_scan(console, args):
 
         paths.append(path)
 
-    do_scan(paths, ns.n_workers)
+    return do_scan(paths, ns.n_workers)

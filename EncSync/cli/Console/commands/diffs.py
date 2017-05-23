@@ -18,4 +18,4 @@ def cmd_diffs(console, args):
     ns.local = recognize_path(ns.local)[0]
     ns.remote = Paths.join_properly(console.cwd, recognize_path(ns.remote)[0])
 
-    show_diffs(ns.local, ns.remote)
+    return show_diffs(ns.local, ns.remote)

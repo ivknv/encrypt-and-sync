@@ -14,4 +14,4 @@ def cmd_lscan(console, args):
 
     ns = parser.parse_args(args[1:])
 
-    do_scan(["local://" + i for i in ns.dirs], ns.n_workers)
+    return do_scan(["local://" + i for i in ns.dirs], ns.n_workers)

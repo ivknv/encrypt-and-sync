@@ -23,4 +23,4 @@ def cmd_duplicates(console, args):
 
         paths.append(path)
 
-    show_duplicates(paths)
+    return show_duplicates(paths)

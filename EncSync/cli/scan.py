@@ -22,7 +22,7 @@ class ScanTargetDisplay(TargetDisplay):
 
 def do_scan(paths, n_workers):
     if common.make_encsync() is None:
-        return
+        return 130
 
     stdscr = curses.initscr()
     try:
@@ -32,7 +32,7 @@ def do_scan(paths, n_workers):
         curses.noecho()
         curses.cbreak()
         stdscr.keypad(True)
-        _do_scan(stdscr, paths, n_workers)
+        return _do_scan(stdscr, paths, n_workers)
     finally:
         curses.endwin()
 
@@ -62,3 +62,5 @@ def _do_scan(stdscr, paths, n_workers):
             time.sleep(0.3)
         except KeyboardInterrupt:
             pass
+
+    return 0

@@ -33,7 +33,7 @@ class DownloadTargetDisplay(TargetDisplay):
 
 def download(paths, n_workers):
     if common.make_encsync() is None:
-        return
+        return 130
 
     stdscr = curses.initscr()
     try:
@@ -44,11 +44,14 @@ def download(paths, n_workers):
         curses.cbreak()
         stdscr.keypad(True)
         try:
-            _download(stdscr, paths, n_workers)
+            ret = _download(stdscr, paths, n_workers)
             curses.endwin()
+
+            return ret
         except ValueError as e:
             curses.endwin()
             print("Error: %s" %e)
+            return 1
     except Exception as e:
         curses.endwin()
         raise e
@@ -90,3 +93,5 @@ def _download(stdscr, paths, n_workers):
             time.sleep(0.3)
         except KeyboardInterrupt:
             pass
+
+    return 0

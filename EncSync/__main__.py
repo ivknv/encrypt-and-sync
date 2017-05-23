@@ -27,44 +27,46 @@ def main(args):
 
     if ns.scan or ns.show_diffs or ns.sync or ns.download or ns.console:
         if not check_token():
-            return
+            return 1
 
     if ns.scan is not None:
-        do_scan(ns.scan, ns.n_workers)
+        return do_scan(ns.scan, ns.n_workers)
     elif ns.show_diffs is not None:
-        show_diffs(*ns.show_diffs[:2])
+        return show_diffs(*ns.show_diffs[:2])
     elif ns.sync is not None:
-        do_sync(ns.sync, ns.n_workers)
+        return do_sync(ns.sync, ns.n_workers)
     elif ns.download is not None:
-        download(ns.download, ns.n_workers)
+        return download(ns.download, ns.n_workers)
     elif ns.encrypt is not None:
-        encrypt(ns.encrypt)
+        return encrypt(ns.encrypt)
     elif ns.decrypt is not None:
-        decrypt(ns.decrypt)
+        return decrypt(ns.decrypt)
     elif ns.encrypt_filename is not None:
-        encrypt_filename(ns.encrypt_filename, ns.prefix or "/")
+        return encrypt_filename(ns.encrypt_filename, ns.prefix or "/")
     elif ns.decrypt_filename is not None:
-        decrypt_filename(ns.decrypt_filename, ns.prefix or "/")
+        return decrypt_filename(ns.decrypt_filename, ns.prefix or "/")
     elif ns.encrypt_config is not None:
         in_path = ns.encrypt_config[0]
         try:
             out_path = ns.encrypt_config[1]
         except IndexError:
             out_path = in_path
-        encrypt_config(in_path, out_path)
+
+        return encrypt_config(in_path, out_path)
     elif ns.decrypt_config is not None:
         in_path = ns.decrypt_config[0]
         try:
             out_path = ns.decrypt_config[1]
         except IndexError:
             out_path = in_path
-        decrypt_config(in_path, out_path)
+
+        return decrypt_config(in_path, out_path)
     elif ns.show_duplicates is not None:
-        show_duplicates(ns.show_duplicates)
+        return show_duplicates(ns.show_duplicates)
     elif ns.console:
-        run_console()
+        return run_console()
     elif ns.make_config:
-        make_config(ns.make_config)
+        return make_config(ns.make_config)
 
 def positive_int(arg):
     try:
@@ -104,4 +106,4 @@ def parse_args(args):
     return parser.parse_args(args[1:])
 
 if __name__ == "__main__":
-    main(sys.argv)
+    sys.exit(main(sys.argv))

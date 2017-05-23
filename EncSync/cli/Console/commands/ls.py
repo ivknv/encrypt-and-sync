@@ -12,7 +12,7 @@ def cmd_ls(console, args):
                                      prog=args[0])
     parser.add_argument("filenames", default=[console.cwd], nargs="*")
 
-    _cmd_ls(console, parser.parse_args(args[1:]))
+    return _cmd_ls(console, parser.parse_args(args[1:]))
 
 def _cmd_ls(console, ns): 
     filenames = ns.filenames
@@ -31,7 +31,7 @@ def _cmd_ls(console, ns):
 
             if encpath.remote_prefix != encpath.remote and not IVs:
                 print("Error: requested path doesn't exist", file=sys.stderr)
-                continue
+                return 1
 
             path = encpath.remote_enc
 
@@ -45,9 +45,11 @@ def _cmd_ls(console, ns):
                     contents.append(response["data"]["name"])
             else:
                 print("Error: failed to get list of files", file=sys.stderr)
-                return
+                return 1
 
         contents.sort()
 
         for i in contents:
             print(i)
+
+    return 0

@@ -3,3 +3,5 @@
 
 def cmd_echo(console, args):
     print(" ".join(args[1:]))
+
+    return 0

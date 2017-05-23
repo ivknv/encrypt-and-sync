@@ -15,3 +15,5 @@ def show_duplicates(paths):
         path = common.recognize_path(path)[0]
         for duplicate in duplist.find_children(path):
             print("{} {}".format(duplicate[0], duplicate[1]))
+
+    return 0

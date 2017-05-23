@@ -17,4 +17,4 @@ def cmd_rscan(console, args):
 
     paths = ["disk://" + Paths.join_properly(console.cwd, i) for i in ns.dirs]
 
-    do_scan(paths, ns.n_workers)
+    return do_scan(paths, ns.n_workers)

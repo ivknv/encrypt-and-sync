@@ -3,10 +3,11 @@
 
 class Token(object):
     UNDEFINED    = 0
-    WORD       = 1
-    SEP        = 2
-    SYSCOMMAND = 3
-    END        = 4
+    WORD         = 1
+    SEP          = 2
+    SYSCOMMAND   = 3
+    ANDOPERATOR  = 4
+    END          = 5
 
     def __init__(self, string, token_type=None):
         if token_type is None:
@@ -16,16 +17,17 @@ class Token(object):
 
     def __repr__(self):
         types = {Token.UNDEFINED:    "UNDEFINED",
-                 Token.WORD:       "WORD",
-                 Token.SEP:        "SEP",
-                 Token.SYSCOMMAND: "SYSCOMMAND",
-                 Token.END:        "END"}
+                 Token.WORD:         "WORD",
+                 Token.SEP:          "SEP",
+                 Token.SYSCOMMAND:   "SYSCOMMAND",
+                 Token.ANDOPERATOR:  "ANDOPERATOR",
+                 Token.END:          "END"}
 
         typestr = types.get(self.type, self.type)
 
         if self.string:
             return "<Token string=%r type=%s>" % (self.string, typestr)
-        
+
         return "<Token type=%s>" % (typestr)
 
 class Char(object):
@@ -42,7 +44,7 @@ class Char(object):
     def char(self):
         if not self.escaped:
             return self._char
-        
+
         return self.escape_map.get(self._char, self._char)
 
     @char.setter
@@ -52,8 +54,7 @@ class Char(object):
     def is_whitespace(self):
         if self.escaped:
             return self.char in ("\r",)
-        else:
-            return self.char in (" ", "\r", "\n", "\t")
+        return self.char in (" ", "\r", "\n", "\t")
 
     def is_separator(self):
         return not self.escaped and self.char in (";", "\n")
@@ -67,11 +68,23 @@ class Char(object):
     def is_excl(self):
         return not self.escaped and self.char == "!"
 
+    def is_ampersand(self):
+        return not self.escaped and self.char == "&"
+
+    def __repr__(self):
+        if self.escaped:
+            if self._char == "'":
+                return '"\\%s"' % self._char
+            return "'\\%s'" % self._char
+
+        return repr(self._char)
+
 class Tokenizer(object):
-    STATE_INITIAL    = 0
-    STATE_WORD       = 1
-    STATE_SYSCOMMAND = 2
-    STATE_FINAL      = 3
+    STATE_INITIAL     = 0
+    STATE_WORD        = 1
+    STATE_SYSCOMMAND  = 2
+    STATE_ANDOPERATOR = 3
+    STATE_FINAL       = 4
 
     def __init__(self):
         self.state = Tokenizer.STATE_INITIAL
@@ -80,9 +93,10 @@ class Tokenizer(object):
         self.in_quotes = False
         self.quote_char = None
 
-        self._state_handlers = {Tokenizer.STATE_INITIAL:    self._handle_initial,
-                                Tokenizer.STATE_WORD:       self._handle_word,
-                                Tokenizer.STATE_SYSCOMMAND: self._handle_syscommand}
+        self._state_handlers = {Tokenizer.STATE_INITIAL:     self._handle_initial,
+                                Tokenizer.STATE_WORD:        self._handle_word,
+                                Tokenizer.STATE_SYSCOMMAND:  self._handle_syscommand,
+                                Tokenizer.STATE_ANDOPERATOR: self._handle_andoperator}
 
     def _change_state(self, new_state):
         self.state = new_state
@@ -167,6 +181,11 @@ class Tokenizer(object):
             self.cur_token.type = Token.SYSCOMMAND
 
             self._change_state(Tokenizer.STATE_SYSCOMMAND)
+        elif char.is_ampersand():
+            self.cur_token.type = Token.ANDOPERATOR
+            self.cur_token.string += char.char
+
+            self._change_state(Tokenizer.STATE_ANDOPERATOR)
         else:
             self.cur_token.type = Token.WORD
             self.cur_token.string += char.char
@@ -183,14 +202,18 @@ class Tokenizer(object):
             self._push_token(output)
 
             self._change_state(Tokenizer.STATE_INITIAL)
-            return
+        elif char.is_whitespace():
+            self._push_token(output)
+        elif char.is_ampersand():
+            self._push_token(output)
 
-        if char.is_whitespace():
-           self._push_token(output)
-           return
+            self.cur_token.type = Token.ANDOPERATOR
+            self.cur_token.string += char.char
 
-        self.cur_token.type = Token.WORD
-        self.cur_token.string += char.char
+            self._change_state(Tokenizer.STATE_ANDOPERATOR)
+        else:
+            self.cur_token.type = Token.WORD
+            self.cur_token.string += char.char
 
     def _handle_syscommand(self, char, output):
         if char.char == "\n" and not char.char.escaped:
@@ -200,3 +223,13 @@ class Tokenizer(object):
             return
 
         self.cur_token.string += char.char
+
+    def _handle_andoperator(self, char, output):
+        if char.is_ampersand():
+            self.cur_token.string += char.char
+
+            self._push_token(output)
+
+            self._change_state(Tokenizer.STATE_INITIAL)
+        else:
+            raise ValueError("Unexpected character: %r" % char)

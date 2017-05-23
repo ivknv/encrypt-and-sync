@@ -36,7 +36,7 @@ class SyncTargetDisplay(TargetDisplay):
 
 def do_sync(paths, n_workers):
     if common.make_encsync() is None:
-        return
+        return 130
 
     stdscr = curses.initscr()
 
@@ -50,11 +50,14 @@ def do_sync(paths, n_workers):
         stdscr.keypad(True)
 
         try:
-            _do_sync(stdscr, paths, n_workers)
+            ret = _do_sync(stdscr, paths, n_workers)
             curses.endwin()
+
+            return ret
         except ValueError as e:
             curses.endwin()
             print("Error: %s" %e, file=sys.stderr)
+            return 1
     except Exception as e:
         curses.endwin()
         raise e
@@ -95,10 +98,6 @@ def _do_sync(stdscr, paths, n_workers):
             target_display.update_screen()
             time.sleep(0.3)
         except KeyboardInterrupt:
-            try:
-                targets = target_display.targets
-                target = targets[min(target_display.cur_target_idx, len(targets) - 1)]
-                if target.status != "finished":
-                    target.change_status("suspended")
-            except IndexError:
-                pass
+            pass
+
+    return 0

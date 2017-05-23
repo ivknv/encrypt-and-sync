@@ -25,4 +25,4 @@ def cmd_sync(console, args):
 
         paths.append(path)
 
-    do_sync(paths, ns.n_workers)
+    return do_sync(paths, ns.n_workers)
