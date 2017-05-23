@@ -12,10 +12,10 @@ def print_diff(diff):
     print("{} {} {}".format(diff[0], diff[1], diff[2].path))
 
 def show_diffs(local, remote):
-    encsync = common.make_encsync()
+    encsync, ret = common.make_encsync()
 
     if encsync is None:
-        return 130
+        return ret
 
     local = os.path.expanduser(os.path.abspath(local))
     if not remote.startswith("/"):

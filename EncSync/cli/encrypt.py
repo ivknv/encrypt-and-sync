@@ -3,7 +3,6 @@
 
 import hashlib
 import os
-import sys
 
 from .common import show_error, ask_master_password
 from . import common
@@ -16,10 +15,10 @@ READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 def encrypt(paths):
     assert(len(paths) > 0)
 
-    encsync = common.make_encsync()
+    encsync, ret = common.make_encsync()
 
     if encsync is None:
-        return 130
+        return ret
 
     if len(paths) == 1:
         dest = paths[0]
@@ -104,10 +103,10 @@ def encrypt_config(in_path, out_path):
     return 0
 
 def encrypt_filename(paths, prefix):
-    encsync = common.make_encsync()
+    encsync, ret = common.make_encsync()
 
     if encsync is None:
-        return 130
+        return ret
 
     for path in paths:
         print(encsync.encrypt_path(path, prefix)[0])

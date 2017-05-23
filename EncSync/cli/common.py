@@ -79,16 +79,18 @@ def prepare_remote_path(path, cwd="/"):
 def authenticate(config_path, master_password=None):
     if not os.path.exists(config_path):
         show_error("Error: file not found: %r" % config_path)
-        return
+        return None, 1
     elif os.path.isdir(config_path):
         show_error("Error: %r is a directory" % config_path)
-        return
+        return None, 1
 
     if master_password is None:
         master_password = global_vars.get("master_password", None)
 
     if master_password is None:
         master_password = ask_master_password()
+        if master_password is None:
+            return None, 130
 
     while True:
         key = hashlib.sha256(master_password.encode("utf8")).digest()
@@ -96,23 +98,23 @@ def authenticate(config_path, master_password=None):
         try:
             if EncSync.check_master_key(key, config_path):
                 global_vars["master_password_sha256"] = key
-                return master_password
+                return master_password, 0
             else:
                 show_error("Wrong master password. Try again")
         except FileNotFoundError:
             show_error("Error: file not found: %r" % config_path)
-            return
+            return None, 1
         except IsADirectoryError:
             show_error("Error: %r is a directory" % config_path)
-            return
+            return None, 1
         except DecryptionError as e:
             show_error("Error: failed to decrypt file %r: %s" % (config_path, e))
-            return
+            return None, 1
 
         master_password = ask_master_password()
 
         if master_password is None:
-            return
+            return None, 130
 
 def ask_master_password(msg="Master password: "):
     try:
@@ -123,15 +125,15 @@ def ask_master_password(msg="Master password: "):
 def make_encsync(config_path=None, master_password=None):
     encsync = global_vars.get("encsync", None)
     if encsync is not None:
-        return encsync
+        return encsync, 0
 
     if config_path is None:
         config_path = global_vars["config_path"]
 
-    master_password = authenticate(config_path, master_password)
+    master_password, ret = authenticate(config_path, master_password)
 
     if master_password is None:
-        return
+        return None, ret
 
     encsync = EncSync(master_password)
     try:
@@ -139,11 +141,11 @@ def make_encsync(config_path=None, master_password=None):
         encsync.set_config(config)
     except InvalidConfigError as e:
         show_error("Error: invalid configuration: %s" % e)
-        return
+        return None, 1
 
     global_vars["encsync"] = encsync
 
-    return encsync
+    return encsync, 0
 
 def show_info(msg, verbose=False):
     if (verbose and global_vars.get("verbose", False)) or not verbose:

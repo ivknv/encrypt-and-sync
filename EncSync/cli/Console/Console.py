@@ -143,10 +143,10 @@ class Console(object):
         return self.exit_code
 
 def run_console():
-    encsync = common.make_encsync()
+    encsync, ret = common.make_encsync()
 
     if encsync is None:
-        return 130
+        return ret
 
     readline.parse_and_bind("tab: complete")
     console = Console(encsync)

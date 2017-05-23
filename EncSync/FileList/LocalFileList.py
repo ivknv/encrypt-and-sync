@@ -84,7 +84,7 @@ class LocalFileList(FileList):
             self.conn.execute("""SELECT * FROM filelist
                                  WHERE path LIKE ? ESCAPE '\\'
                                        OR path=? OR path=? ORDER BY path ASC""",
-                              (path + "%", path_n, path))
+                              (path_n + "%", path_n, path))
 
             return (node_tuple_to_dict(i) for i in self.conn.genfetch())
 

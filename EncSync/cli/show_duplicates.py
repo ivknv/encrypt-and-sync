@@ -7,8 +7,6 @@ from ..FileList import DuplicateList
 global_vars = common.global_vars
 
 def show_duplicates(paths):
-    #encsync = common.make_encsync()
-
     duplist = DuplicateList()
     
     for path in paths:

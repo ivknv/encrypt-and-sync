@@ -26,8 +26,9 @@ def main(args):
     global_vars["config_path"] = ns.config
 
     if ns.scan or ns.show_diffs or ns.sync or ns.download or ns.console:
-        if not check_token():
-            return 1
+        ret = check_token()
+        if ret:
+            return ret
 
     if ns.scan is not None:
         return do_scan(ns.scan, ns.n_workers)

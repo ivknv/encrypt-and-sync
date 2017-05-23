@@ -14,10 +14,10 @@ global_vars = common.global_vars
 READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 
 def decrypt(paths):
-    encsync = common.make_encsync()
+    encsync, ret = common.make_encsync()
 
     if encsync is None:
-        return 130
+        return ret
 
     assert(len(paths) > 0)
 
@@ -50,10 +50,10 @@ def decrypt_config(in_path, out_path):
         show_error("Error: %r is a directory" % out_path)
         return 1
 
-    master_password = common.authenticate(in_path)
+    master_password, ret = common.authenticate(in_path)
 
     if master_password is None:
-        return 130
+        return ret
 
     key = hashlib.sha256(master_password.encode("utf8")).digest()
 
@@ -89,10 +89,10 @@ def decrypt_config(in_path, out_path):
     return 0
 
 def decrypt_filename(paths, prefix):
-    encsync = common.make_encsync()
+    encsync, ret = common.make_encsync()
 
     if encsync is None:
-        return 130
+        return ret
 
     for path in paths:
         print(encsync.decrypt_path(path, prefix)[0])
