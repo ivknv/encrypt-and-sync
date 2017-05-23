@@ -129,6 +129,9 @@ class RemoteFileList(FileList):
     def commit(self):
         self.conn.commit()
 
+    def seamless_commit(self):
+        self.conn.seamless_commit()
+
     def rollback(self):
         self.conn.rollback()
 
