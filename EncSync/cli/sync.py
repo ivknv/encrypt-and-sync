@@ -7,6 +7,7 @@ import sys
 import time
 
 from . import common
+from .common import show_error
 from .TargetDisplay import TargetDisplay
 
 from ..Synchronizer import Synchronizer
@@ -58,7 +59,7 @@ def do_sync(paths, n_workers):
             return ret
         except ValueError as e:
             curses.endwin()
-            print("Error: %s" %e, file=sys.stderr)
+            show_error("Error: %s" % e)
             return 1
     except Exception as e:
         curses.endwin()
@@ -86,7 +87,7 @@ def _do_sync(stdscr, paths, n_workers):
         local = os.path.realpath(os.path.expanduser(local))
         remote = common.prepare_remote_path(remote)
 
-        target = synchronizer.add_target(False, local, remote, None)
+        target = synchronizer.add_new_target(False, local, remote, None)
         target.skip_integrity_check = True
 
         target_display.targets.append(target)

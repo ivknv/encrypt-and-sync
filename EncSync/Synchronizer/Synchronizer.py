@@ -40,19 +40,19 @@ class Synchronizer(WorkerProxy):
     def setup_worker(self):
         self.worker = SynchronizerDispatcher(self)
 
-    def add_existing_target(self, target):
+    def add_target(self, target):
         with self.targets_lock:
             self.targets.append(target)
 
         return target
 
-    def add_target(self, enable_scan, local, remote, status="pending"):
+    def add_new_target(self, enable_scan, local, remote, status="pending"):
         target = SyncTarget(self, local, remote)
         target.enable_scan = enable_scan
 
         target.change_status(status)
 
-        self.add_existing_target(target)
+        self.add_target(target)
 
         return target
 
