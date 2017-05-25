@@ -3,7 +3,6 @@
 
 import curses
 import os
-import sys
 import time
 
 from . import common
@@ -92,7 +91,7 @@ def _do_sync(stdscr, paths, n_workers):
 
         target_display.targets.append(target)
 
-    target_display.start_getch()
+    getch_thread = target_display.start_getch()
 
     synchronizer.start()
 
@@ -102,5 +101,12 @@ def _do_sync(stdscr, paths, n_workers):
             time.sleep(0.3)
         except KeyboardInterrupt:
             pass
+
+    if getch_thread.is_alive():
+        target_display.stdscr.clear()
+        target_display.stdscr.addstr(0, 0, "Press enter to quit")
+        target_display.stdscr.refresh()
+
+    getch_thread.join()
 
     return 0

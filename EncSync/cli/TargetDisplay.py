@@ -8,7 +8,7 @@ from . import common
 
 class TargetDisplay(object):
     def __init__(self, stdscr=None, target_manager=None):
-        self.quit = self.force_quit = self.stop_getch = False
+        self.quit = self.force_quit = False
         self.cur_target_idx = 0
         self.stdscr = stdscr
         self.targets = []
@@ -72,11 +72,9 @@ class TargetDisplay(object):
 
             if k == ord("q"):
                 self.quit = True
-                self.stop_getch = True
         elif k == ord("Q"):
             self.quit = True
             self.force_quit = True
-            self.stop_getch = True
         else:
             return
 
@@ -88,7 +86,7 @@ class TargetDisplay(object):
 
     def getch_waiter(self):
         try:
-            while not self.stop_condition() and not self.stop_getch:
+            while not self.stop_condition():
                 k = self.stdscr.getch()
 
                 self.handle_key(k)

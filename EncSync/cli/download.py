@@ -87,7 +87,7 @@ def _download(stdscr, paths, n_workers):
 
     downloader.start()
 
-    target_display.start_getch()
+    getch_thread = target_display.start_getch()
 
     while not target_display.stop_condition():
         try:
@@ -95,5 +95,12 @@ def _download(stdscr, paths, n_workers):
             time.sleep(0.3)
         except KeyboardInterrupt:
             pass
+
+    if getch_thread.is_alive():
+        target_display.stdscr.clear()
+        target_display.stdscr.addstr(0, 0, "Press enter to quit")
+        target_display.stdscr.refresh()
+
+    getch_thread.join()
 
     return 0
