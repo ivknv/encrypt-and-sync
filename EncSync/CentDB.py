@@ -51,7 +51,7 @@ class Connection(object):
         cdb.inc_connection_count()
 
     def __enter__(self):
-        thread_id = threading.current_thread().ident
+        thread_id = threading.get_ident()
 
         if thread_id != self._with_thread_id:
             self._with_lock.acquire()
@@ -77,15 +77,16 @@ class Connection(object):
         if not self._closed:
             self.cdb.dec_connection_count()
 
-    def add_to_queue(self, *args, **kwargs):
-        thread_id = threading.current_thread().ident
+    @get_queue_result
+    def add_to_queue(self, func, args, kwargs):
+        thread_id = threading.get_ident()
 
         if self._using_with and thread_id == self._with_thread_id:
-            func = self.cdb._add_to_queue
+            f = self.cdb._add_to_queue
         else:
-            func = self.cdb.add_to_queue
+            f = self.cdb.add_to_queue
 
-        return func(self.conn, *args, **kwargs)
+        return f(self.conn, func, args, kwargs)
 
     def begin_transaction(self, transaction_type=None):
         if transaction_type is None:
@@ -105,10 +106,23 @@ class Connection(object):
             self.commit()
             self.begin_transaction("IMMEDIATE")
 
+    def embed(self, func, *args, **kwargs):
+        with self.conn:
+            return self.add_to_queue(self._embed, (func,) + args, kwargs)
+
+    def _embed(self, func, *args, **kwargs):
+        assert(not self.cdb._embedded_mode)
+
+        try:
+            self.cdb._embedded_mode = True
+
+            return func(*args, **kwargs)
+        finally:
+            self.cdb._embedded_mode = False
+
     def _execute(self, *args, **kwargs):
         self.cur.execute(*args, **kwargs)
 
-    @get_queue_result
     def execute(self, *args, **kwargs):
         return self.add_to_queue(self._execute, args, kwargs)
 
@@ -116,11 +130,9 @@ class Connection(object):
         self.conn.commit()
         self.last_commit = time.time()
 
-    @get_queue_result
     def commit(self):
         return self.add_to_queue(self._commit, tuple(), dict())
 
-    @get_queue_result
     def rollback(self):
         return self.add_to_queue(self.conn.rollback, tuple(), dict())
 
@@ -133,15 +145,12 @@ class Connection(object):
         self._closed = True
         self.cdb.dec_connection_count()
 
-    @get_queue_result
     def close(self):
         return self.add_to_queue(self._close, tuple(), dict())
 
-    @get_queue_result
     def fetchone(self):
         return self.add_to_queue(self.cur.fetchone, tuple(), dict())
 
-    @get_queue_result
     def fetchmany(self, size=DEFAULT_FETCH_SIZE):
         return self.add_to_queue(self.cur.fetchmany, (size,), {})
 
@@ -177,6 +186,8 @@ class CDB(object):
         self.queue_busy = threading.Event()
         self.queue_busy.set()
 
+        self._embedded_mode = False
+
     def inc_connection_count(self):
         with self.n_connections_lock:
             self.n_connections += 1
@@ -192,16 +203,20 @@ class CDB(object):
             return self._add_to_queue(conn, func, args, kwargs)
 
     def _add_to_queue(self, conn, func, args, kwargs):
+        r = DBResult({"conn": conn,
+                      "func": func,
+                      "args": args,
+                      "kwargs": kwargs,
+                      "event": threading.Event(),
+                      "result": None,
+                      "exception": None})
+        
+        if self._embedded_mode:
+            self.execute(r)
+            return r
+
         self.queue_busy.wait()
         with self.queue_pop_lock:
-            r = DBResult({"conn": conn,
-                          "func": func,
-                          "args": args,
-                          "kwargs": kwargs,
-                          "event": threading.Event(),
-                          "result": None,
-                          "exception": None})
-
             self.queue.append(r)
             self.dirty.set()
 
@@ -251,8 +266,10 @@ class CDB(object):
         if self.cur_conn is not conn and self.cur_conn is not None:
             assert(self.cur_conn.in_transaction)
             assert(not conn.in_transaction)
+
             self.secondary_queue.append(r)
             self.update_queue_busy()
+
             return
 
         self.cur_conn = conn

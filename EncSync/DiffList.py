@@ -116,6 +116,9 @@ class DiffList(object):
             return self.fetch_differences()
 
     def insert_differences(self, diffs):
+        self.conn.embed(self._insert_differences, diffs)
+
+    def _insert_differences(self, diffs):
         with self.conn:
             for i in diffs:
                 self.insert_difference(i)

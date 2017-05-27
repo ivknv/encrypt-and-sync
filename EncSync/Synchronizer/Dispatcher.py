@@ -98,19 +98,22 @@ class SynchronizerDispatcher(StagedWorker):
 
         difflist = DiffList(self.encsync)
 
-        with difflist:
-            diffs = FileComparator.compare_lists(self.encsync,
-                                                 self.cur_target.local,
-                                                 self.cur_target.remote)
-            try:
-                difflist.begin_transaction()
-                difflist.clear_differences(self.cur_target.local,
-                                           self.cur_target.remote)
-                difflist.insert_differences(diffs)
-                difflist.commit()
-            except Exception as e:
-                difflist.rollback()
-                raise e
+        logger.debug("Building differences")
+
+        diffs = FileComparator.compare_lists(self.encsync,
+                                             self.cur_target.local,
+                                             self.cur_target.remote)
+        try:
+            difflist.begin_transaction()
+            difflist.clear_differences(self.cur_target.local,
+                                       self.cur_target.remote)
+            difflist.insert_differences(diffs)
+            logger.debug("Done inserting differences")
+            difflist.commit()
+            logger.debug("Done commiting")
+        except Exception as e:
+            difflist.rollback()
+            raise e
 
         if self.cur_target.stage != "check":
             diff_count = difflist.get_difference_count(self.cur_target.local,
@@ -118,6 +121,8 @@ class SynchronizerDispatcher(StagedWorker):
             n_done = self.cur_target.get_n_done()
 
             self.cur_target.total_children = diff_count + n_done
+
+        logger.debug("Done building differences")
 
     def work(self):
         try:
@@ -161,6 +166,8 @@ class SynchronizerDispatcher(StagedWorker):
                     self.build_diffs_table()
                 elif target.stage not in {None, "scan", "check"}:
                     self.build_diffs_table()
+
+                logger.debug("Running stages: %s" % repr(stages))
 
                 for stage in stages:
                     if self.stopped:
@@ -329,6 +336,9 @@ class SynchronizerDispatcher(StagedWorker):
 
     def finalize_scan_stage(self):
         try:
+            if not self.cur_target.enable_scan:
+                return
+
             if self.cur_target.status != "pending" or self.stopped:
                 return
 
