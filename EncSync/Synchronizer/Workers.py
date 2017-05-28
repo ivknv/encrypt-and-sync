@@ -148,11 +148,11 @@ class UploadWorker(SynchronizerWorker):
 
             new_size = pad_size(os.path.getsize(local_path))
 
-            newnode = {"type": "f",
-                       "path": remote_path,
+            newnode = {"type":        "f",
+                       "path":        remote_path,
                        "padded_size": new_size,
-                       "modified": time.mktime(time.gmtime()),
-                       "IVs": IVs}
+                       "modified":    time.mktime(time.gmtime()),
+                       "IVs":         IVs}
 
             with self.llist, self.rlist:
                 self.rlist.insert_node(newnode)
