@@ -9,14 +9,14 @@ from .Parser import Parser, AST
 from .Tokenizer import Tokenizer
 from .. import common
 from ..common import show_error
+from ..Environment import Environment
 from . import commands
-
-global_vars = common.global_vars
 
 class Console(object):
     def __init__(self, encsync):
         self.cwd = "/"
         self.pwd = "/"
+        self.env = Environment()
         self.exit_code = 0
         self.quit = False
         self.commands = {"ls":         commands.cmd_ls,
@@ -142,13 +142,14 @@ class Console(object):
 
         return self.exit_code
 
-def run_console():
-    encsync, ret = common.make_encsync()
+def run_console(env):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
 
     readline.parse_and_bind("tab: complete")
     console = Console(encsync)
+    console.env.parent = env
 
     return console.input_loop()

@@ -3,18 +3,15 @@
 
 import hashlib
 import os
-import sys
 
 from .common import show_error
 from . import common
 from ..EncSync import EncSync, InvalidConfigError, WrongMasterKeyError
 
-global_vars = common.global_vars
-
 READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 
-def decrypt(paths):
-    encsync, ret = common.make_encsync()
+def decrypt(env, paths):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
@@ -26,7 +23,7 @@ def decrypt(paths):
     else:
         dest = paths.pop()
         if len(paths) > 2 and not os.path.isdir(dest):
-            print("Destination must be a directory", file=sys.stderr)
+            show_error("Error: destination must be a directory")
             return 1
 
     for path in paths:
@@ -45,12 +42,12 @@ def decrypt(paths):
 
     return 0
 
-def decrypt_config(in_path, out_path):
+def decrypt_config(env, in_path, out_path):
     if os.path.isdir(out_path):
         show_error("Error: %r is a directory" % out_path)
         return 1
 
-    master_password, ret = common.authenticate(in_path)
+    master_password, ret = common.authenticate(env, in_path)
 
     if master_password is None:
         return ret
@@ -88,8 +85,8 @@ def decrypt_config(in_path, out_path):
 
     return 0
 
-def decrypt_filename(paths, prefix):
-    encsync, ret = common.make_encsync()
+def decrypt_filename(env, paths, prefix):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret

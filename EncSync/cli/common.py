@@ -17,8 +17,6 @@ try:
 except AttributeError:
     JSONDecodeError = ValueError
 
-global_vars = {}
-
 def positive_int(arg):
     try:
         n = int(arg)
@@ -76,7 +74,7 @@ def recognize_path(path, default="local"):
 def prepare_remote_path(path, cwd="/"):
     return Paths.join(cwd, path)
 
-def authenticate(config_path, master_password=None):
+def authenticate(env, config_path, master_password=None):
     if not os.path.exists(config_path):
         show_error("Error: file not found: %r" % config_path)
         return None, 1
@@ -85,7 +83,7 @@ def authenticate(config_path, master_password=None):
         return None, 1
 
     if master_password is None:
-        master_password = global_vars.get("master_password", None)
+        master_password = env.get("master_password", None)
 
     if master_password is None:
         master_password = ask_master_password()
@@ -97,7 +95,7 @@ def authenticate(config_path, master_password=None):
 
         try:
             if EncSync.check_master_key(key, config_path):
-                global_vars["master_password_sha256"] = key
+                env["master_password_sha256"] = key
                 return master_password, 0
             else:
                 show_error("Wrong master password. Try again")
@@ -122,15 +120,15 @@ def ask_master_password(msg="Master password: "):
     except (KeyboardInterrupt, EOFError):
         return
 
-def make_encsync(config_path=None, master_password=None):
-    encsync = global_vars.get("encsync", None)
+def make_encsync(env, config_path=None, master_password=None):
+    encsync = env.get("encsync", None)
     if encsync is not None:
         return encsync, 0
 
     if config_path is None:
-        config_path = global_vars["config_path"]
+        config_path = env["config_path"]
 
-    master_password, ret = authenticate(config_path, master_password)
+    master_password, ret = authenticate(env, config_path, master_password)
 
     if master_password is None:
         return None, ret
@@ -143,13 +141,9 @@ def make_encsync(config_path=None, master_password=None):
         show_error("Error: invalid configuration: %s" % e)
         return None, 1
 
-    global_vars["encsync"] = encsync
+    env["encsync"] = encsync
 
     return encsync, 0
-
-def show_info(msg, verbose=False):
-    if (verbose and global_vars.get("verbose", False)) or not verbose:
-        print(msg)
 
 def show_error(msg):
     print(msg, file=sys.stderr)

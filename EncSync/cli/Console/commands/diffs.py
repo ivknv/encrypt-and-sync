@@ -4,6 +4,7 @@
 import argparse
 
 from ...show_diffs import show_diffs
+from ...Environment import Environment
 from ...common import recognize_path, local_path, non_local_path
 from .... import Paths
 
@@ -18,4 +19,6 @@ def cmd_diffs(console, args):
     ns.local = recognize_path(ns.local)[0]
     ns.remote = Paths.join_properly(console.cwd, recognize_path(ns.remote)[0])
 
-    return show_diffs(ns.local, ns.remote)
+    env = Environment(console.env)
+
+    return show_diffs(env, ns.local, ns.remote)

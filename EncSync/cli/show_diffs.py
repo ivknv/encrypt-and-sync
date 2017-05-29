@@ -6,13 +6,11 @@ import os
 from . import common
 from ..FileComparator import compare_lists
 
-global_vars = common.global_vars
-
 def print_diff(diff):
     print("{} {} {}".format(diff[0], diff[1], diff[2].path))
 
-def show_diffs(local, remote):
-    encsync, ret = common.make_encsync()
+def show_diffs(env, local, remote):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret

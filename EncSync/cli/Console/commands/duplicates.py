@@ -5,6 +5,7 @@ import argparse
 
 from ...show_duplicates import show_duplicates
 from ...common import recognize_path, non_local_path
+from ...Environment import Environment
 from .... import Paths
 
 def cmd_duplicates(console, args):
@@ -23,4 +24,6 @@ def cmd_duplicates(console, args):
 
         paths.append(path)
 
-    return show_duplicates(paths)
+    env = Environment(console.env)
+
+    return show_duplicates(env, paths)

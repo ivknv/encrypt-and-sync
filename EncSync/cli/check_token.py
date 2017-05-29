@@ -6,10 +6,8 @@ import sys
 from . import common
 from ..EncSync import EncSync, AUTH_URL
 
-global_vars = common.global_vars
-
-def check_token():
-    encsync, ret = common.make_encsync()
+def check_token(env):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
@@ -32,7 +30,7 @@ def check_token():
 
         encsync.set_token(token)
         config = encsync.make_config()
-        EncSync.store_config(config, global_vars["config_path"], encsync.master_key)
+        EncSync.store_config(config, env["config_path"], encsync.master_key)
 
         return 0
     except (KeyboardInterrupt, EOFError):

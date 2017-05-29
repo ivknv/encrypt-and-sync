@@ -11,8 +11,6 @@ from .TargetDisplay import TargetDisplay
 
 from . import common
 
-global_vars = common.global_vars
-
 class DownloadTargetDisplay(TargetDisplay):
     def __init__(self, *args, **kwargs):
         TargetDisplay.__init__(self, *args, **kwargs)
@@ -31,8 +29,8 @@ class DownloadTargetDisplay(TargetDisplay):
                 str(target.dec_remote),
                 str(target.local)]
 
-def download(paths, n_workers):
-    encsync, ret = common.make_encsync()
+def download(env, paths, n_workers):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
@@ -46,7 +44,7 @@ def download(paths, n_workers):
         curses.cbreak()
         stdscr.keypad(True)
         try:
-            ret = _download(stdscr, paths, n_workers)
+            ret = _download(env, stdscr, paths, n_workers)
             curses.endwin()
 
             return ret
@@ -58,8 +56,8 @@ def download(paths, n_workers):
         curses.endwin()
         raise e
 
-def _download(stdscr, paths, n_workers):
-    encsync = global_vars["encsync"]
+def _download(env, stdscr, paths, n_workers):
+    encsync = env["encsync"]
 
     downloader = Downloader(encsync, n_workers)
 

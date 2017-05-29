@@ -5,6 +5,7 @@ import argparse
 
 from ...scan import do_scan
 from ...common import positive_int, recognize_path
+from ...Environment import Environment
 from .... import Paths
 
 def cmd_scan(console, args):
@@ -25,4 +26,6 @@ def cmd_scan(console, args):
 
         paths.append(path)
 
-    return do_scan(paths, ns.n_workers)
+    env = Environment(console.env)
+
+    return do_scan(env, paths, ns.n_workers)

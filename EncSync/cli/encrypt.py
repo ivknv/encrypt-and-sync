@@ -8,14 +8,12 @@ from .common import show_error, ask_master_password
 from . import common
 from ..EncSync import EncSync, InvalidConfigError
 
-global_vars = common.global_vars
-
 READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 
-def encrypt(paths):
+def encrypt(env, paths):
     assert(len(paths) > 0)
 
-    encsync, ret = common.make_encsync()
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
@@ -58,7 +56,7 @@ def encrypt(paths):
 
     return 0
 
-def encrypt_config(in_path, out_path):
+def encrypt_config(env, in_path, out_path):
     try:
         config = EncSync.load_config(in_path, None, False)
 
@@ -102,8 +100,8 @@ def encrypt_config(in_path, out_path):
 
     return 0
 
-def encrypt_filename(paths, prefix):
-    encsync, ret = common.make_encsync()
+def encrypt_filename(env, paths, prefix):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret

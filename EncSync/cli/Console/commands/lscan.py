@@ -5,6 +5,7 @@ import argparse
 
 from ...scan import do_scan
 from ...common import positive_int
+from ...Environment import Environment
 
 def cmd_lscan(console, args):
     parser = argparse.ArgumentParser(description="Scan local directories",
@@ -14,4 +15,6 @@ def cmd_lscan(console, args):
 
     ns = parser.parse_args(args[1:])
 
-    return do_scan(["local://" + i for i in ns.dirs], ns.n_workers)
+    env = Environment(console.env)
+
+    return do_scan(env, ["local://" + i for i in ns.dirs], ns.n_workers)

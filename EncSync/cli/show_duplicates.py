@@ -4,9 +4,7 @@
 from . import common
 from ..FileList import DuplicateList
 
-global_vars = common.global_vars
-
-def show_duplicates(paths):
+def show_duplicates(env, paths):
     duplist = DuplicateList()
     
     for path in paths:

@@ -8,9 +8,8 @@ import os
 from ..Scanner import Scanner
 
 from . import common
+from .Environment import Environment
 from .TargetDisplay import TargetDisplay
-
-global_vars = common.global_vars
 
 class ScanTargetDisplay(TargetDisplay):
     def __init__(self, *args, **kwargs):
@@ -20,8 +19,8 @@ class ScanTargetDisplay(TargetDisplay):
     def get_target_columns(self, target, idx):
         return [str(idx + 1), target.path, target.type, str(target.status)]
 
-def do_scan(paths, n_workers):
-    encsync, ret = common.make_encsync()
+def do_scan(env, paths, n_workers):
+    encsync, ret = common.make_encsync(env)
     if encsync is None:
         return ret
 
@@ -33,12 +32,12 @@ def do_scan(paths, n_workers):
         curses.noecho()
         curses.cbreak()
         stdscr.keypad(True)
-        return _do_scan(stdscr, paths, n_workers)
+        return _do_scan(env, stdscr, paths, n_workers)
     finally:
         curses.endwin()
 
-def _do_scan(stdscr, paths, n_workers):
-    scanner = Scanner(global_vars["encsync"], n_workers)
+def _do_scan(env, stdscr, paths, n_workers):
+    scanner = Scanner(env["encsync"], n_workers)
 
     target_display = ScanTargetDisplay(stdscr, scanner)
     target_display.manager_name = "Scanner"

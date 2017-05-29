@@ -6,6 +6,7 @@ import argparse
 from .... import Paths
 from ...download import download
 from ...common import positive_int
+from ...Environment import Environment
 
 def cmd_download(console, args):
     parser = argparse.ArgumentParser(description="Download file from Yandex Disk",
@@ -21,4 +22,6 @@ def cmd_download(console, args):
     else:
         paths = [Paths.join_properly(console.cwd, ns.paths[0])]
 
-    return download(paths, ns.n_workers)
+    env = Environment(console.env)
+
+    return download(env, paths, ns.n_workers)

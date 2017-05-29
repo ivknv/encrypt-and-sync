@@ -7,7 +7,7 @@ import os
 from .common import ask_master_password, show_error
 from ..EncSync import EncSync
 
-def make_config(path):
+def make_config(env, path):
     if os.path.isdir(path):
         show_error("Error: %r is a directory" % path)
         return 1

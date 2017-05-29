@@ -5,6 +5,7 @@ import argparse
 
 from ...scan import do_scan
 from ...common import positive_int
+from ...Environment import Environment
 from .... import Paths
 
 def cmd_rscan(console, args):
@@ -17,4 +18,6 @@ def cmd_rscan(console, args):
 
     paths = ["disk://" + Paths.join_properly(console.cwd, i) for i in ns.dirs]
 
-    return do_scan(paths, ns.n_workers)
+    env = Environment(console.env)
+
+    return do_scan(env, paths, ns.n_workers)

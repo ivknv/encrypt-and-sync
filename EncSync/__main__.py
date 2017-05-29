@@ -4,7 +4,7 @@
 import sys
 import argparse
 
-from .cli import common
+from .cli.Environment import Environment
 from .cli.scan import do_scan
 from .cli.show_diffs import show_diffs
 from .cli.sync import do_sync
@@ -16,36 +16,36 @@ from .cli.show_duplicates import show_duplicates
 from .cli.make_config import make_config
 from .cli.Console import run_console
 
-global_vars = common.global_vars
-
 def main(args):
     ns = parse_args(args)
 
-    global_vars["verbose"] = ns.verbose
-    global_vars["master_password"] = ns.master_password
-    global_vars["config_path"] = ns.config
+    env = Environment()
+
+    env["verbose"] = ns.verbose
+    env["master_password"] = ns.master_password
+    env["config_path"] = ns.config
 
     if ns.scan or ns.show_diffs or ns.sync or ns.download or ns.console:
-        ret = check_token()
+        ret = check_token(env)
         if ret:
             return ret
 
     if ns.scan is not None:
-        return do_scan(ns.scan, ns.n_workers)
+        return do_scan(env, ns.scan, ns.n_workers)
     elif ns.show_diffs is not None:
-        return show_diffs(*ns.show_diffs[:2])
+        return show_diffs(env, *ns.show_diffs[:2])
     elif ns.sync is not None:
-        return do_sync(ns.sync, ns.n_workers)
+        return do_sync(env, ns.sync, ns.n_workers)
     elif ns.download is not None:
-        return download(ns.download, ns.n_workers)
+        return download(env, ns.download, ns.n_workers)
     elif ns.encrypt is not None:
-        return encrypt(ns.encrypt)
+        return encrypt(env, ns.encrypt)
     elif ns.decrypt is not None:
-        return decrypt(ns.decrypt)
+        return decrypt(env, ns.decrypt)
     elif ns.encrypt_filename is not None:
-        return encrypt_filename(ns.encrypt_filename, ns.prefix or "/")
+        return encrypt_filename(env, ns.encrypt_filename, ns.prefix or "/")
     elif ns.decrypt_filename is not None:
-        return decrypt_filename(ns.decrypt_filename, ns.prefix or "/")
+        return decrypt_filename(env, ns.decrypt_filename, ns.prefix or "/")
     elif ns.encrypt_config is not None:
         in_path = ns.encrypt_config[0]
         try:
@@ -53,7 +53,7 @@ def main(args):
         except IndexError:
             out_path = in_path
 
-        return encrypt_config(in_path, out_path)
+        return encrypt_config(env, in_path, out_path)
     elif ns.decrypt_config is not None:
         in_path = ns.decrypt_config[0]
         try:
@@ -61,13 +61,13 @@ def main(args):
         except IndexError:
             out_path = in_path
 
-        return decrypt_config(in_path, out_path)
+        return decrypt_config(env, in_path, out_path)
     elif ns.show_duplicates is not None:
-        return show_duplicates(ns.show_duplicates)
+        return show_duplicates(env, ns.show_duplicates)
     elif ns.console:
-        return run_console()
+        return run_console(env)
     elif ns.make_config:
-        return make_config(ns.make_config)
+        return make_config(env, ns.make_config)
 
 def positive_int(arg):
     try:

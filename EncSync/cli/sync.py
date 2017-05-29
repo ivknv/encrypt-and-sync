@@ -11,8 +11,6 @@ from .TargetDisplay import TargetDisplay
 
 from ..Synchronizer import Synchronizer
 
-global_vars = common.global_vars
-
 class SyncTargetDisplay(TargetDisplay):
     def __init__(self, *args, **kwargs):
         TargetDisplay.__init__(self, *args, **kwargs)
@@ -34,8 +32,8 @@ class SyncTargetDisplay(TargetDisplay):
                 str(target.status), stage,
                 target.local, target.remote]
 
-def do_sync(paths, n_workers):
-    encsync, ret = common.make_encsync()
+def do_sync(env, paths, n_workers):
+    encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
@@ -52,7 +50,7 @@ def do_sync(paths, n_workers):
         stdscr.keypad(True)
 
         try:
-            ret = _do_sync(stdscr, paths, n_workers)
+            ret = _do_sync(env, stdscr, paths, n_workers)
             curses.endwin()
 
             return ret
@@ -64,8 +62,8 @@ def do_sync(paths, n_workers):
         curses.endwin()
         raise e
 
-def _do_sync(stdscr, paths, n_workers):
-    synchronizer = Synchronizer(global_vars["encsync"], n_workers)
+def _do_sync(env, stdscr, paths, n_workers):
+    synchronizer = Synchronizer(env["encsync"], n_workers)
 
     target_display = SyncTargetDisplay(stdscr, synchronizer)
     target_display.manager_name = "Synchronizer"

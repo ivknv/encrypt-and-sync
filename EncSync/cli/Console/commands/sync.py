@@ -5,6 +5,7 @@ import argparse
 
 from ...sync import do_sync
 from ...common import positive_int, recognize_path
+from ...Environment import Environment
 from .... import Paths
 
 def cmd_sync(console, args):
@@ -25,4 +26,6 @@ def cmd_sync(console, args):
 
         paths.append(path)
 
-    return do_sync(paths, ns.n_workers)
+    env = Environment(console.env)
+
+    return do_sync(env, paths, ns.n_workers)
