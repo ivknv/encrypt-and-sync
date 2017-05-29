@@ -17,7 +17,10 @@ RETRY_CODES = {500, 503}
 
 DEFAULT_MAX_RETRIES = 10
 DEFAULT_GET_META_LIMIT = 5000
-DEFAULT_TIMEOUT = 15.0 # Seconds
+DEFAULT_CONNECT_TIMEOUT = 10.0
+DEFAULT_READ_TIMEOUT = 15.0
+DEFAULT_UPLOAD_TIMEOUT = (DEFAULT_CONNECT_TIMEOUT, 30.0)
+DEFAULT_TIMEOUT = (DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT)
 
 class YndApi(object):
     def __init__(self, appId="", token="", secret=""):
@@ -213,7 +216,7 @@ class YndApi(object):
 
     def upload(self, in_file, out_path,
                max_retries=DEFAULT_MAX_RETRIES,
-               timeout=DEFAULT_TIMEOUT, **kwargs):
+               timeout=DEFAULT_UPLOAD_TIMEOUT, **kwargs):
         res = self.get_upload_link(out_path, max_retries, timeout, **kwargs)
 
         if not res["success"]:
