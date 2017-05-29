@@ -125,7 +125,10 @@ class UploadWorker(SynchronizerWorker):
         logger.debug("Uploading file to {}".format(remote_path))
 
         try:
-            if not os.path.exists(local_path):
+            try:
+                new_size = pad_size(os.path.getsize(local_path))
+            except FileNotFoundError:
+                logger.debug("Removing %r since it doesn't exist" % local_path)
                 self.llist.remove_node(local_path)
                 self.autocommit()
 
@@ -145,10 +148,11 @@ class UploadWorker(SynchronizerWorker):
                     logger.debug("Upload was interrupted")
                     return
 
+            logger.debug("Updating local size")
+            self.llist.update_size(local_path, new_size)
+
             if task.status != "pending":
                 return
-
-            new_size = pad_size(os.path.getsize(local_path))
 
             newnode = {"type":        "f",
                        "path":        remote_path,
@@ -156,10 +160,9 @@ class UploadWorker(SynchronizerWorker):
                        "modified":    time.mktime(time.gmtime()),
                        "IVs":         IVs}
 
-            logger.debug("Inserting node & updating local size")
+            logger.debug("Inserting node")
 
             self.rlist.insert_node(newnode)
-            self.llist.update_size(local_path, new_size)
             self.autocommit()
 
             task.change_status("finished")
