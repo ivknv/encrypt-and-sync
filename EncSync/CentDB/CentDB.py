@@ -6,6 +6,8 @@ import threading
 import os
 import time
 
+from .Logging import logger
+
 DEFAULT_FETCH_SIZE = 1000
 
 class DBResult(dict):
@@ -96,11 +98,16 @@ class Connection(object):
 
         assert(transaction_type.lower() in allowed_types)
 
+        logger.debug("Beginning %r transaction" % transaction_type)
+
         return self.execute("BEGIN {} TRANSACTION".format(transaction_type))
 
     def seamless_commit(self):
+        logger.debug("Attempting seamless commit")
+
         with self:
             if not self.conn.in_transaction:
+                logger.debug("Seamless commit attempt failed: no active transactions")
                 return
 
             self.commit()
@@ -131,9 +138,13 @@ class Connection(object):
         self.last_commit = time.time()
 
     def commit(self):
+        logger.debug("Doing commit")
+
         return self.add_to_queue(self._commit, tuple(), dict())
 
     def rollback(self):
+        logger.debug("Doing rollback")
+
         return self.add_to_queue(self.conn.rollback, tuple(), dict())
 
     def _close(self):
@@ -183,8 +194,8 @@ class CDB(object):
 
         self.queue_limit = 50
 
-        self.queue_busy = threading.Event()
-        self.queue_busy.set()
+        self.queue_free = threading.Event()
+        self.queue_free.set()
 
         self._embedded_mode = False
 
@@ -215,7 +226,7 @@ class CDB(object):
             self.execute(r)
             return r
 
-        self.queue_busy.wait()
+        self.queue_free.wait()
         with self.queue_pop_lock:
             self.queue.append(r)
             self.dirty.set()
@@ -226,9 +237,15 @@ class CDB(object):
 
     def update_queue_busy(self):
         if len(self.queue) + len(self.secondary_queue) > self.queue_limit:
-            self.queue_busy.clear()
+            if self.queue_free.is_set():
+                logger.debug("Queue is busy")
+
+            self.queue_free.clear() 
         else:
-            self.queue_busy.set()
+            if not self.queue_free.is_set():
+                logger.debug("Queue is free")
+
+            self.queue_free.set()
 
     def merge_queues(self):
         with self.queue_pop_lock:
@@ -266,6 +283,9 @@ class CDB(object):
         if self.cur_conn is not conn and self.cur_conn is not None:
             assert(self.cur_conn.in_transaction)
             assert(not conn.in_transaction)
+
+            if self._embedded_mode:
+                logger.error("Potential deadlock in embedded mode")
 
             self.secondary_queue.append(r)
             self.update_queue_busy()

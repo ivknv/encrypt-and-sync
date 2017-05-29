@@ -40,6 +40,8 @@ class SynchronizerWorker(Worker):
         pass
 
     def get_IVs(self):
+        logger.debug("Getting IVs")
+
         remote_path = self.path.remote
         remote_prefix = self.path.remote_prefix
         path = self.path.path
@@ -154,10 +156,11 @@ class UploadWorker(SynchronizerWorker):
                        "modified":    time.mktime(time.gmtime()),
                        "IVs":         IVs}
 
-            with self.llist, self.rlist:
-                self.rlist.insert_node(newnode)
-                self.llist.update_size(local_path, new_size)
-                self.autocommit()
+            logger.debug("Inserting node & updating local size")
+
+            self.rlist.insert_node(newnode)
+            self.llist.update_size(local_path, new_size)
+            self.autocommit()
 
             task.change_status("finished")
         except:
