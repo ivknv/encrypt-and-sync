@@ -86,7 +86,7 @@ def parse_args(args):
     parser.add_argument("--master-password", default=None)
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     parser.add_argument("--silent", action="store_true", default=False)
-    parser.add_argument("--n-workers", type=positive_int, default=1)
+    parser.add_argument("--n-workers", "-w", type=positive_int, default=1)
     parser.add_argument("-s", "--scan", default=None, nargs="+")
     parser.add_argument("-d", "--show-diffs", default=None, nargs=2)
     parser.add_argument("-S", "--sync", default=None, nargs=2)
