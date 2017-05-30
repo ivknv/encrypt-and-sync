@@ -16,58 +16,47 @@ from .cli.show_duplicates import show_duplicates
 from .cli.make_config import make_config
 from .cli.Console import run_console
 
+def any_in(keys, container):
+    for key in keys:
+        if key in container:
+            return True
+
+    return False
+
 def main(args):
     ns = parse_args(args)
 
     env = Environment()
 
-    env["verbose"] = ns.verbose
     env["master_password"] = ns.master_password
     env["config_path"] = ns.config
 
-    if ns.scan or ns.show_diffs or ns.sync or ns.download or ns.console:
+    actions = (("scan", lambda: do_scan(env, ns.scan, ns.n_workers)),
+               ("sync", lambda: do_sync(env, ns.sync, ns.n_workers)),
+               ("show_diffs", lambda: show_diffs(env, *ns.show_diffs[:2])),
+               ("download", lambda: download(env, ns.download, ns.n_workers)),
+               ("encrypt", lambda: encrypt(env, ns.encrypt)),
+               ("encrypt_filename", lambda: encrypt_filename(env,
+                                                             ns.encrypt_filename,
+                                                             ns.prefix or "/")),
+               ("encrypt_config", lambda: encrypt_config(env, *ns.encrypt_config[:2])),
+               ("decrypt", lambda: decrypt(env, ns.decrypt)),
+               ("decrypt_filename", lambda: decrypt_filename(env,
+                                                             ns.decrypt_filename,
+                                                             ns.prefix or "/")),
+               ("decrypt_config", lambda: decrypt_config(env, *ns.decrypt_config[:2])),
+               ("show_duplicates", lambda: show_duplicates(env, ns.show_duplicates)),
+               ("console", lambda: run_console(env)),
+               ("make_config", lambda: make_config(env, ns.make_config)))
+
+    if any_in(("scan", "sync", "download", "show_diffs", "console"), ns):
         ret = check_token(env)
         if ret:
             return ret
 
-    if ns.scan is not None:
-        return do_scan(env, ns.scan, ns.n_workers)
-    elif ns.show_diffs is not None:
-        return show_diffs(env, *ns.show_diffs[:2])
-    elif ns.sync is not None:
-        return do_sync(env, ns.sync, ns.n_workers)
-    elif ns.download is not None:
-        return download(env, ns.download, ns.n_workers)
-    elif ns.encrypt is not None:
-        return encrypt(env, ns.encrypt)
-    elif ns.decrypt is not None:
-        return decrypt(env, ns.decrypt)
-    elif ns.encrypt_filename is not None:
-        return encrypt_filename(env, ns.encrypt_filename, ns.prefix or "/")
-    elif ns.decrypt_filename is not None:
-        return decrypt_filename(env, ns.decrypt_filename, ns.prefix or "/")
-    elif ns.encrypt_config is not None:
-        in_path = ns.encrypt_config[0]
-        try:
-            out_path = ns.encrypt_config[1]
-        except IndexError:
-            out_path = in_path
-
-        return encrypt_config(env, in_path, out_path)
-    elif ns.decrypt_config is not None:
-        in_path = ns.decrypt_config[0]
-        try:
-            out_path = ns.decrypt_config[1]
-        except IndexError:
-            out_path = in_path
-
-        return decrypt_config(env, in_path, out_path)
-    elif ns.show_duplicates is not None:
-        return show_duplicates(env, ns.show_duplicates)
-    elif ns.console:
-        return run_console(env)
-    elif ns.make_config:
-        return make_config(env, ns.make_config)
+    for key, func in actions:
+        if getattr(ns, key) is not None:
+            return func()
 
 def positive_int(arg):
     try:
@@ -82,27 +71,28 @@ def positive_int(arg):
 def parse_args(args):
     parser = argparse.ArgumentParser(description="Synchronizes encrypted files",
                                      prog=args[0])
-    parser.add_argument("--config", metavar="PATH", default="config.json")
+
     parser.add_argument("--master-password", default=None)
-    parser.add_argument("-v", "--verbose", action="store_true", default=False)
-    parser.add_argument("--silent", action="store_true", default=False)
-    parser.add_argument("--n-workers", "-w", type=positive_int, default=1)
-    parser.add_argument("-s", "--scan", default=None, nargs="+")
-    parser.add_argument("-d", "--show-diffs", default=None, nargs=2)
-    parser.add_argument("-S", "--sync", default=None, nargs=2)
-    parser.add_argument("-D", "--download", default=None, nargs="+")
-    parser.add_argument("--local-prefix", default=None)
-    parser.add_argument("--remote-prefix", default=None)
     parser.add_argument("--prefix", default=None)
-    parser.add_argument("--encrypt", default=None, nargs="+")
-    parser.add_argument("--decrypt", default=None, nargs="+")
-    parser.add_argument("--encrypt-filename", default=None, nargs="+")
-    parser.add_argument("--decrypt-filename", default=None, nargs="+")
-    parser.add_argument("--encrypt-config", default=None, nargs="+")
-    parser.add_argument("--decrypt-config", default=None, nargs="+")
-    parser.add_argument("--show-duplicates", default=None, nargs="+")
-    parser.add_argument("--console", default=False, action="store_true")
-    parser.add_argument("--make-config", default=None)
+
+    config_group = parser.add_argument_group("config")
+    config_group.add_argument("--config", metavar="PATH", default="config.json")
+    config_group.add_argument("--n-workers", "-w", type=positive_int, default=1)
+
+    actions_group = parser.add_mutually_exclusive_group()
+    actions_group.add_argument("-s", "--scan", nargs="+")
+    actions_group.add_argument("-d", "--show-diffs", nargs=2)
+    actions_group.add_argument("-S", "--sync", nargs="+")
+    actions_group.add_argument("-D", "--download", nargs="+")
+    actions_group.add_argument("--encrypt", nargs="+")
+    actions_group.add_argument("--decrypt", nargs="+")
+    actions_group.add_argument("--encrypt-filename", nargs="+")
+    actions_group.add_argument("--decrypt-filename", nargs="+")
+    actions_group.add_argument("--encrypt-config", nargs="+")
+    actions_group.add_argument("--decrypt-config", nargs="+")
+    actions_group.add_argument("--show-duplicates", nargs="+")
+    actions_group.add_argument("--console", action="store_true")
+    actions_group.add_argument("--make-config")
 
     return parser.parse_args(args[1:])
 

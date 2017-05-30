@@ -56,7 +56,14 @@ def encrypt(env, paths):
 
     return 0
 
-def encrypt_config(env, in_path, out_path):
+def encrypt_config(env, in_path, out_path=None):
+    if out_path is None:
+        out_path = in_path
+
+    if os.path.isdir(out_path):
+        show_error("Error: %r is a directory" % out_path)
+        return 1
+
     try:
         config = EncSync.load_config(in_path, None, False)
 

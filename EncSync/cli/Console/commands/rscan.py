@@ -12,7 +12,7 @@ def cmd_rscan(console, args):
     parser = argparse.ArgumentParser(description="Scan remote directories",
                                      prog=args[0])
     parser.add_argument("dirs", nargs="+")
-    parser.add_argument("--n-workers", default=1, type=positive_int)
+    parser.add_argument("--n-workers", "-w", default=1, type=positive_int)
 
     ns = parser.parse_args(args[1:])
 

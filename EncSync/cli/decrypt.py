@@ -42,7 +42,10 @@ def decrypt(env, paths):
 
     return 0
 
-def decrypt_config(env, in_path, out_path):
+def decrypt_config(env, in_path, out_path=None):
+    if out_path is None:
+        out_path = in_path
+
     if os.path.isdir(out_path):
         show_error("Error: %r is a directory" % out_path)
         return 1
