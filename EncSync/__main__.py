@@ -16,9 +16,9 @@ from .cli.show_duplicates import show_duplicates
 from .cli.make_config import make_config
 from .cli.Console import run_console
 
-def any_in(keys, container):
+def any_not_none(keys, container):
     for key in keys:
-        if key in container:
+        if getattr(container, key) is not None:
             return True
 
     return False
@@ -49,7 +49,7 @@ def main(args):
                ("console", lambda: run_console(env)),
                ("make_config", lambda: make_config(env, ns.make_config)))
 
-    if any_in(("scan", "sync", "download", "show_diffs", "console"), ns):
+    if any_not_none(("scan", "sync", "download", "show_diffs", "console"), ns):
         ret = check_token(env)
         if ret:
             return ret
@@ -91,7 +91,7 @@ def parse_args(args):
     actions_group.add_argument("--encrypt-config", nargs="+")
     actions_group.add_argument("--decrypt-config", nargs="+")
     actions_group.add_argument("--show-duplicates", nargs="+")
-    actions_group.add_argument("--console", action="store_true")
+    actions_group.add_argument("--console", default=None, action="store_true")
     actions_group.add_argument("--make-config")
 
     return parser.parse_args(args[1:])
