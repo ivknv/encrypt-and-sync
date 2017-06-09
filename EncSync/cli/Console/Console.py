@@ -96,6 +96,19 @@ class Console(object):
             show_error("Error: %s" % e)
             return 1
 
+    def execute(self, s):
+        parser = Parser()
+        tokenizer = Tokenizer()
+
+        parser.tokens = tokenizer.parse_string(s)
+        tokenizer.end(parser.tokens)
+
+        ast = parser.parse()
+
+        self.exit_code = self.execute_commands(ast)
+
+        return self.exit_code
+
     def input_loop(self):
         parser = Parser()
         tokenizer = Tokenizer()

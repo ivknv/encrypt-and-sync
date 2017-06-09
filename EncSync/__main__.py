@@ -15,6 +15,7 @@ from .cli.decrypt import decrypt, decrypt_config, decrypt_filename
 from .cli.show_duplicates import show_duplicates
 from .cli.make_config import make_config
 from .cli.Console import run_console
+from .cli.execute import execute, execute_script
 
 def any_not_none(keys, container):
     for key in keys:
@@ -47,7 +48,9 @@ def main(args):
                ("decrypt_config", lambda: decrypt_config(env, *ns.decrypt_config[:2])),
                ("show_duplicates", lambda: show_duplicates(env, ns.show_duplicates)),
                ("console", lambda: run_console(env)),
-               ("make_config", lambda: make_config(env, ns.make_config)))
+               ("make_config", lambda: make_config(env, ns.make_config)),
+               ("execute", lambda: execute(env, ns.execute)),
+               ("execute_script", lambda: execute_script(env, ns.execute_script)))
 
     if any_not_none(("scan", "sync", "download", "show_diffs", "console"), ns):
         ret = check_token(env)
@@ -93,6 +96,8 @@ def parse_args(args):
     actions_group.add_argument("--show-duplicates", nargs="+")
     actions_group.add_argument("--console", default=None, action="store_true")
     actions_group.add_argument("--make-config")
+    actions_group.add_argument("-e", "--execute")
+    actions_group.add_argument("-E", "--execute-script")
 
     return parser.parse_args(args[1:])
 
