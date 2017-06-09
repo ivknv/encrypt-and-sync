@@ -148,6 +148,19 @@ def make_encsync(env, config_path=None, master_password=None):
 def show_error(msg):
     print(msg, file=sys.stderr)
 
+def display_str(y, x, stdscr, s, color=None):
+    w = stdscr.getmaxyx()[1]
+
+    if x + len(s) > w:
+        d = x + len(s) - w
+        s = s[:-d]
+        s = s[:-1] + "$"
+
+    if color:
+        stdscr.addstr(y, x, s, color)
+    else:
+        stdscr.addstr(y, x, s)
+
 def display_table(y, x, stdscr, header, rows, colors=tuple()):
     paddings = [1] * len(header)
     paddings[0] = 0
@@ -174,15 +187,15 @@ def display_table(y, x, stdscr, header, rows, colors=tuple()):
             color_pair = None
 
         if color_pair is not None:
-            stdscr.addstr(y + i, x, " " * max_width, color_pair)
+            display_str(y + i, x, stdscr, " " * max_width, color_pair)
 
         for col, pad_len in zip(row, paddings):
             offset += pad_len
 
             if color_pair is not None:
-                stdscr.addstr(y + i, x + offset, col, color_pair)
+                display_str(y + i, x + offset, stdscr, col, color_pair)
             else:
-                stdscr.addstr(y + i, x + offset, col)
+                display_str(y + i, x + offset, stdscr, col)
 
     height = len(rows) + 1
 
