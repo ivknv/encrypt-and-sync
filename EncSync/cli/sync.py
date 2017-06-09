@@ -7,7 +7,7 @@ import time
 
 from . import common
 from .common import show_error
-from .TargetDisplay import TargetDisplay
+from .Elements import TargetDisplay
 
 from ..Synchronizer import Synchronizer
 
@@ -15,7 +15,10 @@ class SyncTargetDisplay(TargetDisplay):
     def __init__(self, *args, **kwargs):
         TargetDisplay.__init__(self, *args, **kwargs)
 
-        self.target_columns = ["No.", "Progress", "Status", "Stage", "Local", "Remote"]
+        self.manager_name = "Synchronizer"
+
+        self.target_list.columns = ["No.", "Progress", "Status", "Stage", "Local", "Remote"]
+        self.target_list.get_target_columns = self.get_target_columns
 
     def get_target_columns(self, target, idx):
         try:
@@ -65,8 +68,7 @@ def do_sync(env, paths, n_workers):
 def _do_sync(env, stdscr, paths, n_workers):
     synchronizer = Synchronizer(env["encsync"], n_workers)
 
-    target_display = SyncTargetDisplay(stdscr, synchronizer)
-    target_display.manager_name = "Synchronizer"
+    target_display = SyncTargetDisplay(synchronizer)
     target_display.highlight_pair = curses.color_pair(1)
 
     for path1, path2 in zip(paths[::2], paths[1::2]):
@@ -89,21 +91,21 @@ def _do_sync(env, stdscr, paths, n_workers):
 
         target_display.targets.append(target)
 
-    getch_thread = target_display.start_getch()
+    getch_thread = target_display.start_getch(stdscr)
 
     synchronizer.start()
 
     while not target_display.stop_condition():
         try:
-            target_display.update_screen()
+            target_display.update_screen(stdscr)
             time.sleep(0.3)
         except KeyboardInterrupt:
             pass
 
     if getch_thread.is_alive():
-        target_display.stdscr.clear()
-        target_display.stdscr.addstr(0, 0, "Press enter to quit")
-        target_display.stdscr.refresh()
+        stdscr.clear()
+        stdscr.addstr(0, 0, "Press enter to quit")
+        stdscr.refresh()
 
     getch_thread.join()
 

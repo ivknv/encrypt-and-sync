@@ -7,14 +7,17 @@ import time
 
 from ..Downloader import Downloader
 
-from .TargetDisplay import TargetDisplay
+from .Elements import TargetDisplay
 
 from . import common
 
 class DownloadTargetDisplay(TargetDisplay):
     def __init__(self, *args, **kwargs):
         TargetDisplay.__init__(self, *args, **kwargs)
-        self.target_columns = ["No.", "Progress", "Status", "Source", "Destination"]
+        self.target_list.columns = ["No.", "Progress", "Status", "Source", "Destination"]
+        self.target_list.get_target_columns = self.get_target_columns
+
+        self.manager_name = "Downloader"
 
     def get_target_columns(self, target, idx):
         try:
@@ -61,9 +64,8 @@ def _download(env, stdscr, paths, n_workers):
 
     downloader = Downloader(encsync, n_workers)
 
-    target_display = DownloadTargetDisplay(stdscr, downloader)
+    target_display = DownloadTargetDisplay(downloader)
     target_display.highlight_pair = curses.color_pair(1)
-    target_display.manager_name = "Downloader"
 
     if len(paths) == 1:
         local = os.getcwd()
@@ -85,19 +87,19 @@ def _download(env, stdscr, paths, n_workers):
 
     downloader.start()
 
-    getch_thread = target_display.start_getch()
+    getch_thread = target_display.start_getch(stdscr)
 
     while not target_display.stop_condition():
         try:
-            target_display.update_screen()
+            target_display.update_screen(stdscr)
             time.sleep(0.3)
         except KeyboardInterrupt:
             pass
 
     if getch_thread.is_alive():
-        target_display.stdscr.clear()
-        target_display.stdscr.addstr(0, 0, "Press enter to quit")
-        target_display.stdscr.refresh()
+        stdscr.clear()
+        stdscr.addstr(0, 0, "Press enter to quit")
+        stdscr.refresh()
 
     getch_thread.join()
 

@@ -8,13 +8,14 @@ import os
 from ..Scanner import Scanner
 
 from . import common
-from .Environment import Environment
-from .TargetDisplay import TargetDisplay
+from .Elements import TargetDisplay
 
 class ScanTargetDisplay(TargetDisplay):
     def __init__(self, *args, **kwargs):
         TargetDisplay.__init__(self, *args, **kwargs)
-        self.target_columns = ["No.", "Path", "Type", "Status"]
+        self.target_list.columns = ["No.", "Path", "Type", "Status"]
+        self.target_list.get_target_columns = self.get_target_columns
+        self.manager_name = "Scanner"
 
     def get_target_columns(self, target, idx):
         return [str(idx + 1), target.path, target.type, str(target.status)]
@@ -39,8 +40,7 @@ def do_scan(env, paths, n_workers):
 def _do_scan(env, stdscr, paths, n_workers):
     scanner = Scanner(env["encsync"], n_workers)
 
-    target_display = ScanTargetDisplay(stdscr, scanner)
-    target_display.manager_name = "Scanner"
+    target_display = ScanTargetDisplay(scanner)
     target_display.highlight_pair = curses.color_pair(1)
 
     for path in paths:
@@ -54,19 +54,19 @@ def _do_scan(env, stdscr, paths, n_workers):
 
     scanner.start()
 
-    getch_thread = target_display.start_getch()
+    getch_thread = target_display.start_getch(stdscr)
 
     while not target_display.stop_condition():
         try:
-            target_display.update_screen()
+            target_display.update_screen(stdscr)
             time.sleep(0.3)
         except KeyboardInterrupt:
             pass
 
     if getch_thread.is_alive():
-        target_display.stdscr.clear()
-        target_display.stdscr.addstr(0, 0, "Press enter to quit")
-        target_display.stdscr.refresh()
+        stdscr.clear()
+        stdscr.addstr(0, 0, "Press enter to quit")
+        stdscr.refresh()
 
     getch_thread.join()
 
