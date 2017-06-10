@@ -1,36 +1,126 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import curses
 import os
 import time
 
 from ..Downloader import Downloader
-
-from .Elements import TargetDisplay
+from ..Event.EventHandler import EventHandler
 
 from . import common
+from .common import show_error, get_progress_str, make_size_readable
 
-class DownloadTargetDisplay(TargetDisplay):
-    def __init__(self, *args, **kwargs):
-        TargetDisplay.__init__(self, *args, **kwargs)
-        self.target_list.columns = ["No.", "Progress", "Status", "Source", "Destination"]
-        self.target_list.get_target_columns = self.get_target_columns
+def print_target_totals(target):
+    n_finished = target.progress["finished"]
+    n_failed = target.progress["failed"]
+    n_total = target.total_children
+    downloaded = make_size_readable(target.downloaded)
 
-        self.manager_name = "Downloader"
+    local, remote = target.local, target.remote
 
-    def get_target_columns(self, target, idx):
+    print("[%s <- %s]: %d tasks in total" % (local, remote, n_finished))
+    print("[%s <- %s]: %d tasks successful" % (local, remote, n_total))
+    print("[%s <- %s]: %d tasks failed" % (local, remote, n_failed))
+    print("[%s <- %s]: %s downloaded" % (local, remote, downloaded))
+
+class DownloaderReceiver(EventHandler):
+    def __init__(self, scanner):
+        EventHandler.__init__(self)
+
+        self.worker_receiver = WorkerReceiver()
+
+        self.add_emitter_callback(scanner, "started", self.on_started)
+        self.add_emitter_callback(scanner, "finished", self.on_finished)
+        self.add_emitter_callback(scanner, "next_target", self.on_next_target)
+        self.add_emitter_callback(scanner, "worker_started", self.on_worker_started)
+
+    def on_started(self, event):
+        print("Downloader: started")
+
+    def on_finished(self, event):
+        print("Downloader: finished")
+
+    def on_next_target(self, event, target):
+        print("Next target: [%s <- %s]" % (target.local, target.remote))
+
+    def on_worker_started(self, event, worker):
+        worker.add_receiver(self.worker_receiver)
+
+class TargetReceiver(EventHandler):
+    def __init__(self):
+        EventHandler.__init__(self)
+
+        self.add_callback("status_changed", self.on_status_changed)
+
+    def on_status_changed(self, event):
+        target = event["emitter"]
+
+        local, remote, status = target.local, target.remote, target.status
+
+        if status in ("finished", "failed", "suspended"):
+            print("Target [%s <- %s]: %s" % (local, remote, status))
+
+        if status in ("finished", "failed",):
+            print_target_totals(target)
+
+class WorkerReceiver(EventHandler):
+    def __init__(self):
+        EventHandler.__init__(self)
+
+        self.task_receiver = TaskReceiver()
+
+        self.add_callback("next_task", self.on_next_task)
+
+    def on_next_task(self, event, task):
+        progress_str = get_progress_str(task)
+
+        print(progress_str + ": downloading")
+
+        task.add_receiver(self.task_receiver)
+
+class TaskReceiver(EventHandler):
+    def __init__(self):
+        EventHandler.__init__(self)
+
+        self.add_callback("status_changed", self.on_status_changed)
+        self.add_callback("downloaded_changed", self.on_downloaded_changed)
+        self.add_callback("obtain_link_failed", self.on_obtain_link_failed)
+
+        self.last_download_percents = {}
+
+    def on_status_changed(self, event):
+        task = event["emitter"]
+
+        if task.status in ("finished", "failed", "suspended"):
+            progress_str = get_progress_str(task)
+            print(progress_str + ": %s" % task.status)
+
+    def on_downloaded_changed(self, event):
+        task = event["emitter"]
+
         try:
-            progress = target.progress["finished"] / target.total_children
-            progress *= 100.0
+            downloaded_percent = float(task.downloaded) / task.size * 100.0
         except ZeroDivisionError:
-            progress = 100.0 if target.status == "finished" else 0.0
+            downloaded_percent = 100.0
 
-        return [str(idx + 1),
-                "%.2f%%" % progress,
-                str(target.status),
-                str(target.dec_remote),
-                str(target.local)]
+        last_percent = self.last_download_percents.get(task, 0.0)
+
+        # Change can be negative due to retries
+        if abs(downloaded_percent - last_percent) < 25.0 and downloaded_percent < 100.0:
+            return
+
+        self.last_download_percents[task] = downloaded_percent
+
+        progress_str = get_progress_str(task)
+
+        print(progress_str + ": downloaded %6.2f%%" % downloaded_percent)
+
+    def on_obtain_link_failed(self, event):
+        task = event["emitter"]
+
+        progress_str = get_progress_str(task)
+
+        print(progress_str + ": failed to obtain download link")
 
 def download(env, paths, n_workers):
     encsync, ret = common.make_encsync(env)
@@ -38,34 +128,14 @@ def download(env, paths, n_workers):
     if encsync is None:
         return ret
 
-    stdscr = curses.initscr()
-    try:
-        curses.start_color()
-        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-
-        curses.noecho()
-        curses.cbreak()
-        stdscr.keypad(True)
-        try:
-            ret = _download(env, stdscr, paths, n_workers)
-            curses.endwin()
-
-            return ret
-        except ValueError as e:
-            curses.endwin()
-            print("Error: %s" %e)
-            return 1
-    except Exception as e:
-        curses.endwin()
-        raise e
-
-def _download(env, stdscr, paths, n_workers):
-    encsync = env["encsync"]
-
     downloader = Downloader(encsync, n_workers)
 
-    target_display = DownloadTargetDisplay(downloader)
-    target_display.highlight_pair = curses.color_pair(1)
+    downloader_receiver = DownloaderReceiver(downloader)
+    downloader.add_receiver(downloader_receiver)
+
+    target_receiver = TargetReceiver()
+
+    targets = []
 
     if len(paths) == 1:
         local = os.getcwd()
@@ -80,27 +150,17 @@ def _download(env, stdscr, paths, n_workers):
         prefix = encsync.find_encrypted_dir(path)
 
         if prefix is None:
-            raise ValueError("%r does not appear to be encrypted" % path)
+            show_error("%r does not appear to be encrypted" % path)
+            return 1
 
         target = downloader.add_download(prefix, path, local)
-        target_display.targets.append(target)
+        target.add_receiver(target_receiver)
+        targets.append(target)
 
     downloader.start()
+    downloader.join()
 
-    getch_thread = target_display.start_getch(stdscr)
-
-    while not target_display.stop_condition():
-        try:
-            target_display.update_screen(stdscr)
-            time.sleep(0.3)
-        except KeyboardInterrupt:
-            pass
-
-    if getch_thread.is_alive():
-        stdscr.clear()
-        stdscr.addstr(0, 0, "Press enter to quit")
-        stdscr.refresh()
-
-    getch_thread.join()
+    if any(i.status != "finished" for i in targets):
+        return 1
 
     return 0

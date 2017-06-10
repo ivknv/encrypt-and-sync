@@ -16,34 +16,30 @@ class DownloadTask(Task):
         self.IVs = None
         self.local = ""
         self.size = 0
-        self.downloaded = 0
+        self._downloaded = 0
         self.link = None
         self.total_children = 0
 
-    def copy(self):
-        copy = DownloadTask()
-        copy.status = self.status
-        copy.parent = self.parent
-        copy.total_children = self.total_children
-        copy.progress = Counter(self.progress)
-        copy.type = self.type
-        copy.prefix = self.prefix
-        copy.remote = self.remote
-        copy.dec_remote = self.dec_remote
-        copy.local = self.local
-        copy.size = self.size
-        copy.downloaded = self.downloaded
-        copy.link = self.link
+        self.add_event("downloaded_changed")
+        self.add_event("obtain_link_failed")
 
-        return copy
+    @property
+    def downloaded(self):
+        return self._downloaded
+
+    @downloaded.setter
+    def downloaded(self, value):
+        old_value = self._downloaded
+        self._downloaded = value
+
+        self.emit_event("downloaded_changed")
+
+        if self.parent is not None:
+            self.parent.downloaded += value - old_value
 
     def obtain_link(self, ynd):
-        if self.link is not None:
-            return
-
         response = ynd.get_download_link(self.remote)
         if not response["success"]:
-            self.change_status("failed")
-            return
+            return None
 
-        self.link = response["data"]["href"]
+        return response["data"]["href"]

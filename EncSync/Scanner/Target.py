@@ -13,4 +13,6 @@ class ScanTarget(Task):
 
         self.path = path
 
+        self.add_event("next_node")
+        self.add_event("duplicates_found")
         self.add_event("scan_finished")

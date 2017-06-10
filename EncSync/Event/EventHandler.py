@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import threading
+import weakref
 
 from .Exceptions import UnknownEventError, DuplicateEventError
 from .Event import Event
@@ -9,20 +10,52 @@ from .Event import Event
 class EventHandler(object):
     def __init__(self):
         self._events = {}
-        self._events_lock = threading.Lock()
+        self._events_lock = threading.RLock()
 
         self._receivers = []
-        self._receivers_lock = threading.Lock()
+        self._receivers_lock = threading.RLock()
 
         self._callbacks = {}
-        self._callbacks_lock = threading.Lock()
+        self._callbacks_lock = threading.RLock()
+
+        self.add_event("event")
 
     def add_callback(self, event_name, callback):
         with self._callbacks_lock:
-            if event_name not in self._callbacks:
-                self._callbacks[event_name] = [callback]
-            else:
-                self._callbacks[event_name].append(callback)
+            self._callbacks.setdefault(event_name, [])
+            self._callbacks[event_name].append(callback)
+
+        return callback
+
+    def add_emitter_callback(self, emitter, event_name, callback):
+        def new_callback(event, *args, **kwargs):
+            if weak_emitter.alive and event["emitter"] is weak_emitter.peek()[0]:
+                return callback(event, *args, **kwargs)
+
+        weak_emitter = weakref.finalize(emitter,    self.remove_callback,
+                                        event_name, new_callback)
+
+        return self.add_callback(event_name, new_callback)
+
+    def remove_callback(self, event_name, callback):
+        with self._callbacks_lock:
+            try:
+                self._callbacks[event_name].remove(callback)
+                return True
+            except (IndexError, ValueError):
+                return False
+
+    def add_propagation(self, emitter, *events):
+        def callback(event, *args, **kwargs):
+            receiver = event["receiver"]
+            receiver.emit_event(event["name"], *args, **kwargs)
+
+        for event_name in events:
+            try:
+                self.add_event(event_name)
+            except DuplicateEventError:
+                pass
+            self.add_emitter_callback(emitter, event_name, callback)
 
     def receive(self, emitter, event_name, *args, **kwargs):
         event = Event(emitter, self, event_name, args, kwargs)
@@ -36,7 +69,7 @@ class EventHandler(object):
             return list(self._callbacks.get(event_name, []))
 
     def handle_event(self, event):
-        callbacks = self.get_callbacks(event.name)
+        callbacks = self.get_callbacks(event["name"])
 
         if not len(callbacks):
             event._event.set()
@@ -78,9 +111,14 @@ class EventHandler(object):
 
     def add_receiver(self, receiver):
         with self._receivers_lock:
-            self._receivers.append(receiver)
+            if receiver not in self._receivers:
+                self._receivers.append(receiver)
 
-    def emit_event(self, event_name, *args, **kwargs):
+    def remove_receiver(self, receiver):
+        with self._receivers_lock:
+            self._receivers.remove(receiver)
+
+    def _emit_event(self, event_name, *args, **kwargs):
         ev = self.get_event(event_name)
 
         ev.set()
@@ -97,3 +135,7 @@ class EventHandler(object):
             ev.clear()
 
         return events
+
+    def emit_event(self, event_name, *args, **kwargs):
+        self._emit_event("event", event_name, *args, **kwargs)
+        self._emit_event(event_name, *args, **kwargs)

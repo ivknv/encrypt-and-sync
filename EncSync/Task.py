@@ -27,18 +27,17 @@ class Task(EventHandler):
             return
 
         with self.lock:
-            if self.parent is not None:
-                with self.parent.lock:
-                    if self.status is not None:
-                        self.parent.progress[self.status] -= 1
+            old_status = self.status
+            self.status = new_status
 
-                    self.status = new_status
+        if self.parent is not None:
+            with self.parent.lock:
+                self.parent.progress[old_status] -= 1
+                self.parent.progress[new_status] += 1
 
-                    if self.status is not None:
-                        self.parent.progress[self.status] += 1
+            self.emit_event("status_changed")
 
-                    self.parent.update_status()
-            else:
-                self.status = new_status
-
+            with self.parent.lock:
+                self.parent.update_status()
+        else:
             self.emit_event("status_changed")

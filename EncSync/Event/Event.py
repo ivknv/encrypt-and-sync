@@ -6,7 +6,7 @@ import threading
 class Event(dict):
     def __init__(self, emitter, receiver, name, args, kwargs):
         dict.__init__(self, {"emitter": emitter,
-                             "reciever": receiver,
+                             "receiver": receiver,
                              "name": name,
                              "args": args,
                              "kwargs": kwargs})

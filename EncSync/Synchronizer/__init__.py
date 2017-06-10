@@ -2,4 +2,4 @@
 # -*- coding: utf-8 -*-
 
 from .Synchronizer import Synchronizer
-from .SyncTask import SyncTarget
+from .SyncTask import SyncTask, SyncTarget

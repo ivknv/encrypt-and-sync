@@ -29,6 +29,8 @@ class SynchronizerWorker(Worker):
         self.llist = dispatcher.shared_llist
         self.rlist = dispatcher.shared_rlist
 
+        self.add_event("next_task")
+
     def autocommit(self):
         if self.llist.time_since_last_commit() >= COMMIT_INTERVAL:
             self.llist.seamless_commit()
@@ -37,7 +39,7 @@ class SynchronizerWorker(Worker):
             self.rlist.seamless_commit()
 
     def work_func(self):
-        pass
+        raise NotImplementedError
 
     def get_IVs(self):
         logger.debug("Getting IVs")
@@ -74,19 +76,27 @@ class SynchronizerWorker(Worker):
             task = self.parent.get_next_task()
             self.cur_task = task
 
+            if task is not None:
+                self.emit_event("next_task", task)
+
             if task is None or self.stop_condition():
                 self.stop()
+
+                if task is not None:
+                    task.emit_event("interrupted")
+
                 logger.debug("SynchronizerWorker stopped")
                 break
 
             if task.status is None:
                 task.change_status("pending")
 
-            self.path = task.diff[2]
+            self.path = task.path
 
             local_path = self.path.local
 
             if not check_filename_length(local_path):
+                task.emit_event("filename_too_long")
                 task.change_status("failed")
                 logger.debug("Filename is too long (>= 160): {}".format(local_path))
                 continue

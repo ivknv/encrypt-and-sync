@@ -19,11 +19,13 @@ class ScanWorker(Waiter):
         self.rlist = parent.shared_rlist
         self.duplist = parent.shared_duplist
 
-    def do_scan(self, scannable):
+        self.add_event("next_node")
+
+    def do_scan(self, task):
         raise NotImplementedError
 
     def get_next_task(self):
-        return self.parent.get_next_scannable()
+        return self.parent.get_next_task()
 
     def stop_condition(self):
         target = self.cur_target
@@ -34,14 +36,15 @@ class ScanWorker(Waiter):
 
         return self.stopped or not target_pending or self.parent.stopped or not ptarget_pending
 
-    def handle_task(self, scannable):
+    def handle_task(self, task):
         try:
-            handle_more = self.do_scan(scannable)
+            handle_more = self.do_scan(task)
             self.cur_path = None
 
             return handle_more
         except:
             self.cur_target.change_status("failed")
+            task.change_status("failed")
             logger.exception("An error occured")
             self.stop()
 
@@ -59,18 +62,27 @@ class LocalScanWorker(ScanWorker):
         return {"operation": "local scan",
                 "path": self.cur_path}
 
-    def do_scan(self, scannable):
+    def do_scan(self, task):
         assert(self.cur_target.type == "local")
+
+        scannable = task.scannable
+
+        task.change_status("pending")
 
         local_files = scan_files(scannable)
 
         for s, n in local_files:
             self.cur_path = n["path"]
 
+            self.emit_event("next_node", s)
+
             if self.stop_condition():
+                task.emit_event("interrupt")
                 return False
 
             self.llist.insert_node(n)
+
+        task.change_status("finished")
 
         return False
 
@@ -92,8 +104,12 @@ class RemoteScanWorker(ScanWorker):
         return {"operation": "remote scan",
                 "path": self.cur_path}
 
-    def do_scan(self, scannable):
+    def do_scan(self, task):
         assert(self.cur_target.type == "remote")
+
+        scannable = task.scannable
+
+        task.change_status("pending")
 
         self.cur_path = scannable.path
 
@@ -103,12 +119,15 @@ class RemoteScanWorker(ScanWorker):
         scannables = {}
 
         for s in scan_result["f"] + scan_result["d"]:
+            self.emit_event("next_node", s)
             path = Paths.dir_denormalize(s.path)
             scannables.setdefault(path, [])
             scannables[path].append(s)
 
         for i in scannables.values():
             if len(i) > 1:
+                task.emit_event("duplicates_found", i)
+                self.cur_target.emit_event("duplicates_found", i)
                 for s in i:
                     self.duplist.insert(s.type, s.enc_path)
 
@@ -119,6 +138,7 @@ class RemoteScanWorker(ScanWorker):
                 s = scan_result["f"].pop(0)
 
                 if not self.insert_remote_scannable(s):
+                    task.emit_event("interrupt")
                     return False
 
             if len(scan_result["d"]) == 0:
@@ -127,8 +147,11 @@ class RemoteScanWorker(ScanWorker):
             s = scan_result["d"].pop()
 
             if not self.insert_remote_scannable(s):
+                task.emit_event("interrupt")
                 return False
 
-            self.parent.add_scannable(s)
+            self.parent.add_task(s)
+
+        task.change_status("finished")
 
         return True

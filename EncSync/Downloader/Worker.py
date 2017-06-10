@@ -37,6 +37,8 @@ class DownloaderWorker(Worker):
         self.speed_limit = dispatcher.speed_limit
         self.cur_task = None
 
+        self.add_event("next_task")
+
     def get_info(self):
         if self.cur_task is not None:
             try:
@@ -51,32 +53,31 @@ class DownloaderWorker(Worker):
         return {"operation": "downloading",
                 "progress":  0.0}
 
-    def download_file(self, task, task_copy):
-        logger.debug("Downloading file {} to {}".format(task_copy.dec_remote, task_copy.local))
+    def download_file(self, task):
+        logger.debug("Downloading file {} to {}".format(task.dec_remote, task.local))
 
         if os.path.isdir(task.local):
             name = Paths.split(task.dec_remote)[1]
             task.local = os.path.join(task.local, name)
-            task_copy.local = task.local
 
         try:
-            if os.path.exists(task_copy.local):
+            if os.path.exists(task.local):
                 task.change_status("finished")
                 return
 
-            recursive_mkdir(os.path.split(task_copy.local)[0])
+            recursive_mkdir(os.path.split(task.local)[0])
 
-            task.obtain_link(self.encsync.ynd)
+            link = task.obtain_link(self.encsync.ynd)
 
-            with task.lock:
-                if task.status == "failed":
-                    logger.debug("Failed to obtain download link")
-                    return
+            if link is None:
+                task.emit_event("obtain_link_failed")
+                task.change_status("failed")
+                return
 
-                task_copy.link = task.link
+            task.link = link
 
             with tempfile.TemporaryFile(mode="w+b") as tmpfile:
-                r = self.encsync.ynd.make_session().get(task_copy.link, stream=True)
+                r = self.encsync.ynd.make_session().get(task.link, stream=True)
 
                 cur_downloaded = 0
                 t1 = time.time()
@@ -91,9 +92,7 @@ class DownloaderWorker(Worker):
                     tmpfile.write(chunk)
                     with task.lock:
                         task.downloaded += len(chunk)
-                        if task.parent is not None:
-                            with task.parent.lock:
-                                task.parent.downloaded += len(chunk)
+
                     cur_downloaded += len(chunk)
 
                     if cur_downloaded > self.speed_limit:
@@ -111,7 +110,7 @@ class DownloaderWorker(Worker):
                 tmpfile.flush()
                 tmpfile.seek(0)
                 logger.debug("Decrypting file")
-                self.encsync.decrypt_file(tmpfile, task_copy.local)
+                self.encsync.decrypt_file(tmpfile, task.local)
                 logger.debug("Done decrypting file")
             task.change_status("finished")
             logger.debug("Successfully downloaded file")
@@ -131,6 +130,8 @@ class DownloaderWorker(Worker):
                     task = self.pool.pop(0)
                     self.cur_task = task
 
+                    self.emit_event("next_task", task)
+
                     if task.parent is not None and task.parent.status == "suspended":
                         continue
 
@@ -139,16 +140,14 @@ class DownloaderWorker(Worker):
                     elif task.status != "pending":
                         continue
 
-                    task_copy = task.copy()
+                logger.debug("Downloading to {}".format(task.local))
 
-                logger.debug("Downloading to {}".format(task_copy.local))
-
-                if task_copy.type == "d":
-                    recursive_mkdir(task_copy.local)
+                if task.type == "d":
+                    recursive_mkdir(task.local)
                     task.change_status("finished")
                     continue
 
-                self.download_file(task, task_copy)
+                self.download_file(task)
         except:
             logger.exception("An error occured")
         finally:

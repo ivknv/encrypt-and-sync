@@ -19,6 +19,8 @@ class DownloadTarget(Task):
         self.total_children = 0
         self.pool_lock = threading.Lock()
 
+        self.add_event("not_found_in_db")
+
     def update_status(self):
         assert(self.parent is None)
 
@@ -26,12 +28,14 @@ class DownloadTarget(Task):
             return
 
         downloading = self.progress["pending"]
+        finished = self.progress["finished"]
         suspended = self.progress["suspended"]
         failed = self.progress["failed"]
+        queued = self.total_children - (downloading + finished + failed)
 
-        if downloading == 0 and suspended == 0 and failed == 0:
+        if finished == self.total_children:
             self.change_status("finished")
-        elif downloading > 0:
+        elif downloading > 0 or queued > 0:
             self.change_status("pending")
         elif failed > 0:
             self.change_status("failed")
