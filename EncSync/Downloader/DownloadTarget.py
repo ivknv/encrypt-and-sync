@@ -30,10 +30,10 @@ class DownloadTarget(Task):
         failed = self.progress["failed"]
 
         if downloading == 0 and suspended == 0 and failed == 0:
-            self.change_status("finished", False)
+            self.change_status("finished")
         elif downloading > 0:
-            self.change_status("pending", False)
+            self.change_status("pending")
         elif failed > 0:
-            self.change_status("failed", False)
+            self.change_status("failed")
         elif suspended > 0:
-            self.change_status("suspended", False)
+            self.change_status("suspended")

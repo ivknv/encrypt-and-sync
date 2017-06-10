@@ -27,7 +27,7 @@ class SyncTarget(Task):
     def get_n_done(self):
         return self.progress["finished"] + self.progress["failed"]
 
-    def update_status(self, lock=True):
+    def update_status(self):
         assert(self.parent is None)
 
         syncing = self.progress["pending"]
@@ -38,10 +38,10 @@ class SyncTarget(Task):
             return
 
         if syncing == 0 and suspended == 0 and failed == 0:
-            self.change_status("finished", False)
+            self.change_status("finished")
         elif syncing > 0:
-            self.change_status("pending", False)
+            self.change_status("pending")
         elif failed > 0:
-            self.change_status("failed", False)
+            self.change_status("failed")
         elif suspended > 0:
-            self.change_status("suspended", False)
+            self.change_status("suspended")

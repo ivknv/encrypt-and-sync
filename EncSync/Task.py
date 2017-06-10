@@ -17,18 +17,16 @@ class Task(EventHandler):
 
         self.add_event("status_changed")
 
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
 
     def update_status(self):
         pass
 
-    def change_status(self, new_status, lock=True):
+    def change_status(self, new_status):
         if self.status == new_status:
             return
 
-        if lock:
-            self.lock.acquire()
-        try:
+        with self.lock:
             if self.parent is not None:
                 with self.parent.lock:
                     if self.status is not None:
@@ -44,6 +42,3 @@ class Task(EventHandler):
                 self.status = new_status
 
             self.emit_event("status_changed")
-        finally:
-            if lock:
-                self.lock.release()
