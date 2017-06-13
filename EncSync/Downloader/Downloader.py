@@ -131,6 +131,7 @@ class Downloader(Worker):
             name = Paths.cut_prefix(node["path"], target.remote)
 
             new_task.type = node["type"]
+            new_task.modified = node["modified"]
             new_task.remote = enc_path
             new_task.dec_remote = node["path"]
 

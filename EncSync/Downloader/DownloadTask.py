@@ -16,6 +16,7 @@ class DownloadTask(Task):
         self.IVs = None
         self.local = ""
         self.size = 0
+        self.modified = 0
         self._downloaded = 0
         self.link = None
         self.total_children = 0

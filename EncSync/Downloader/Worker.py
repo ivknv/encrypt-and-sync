@@ -5,9 +5,20 @@ import os
 import tempfile
 import time
 
+from ..Encryption import MIN_ENC_SIZE
 from ..Worker import Worker
 from .. import Paths
 from .Logging import logger
+from ..Scannable import LocalScannable
+
+def check_if_download(task):
+    if not os.path.exists(task.local):
+        return True
+
+    s = LocalScannable(task.local)
+    s.identify()
+
+    return s.size + MIN_ENC_SIZE != task.size or s.modified < task.modified
 
 def recursive_mkdir(path, basedir="."):
     if not path:
@@ -61,7 +72,7 @@ class DownloaderWorker(Worker):
             task.local = os.path.join(task.local, name)
 
         try:
-            if os.path.exists(task.local):
+            if not check_if_download(task):
                 task.change_status("finished")
                 return
 
