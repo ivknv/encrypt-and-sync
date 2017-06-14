@@ -11,6 +11,8 @@ from .. import Paths
 
 from . import common
 
+PRINT_RATE_LIMIT = 1.0
+
 def get_path_with_schema(target):
     if target.type == "remote":
         return Paths.join("disk://", target.path)
@@ -107,7 +109,7 @@ class WorkerReceiver(EventHandler):
         self.last_print = 0
 
     def on_next_node(self, event, scannable):
-        if time.time() - self.last_print < 0.5:
+        if time.time() - self.last_print < PRINT_RATE_LIMIT:
             return
 
         self.last_print = time.time()
