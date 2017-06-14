@@ -340,11 +340,13 @@ class Synchronizer(StagedWorker):
 
         if target.status == "pending" and self.cur_target.status == "pending":
             filelist.commit()
+            target.change_status("finished")
             self.cur_target.emit_event("%s_scan_finished" % scan_type, target)
 
             return True
         else:
             filelist.rollback()
+            target.change_status("failed")
             self.cur_target.emit_event("%s_scan_failed" % scan_type, target)
             if self.cur_target.status == "pending":
                 self.cur_target.change_status("failed")
