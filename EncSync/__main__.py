@@ -33,7 +33,7 @@ def main(args):
     env["config_path"] = ns.config
 
     actions = (("scan", lambda: do_scan(env, ns.scan, ns.n_workers)),
-               ("sync", lambda: do_sync(env, ns.sync, ns.n_workers)),
+               ("sync", lambda: do_sync(env, ns.sync, ns.n_workers, ns.no_scan, ns.no_check)),
                ("show_diffs", lambda: show_diffs(env, *ns.show_diffs[:2])),
                ("download", lambda: download(env, ns.download, ns.n_workers)),
                ("encrypt", lambda: encrypt(env, ns.encrypt)),
@@ -77,6 +77,8 @@ def parse_args(args):
 
     parser.add_argument("--master-password", default=None)
     parser.add_argument("--prefix", default=None)
+    parser.add_argument("--no-scan", default=False, action="store_true")
+    parser.add_argument("--no-check", default=False, action="store_true")
 
     config_group = parser.add_argument_group("config")
     config_group.add_argument("--config", metavar="PATH", default="config.json")

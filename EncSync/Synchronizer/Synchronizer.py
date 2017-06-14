@@ -6,6 +6,7 @@ import os
 
 from .Workers import UploadWorker, MkdirWorker, RmWorker
 from ..Scanner.Workers import LocalScanWorker, RemoteScanWorker
+from ..Scanner.Task import ScanTask
 from ..Scanner.Target import ScanTarget
 
 from .SyncTask import SyncTask, SyncTarget
@@ -87,6 +88,9 @@ class Synchronizer(StagedWorker):
     def get_next_task(self):
         if not self.available:
             return
+
+        if self.stage["name"] in ("scan", "check"):
+            return self.get_next_scannable()
 
         with self.get_sync_lock():
             if not self.available:
@@ -173,6 +177,8 @@ class Synchronizer(StagedWorker):
             if target.status == "suspended":
                 self.cur_target = None
                 continue
+
+            target.change_status("pending")
 
             assert(self.stage is None)
 
@@ -276,9 +282,10 @@ class Synchronizer(StagedWorker):
             if len(self.scannables) > 0:
                 return self.scannables.pop(0)
 
-    def add_scannable(self, scannable):
+    def add_task(self, scannable):
         with self.scannables_lock:
-            self.scannables.append(scannable)
+            task = ScanTask(scannable)
+            self.scannables.append(task)
 
             for worker in self.get_worker_list():
                 worker.set_dirty()
@@ -305,22 +312,25 @@ class Synchronizer(StagedWorker):
             target = ScanTarget(scan_type, self.cur_target.remote)
             scannable = RemoteScannable(self.encsync, target.path)
 
+        self.cur_target.emit_event("%s_scan" % scan_type, target)
+
         target.change_status("pending")
 
-        self.add_scannable(scannable)
+        self.add_task(scannable)
 
         filelist = {"local":  self.shared_llist,
                     "remote": self.shared_rlist}[scan_type]
 
         filelist.begin_transaction()
 
-        if scan_type == "local":
-            self.shared_llist.remove_node_children(target.path)
+        filelist.remove_node_children(target.path)
 
+        scannable.identify()
+        filelist.insert_node(scannable.to_node())
+
+        if scan_type == "local":
             self.start_worker(LocalScanWorker, self, target)
         elif scan_type == "remote":
-            self.shared_rlist.remove_node_children(target.path)
-
             self.start_workers(self.n_scan_workers, RemoteScanWorker, self, target)
 
             self.wait_workers()
@@ -330,10 +340,16 @@ class Synchronizer(StagedWorker):
 
         if target.status == "pending" and self.cur_target.status == "pending":
             filelist.commit()
+            self.cur_target.emit_event("%s_scan_finished" % scan_type, target)
+
+            return True
         else:
+            filelist.rollback()
+            self.cur_target.emit_event("%s_scan_failed" % scan_type, target)
             if self.cur_target.status == "pending":
                 self.cur_target.change_status("failed")
-            filelist.rollback()
+
+            return False
 
     def init_scan_stage(self):
         try:
@@ -364,8 +380,6 @@ class Synchronizer(StagedWorker):
                 return
 
             self.build_diffs_table()
-
-            self.cur_target.emit_event("scan_finished")
         except:
             logger.exception("An error occured")
             self.cur_target.change_status("failed")
@@ -376,6 +390,8 @@ class Synchronizer(StagedWorker):
                 return
 
             self.cur_target.change_status("pending")
+
+            self.cur_target.emit_event("integrity_check")
 
             self.do_scan("remote")
         except:
@@ -392,14 +408,13 @@ class Synchronizer(StagedWorker):
 
             self.build_diffs_table()
 
-            self.cur_target.emit_event("integrity_check_finished")
-
             difflist = DiffList(self.encsync)
 
             if difflist.get_difference_count(self.cur_target.local, self.cur_target.remote):
-                self.cur_target.change_status("failed")
                 self.cur_target.emit_event("integrity_check_failed")
+                self.cur_target.change_status("failed")
             else:
+                self.cur_target.emit_event("integrity_check_finished")
                 self.cur_target.change_status("finished")
         except:
             self.cur_target.change_status("failed")

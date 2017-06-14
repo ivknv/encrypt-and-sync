@@ -38,7 +38,13 @@ class SyncTarget(Task):
         self.enable_scan = True
 
         self.add_event("stage_changed")
-        self.add_event("scan_finished")
+        self.add_event("local_scan")
+        self.add_event("local_scan_failed")
+        self.add_event("local_scan_finished")
+        self.add_event("remote_scan")
+        self.add_event("remote_scan_failed")
+        self.add_event("remote_scan_finished")
+        self.add_event("integrity_check")
         self.add_event("integrity_check_finished")
         self.add_event("integrity_check_failed")
 

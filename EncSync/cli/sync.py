@@ -5,12 +5,15 @@ import os
 
 from . import common
 from .common import show_error, get_progress_str
+from .scan import WorkerReceiver as ScanWorkerReceiver
+from .scan import TargetReceiver as ScanTargetReceiver
 
 from ..Synchronizer import Synchronizer
+from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler
 
 def print_target_totals(target):
-    n_finished = target.progress["finished"] 
+    n_finished = target.progress["finished"]
     n_failed = target.progress["failed"]
     n_total = target.total_children
 
@@ -23,6 +26,7 @@ class SynchronizerReceiver(EventHandler):
         EventHandler.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
+        self.scan_worker_receiver = ScanWorkerReceiver()
 
         self.synchronizer = synchronizer
 
@@ -43,7 +47,10 @@ class SynchronizerReceiver(EventHandler):
         print("Next target: [%s -> %s]" % (target.local, target.remote))
 
     def on_worker_started(self, event, worker):
-        worker.add_receiver(self.worker_receiver)
+        if isinstance(worker, ScanWorker):
+            worker.add_receiver(self.scan_worker_receiver)
+        else:
+            worker.add_receiver(self.worker_receiver)
 
     def on_entered_stage(self, event, stage):
         target = self.synchronizer.cur_target
@@ -69,7 +76,18 @@ class TargetReceiver(EventHandler):
     def __init__(self):
         EventHandler.__init__(self)
 
+        self.scan_target_receiver = ScanTargetReceiver()
+
         self.add_callback("status_changed", self.on_status_changed)
+        self.add_callback("local_scan", self.on_local_scan)
+        self.add_callback("local_scan_finished", self.on_local_scan_finished)
+        self.add_callback("local_scan_failed", self.on_local_scan_failed)
+        self.add_callback("remote_scan", self.on_remote_scan)
+        self.add_callback("remote_scan_finished", self.on_remote_scan_finished)
+        self.add_callback("remote_scan_failed", self.on_remote_scan_failed)
+        self.add_callback("integrity_check", self.on_integrity_check)
+        self.add_callback("integrity_check_finished", self.on_integrity_check_finished)
+        self.add_callback("integrity_check_failed", self.on_integrity_check_failed)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -80,6 +98,47 @@ class TargetReceiver(EventHandler):
 
         if status in ("finished", "failed"):
             print_target_totals(target)
+
+    def on_local_scan(self, event, scan_target):
+        target = event["emitter"]
+
+        print("[%s -> %s]: local scan" % (target.local, target.remote))
+
+        scan_target.add_receiver(self.scan_target_receiver)
+
+    def on_local_scan_finished(self, event, scan_target):
+        target = event["emitter"]
+        print("[%s -> %s]: local scan: finished" % (target.local, target.remote))
+
+    def on_local_scan_failed(self, event, scan_target):
+        target = event["emitter"]
+        print("[%s -> %s]: local scan: failed" % (target.local, target.remote))
+
+    def on_remote_scan(self, event, scan_target):
+        target = event["emitter"]
+
+        print("[%s -> %s]: remote scan" % (target.local, target.remote))
+        scan_target.add_receiver(self.scan_target_receiver)
+
+    def on_remote_scan_finished(self, event, scan_target):
+        target = event["emitter"]
+        print("[%s -> %s]: remote scan: finished" % (target.local, target.remote))
+
+    def on_remote_scan_failed(self, event, scan_target):
+        target = event["emitter"]
+        print("[%s -> %s]: remote scan: failed" % (target.local, target.remote))
+
+    def on_integrity_check(self, event):
+        target = event["emitter"]
+        print("[%s -> %s]: integrity check" % (target.local, target.remote))
+
+    def on_integrity_check_finished(self, event):
+        target = event["emitter"]
+        print("[%s -> %s]: integrity check: finished" % (target.local, target.remote))
+
+    def on_integrity_check_failed(self, event):
+        target = event["emitter"]
+        print("[%s -> %s]: integrity check: failed" % (target.local, target.remote))
 
 class WorkerReceiver(EventHandler):
     def __init__(self):
@@ -157,13 +216,13 @@ class TaskReceiver(EventHandler):
 
         print(progress_str + ": filename is too long (>= 160)")
 
-def do_sync(env, paths, n_workers):
+def do_sync(env, paths, n_workers, no_scan=False, no_check=False):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
 
-    synchronizer = Synchronizer(env["encsync"], n_workers)
+    synchronizer = Synchronizer(env["encsync"], n_workers, n_workers)
     synchronizer_receiver = SynchronizerReceiver(synchronizer)
     synchronizer.add_receiver(synchronizer_receiver)
 
@@ -187,8 +246,8 @@ def do_sync(env, paths, n_workers):
         local = os.path.realpath(os.path.expanduser(local))
         remote = common.prepare_remote_path(remote)
 
-        target = synchronizer.add_new_target(False, local, remote, None)
-        target.skip_integrity_check = True
+        target = synchronizer.add_new_target(not no_scan, local, remote, None)
+        target.skip_integrity_check = no_check
         target.add_receiver(target_receiver)
         targets.append(target)
 
