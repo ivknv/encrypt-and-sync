@@ -11,6 +11,77 @@ from .scan import TargetReceiver as ScanTargetReceiver
 from ..Synchronizer import Synchronizer
 from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler
+from ..DiffList import DiffList
+
+def print_diffs(encsync, target):
+    difflist = DiffList(encsync)
+
+    local, remote = target.local, target.remote
+
+    n_rm = difflist.count_rm_differences(local, remote)
+    n_dirs = difflist.count_dirs_differences(local, remote)
+    n_files = difflist.count_files_differences(local, remote)
+
+    print("[%s -> %s]: %d removals" % (local, remote, n_rm))
+    print("[%s -> %s]: %d new directories" % (local, remote, n_dirs))
+    print("[%s -> %s]: %d files to upload" % (local, remote, n_files))
+
+def prompt_continue():
+    answer = None
+    values = {"y": "continue", "n": "stop", "v": "view"}
+
+    default = "y"
+
+    while answer not in values.keys():
+        answer = input("Continue synchronization? [Y/n/(v)iew differences]: ").lower()
+
+        if answer == "":
+            answer = default
+
+    return values[answer]
+
+def view_diffs(encsync, target):
+    funcs = {"r": view_rm_diffs, "d": view_dirs_diffs, "f": view_files_diffs}
+    while True:
+        answer = input("What differences? [(r)m/(d)irs/(f)iles/(s)top]: ").lower()
+
+        if answer in funcs.keys():
+            funcs[answer](encsync, target)
+        elif answer == "s":
+            break
+
+def view_rm_diffs(encsync, target):
+    local, remote = target.local, target.remote
+
+    difflist = DiffList(encsync)
+
+    diffs = difflist.select_rm_differences(local, remote)
+
+    print("Removals:")
+    for diff in diffs:
+        print("  %s %s" % (diff[1], diff[2].remote))
+
+def view_dirs_diffs(encsync, target):
+    local, remote = target.local, target.remote
+
+    difflist = DiffList(encsync)
+
+    diffs = difflist.select_dirs_differences(local, remote)
+
+    print("New directories:")
+    for diff in diffs:
+        print("  %s" % (diff[2].remote))
+
+def view_files_diffs(encsync, target):
+    local, remote = target.local, target.remote
+
+    difflist = DiffList(encsync)
+
+    diffs = difflist.select_files_differences(local, remote)
+
+    print("Files to upload:")
+    for diff in diffs:
+        print("  %s" % (diff[2].local))
 
 def print_target_totals(target):
     n_finished = target.progress["finished"]
@@ -22,11 +93,12 @@ def print_target_totals(target):
     print("[%s -> %s]: %d tasks failed" % (target.local, target.remote, n_failed))
 
 class SynchronizerReceiver(EventHandler):
-    def __init__(self, synchronizer):
+    def __init__(self, env, synchronizer):
         EventHandler.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
         self.scan_worker_receiver = ScanWorkerReceiver()
+        self.env = env
 
         self.synchronizer = synchronizer
 
@@ -64,8 +136,24 @@ class SynchronizerReceiver(EventHandler):
 
     def on_exited_stage(self, event, stage):
         target = self.synchronizer.cur_target
-        if stage == "scan" and not target.enable_scan:
-            return
+
+        if stage == "scan":
+            print_diffs(self.synchronizer.encsync, target)
+
+            if not self.env.get("ask", False):
+                return
+
+            action = prompt_continue()
+
+            while action == "view":
+                view_diffs(self.synchronizer.encsync, target)
+                action = prompt_continue()
+
+            if action == "stop":
+                self.synchronizer.stop()
+
+            if not target.enable_scan:
+                return
 
         if stage == "check" and target.skip_integrity_check:
             return
@@ -223,7 +311,7 @@ def do_sync(env, paths, n_workers, no_scan=False, no_check=False):
         return ret
 
     synchronizer = Synchronizer(env["encsync"], n_workers, n_workers)
-    synchronizer_receiver = SynchronizerReceiver(synchronizer)
+    synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
     synchronizer.add_receiver(synchronizer_receiver)
 
     target_receiver = TargetReceiver()

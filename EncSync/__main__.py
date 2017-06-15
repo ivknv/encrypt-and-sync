@@ -31,6 +31,7 @@ def main(args):
 
     env["master_password"] = ns.master_password
     env["config_path"] = ns.config
+    env["ask"] = ns.ask
 
     actions = (("scan", lambda: do_scan(env, ns.scan, ns.n_workers)),
                ("sync", lambda: do_sync(env, ns.sync, ns.n_workers, ns.no_scan, ns.no_check)),
@@ -79,6 +80,7 @@ def parse_args(args):
     parser.add_argument("--prefix", default=None)
     parser.add_argument("--no-scan", default=False, action="store_true")
     parser.add_argument("--no-check", default=False, action="store_true")
+    parser.add_argument("--ask", default=False, action="store_true")
 
     config_group = parser.add_argument_group("config")
     config_group.add_argument("--config", metavar="PATH", default="config.json")
