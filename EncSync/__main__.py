@@ -26,6 +26,26 @@ def any_not_none(keys, container):
 
     return False
 
+def setup_logging(env):
+    import logging
+    from . import Downloader, Synchronizer, Scanner, CentDB
+
+    loggers = ((Downloader.Logging.logger, "downloader.log"),
+               (Synchronizer.Logging.logger, "synchronizer.log"),
+               (Scanner.Logging.logger, "scanner.log"),
+               (CentDB.Logging.logger, "centdb.log"))
+
+    for logger, filename in loggers:
+        formatter = logging.Formatter("%(asctime)s - %(name)s-Thread-%(thread)d: %(message)s")
+
+        path = os.path.join(env["config_dir"], filename)
+
+        handler = logging.FileHandler(path)
+        handler.setFormatter(formatter)
+        handler.setLevel(logging.DEBUG)
+
+        logger.addHandler(handler)
+
 def main(args):
     ns = parse_args(args)
 
@@ -44,6 +64,8 @@ def main(args):
     common.create_config_dir(env)
     if not os.path.exists(env["config_path"]):
         make_config(env, env["config_path"])
+
+    setup_logging(env)
 
     actions = (("scan", lambda: do_scan(env, ns.scan, ns.n_workers)),
                ("sync", lambda: do_sync(env, ns.sync, ns.n_workers, ns.no_scan, ns.no_check)),
