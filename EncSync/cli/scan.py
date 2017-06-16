@@ -19,15 +19,15 @@ def get_path_with_schema(target):
 
     return target.path
 
-def print_target_totals(target):
+def print_target_totals(env, target):
     n_files = n_dirs = 0
 
     assert(target.type in ("local", "remote"))
 
     if target.type == "local":
-        filelist = LocalFileList()
+        filelist = LocalFileList(env["config_dir"])
     elif target.type == "remote":
-        filelist = RemoteFileList()
+        filelist = RemoteFileList(env["config_dir"])
 
     children = filelist.find_node_children(target.path)
 
@@ -47,7 +47,7 @@ def print_target_totals(target):
     if target.type != "remote":
         return
 
-    duplist = DuplicateList()
+    duplist = DuplicateList(env["config_dir"])
 
     children = duplist.find_children(target.path)
     n_duplicates = sum(1 for i in children)
@@ -81,8 +81,10 @@ class ScannerReceiver(EventHandler):
         worker.add_receiver(self.worker_receiver)
 
 class TargetReceiver(EventHandler):
-    def __init__(self):
+    def __init__(self, env):
         EventHandler.__init__(self)
+
+        self.env = env
 
         self.add_callback("status_changed", self.on_status_changed)
         self.add_callback("duplicates_found", self.on_duplicates_found)
@@ -95,7 +97,7 @@ class TargetReceiver(EventHandler):
             print("[%s]: %s" % (path, target.status))
 
         if target.status == "finished":
-            print_target_totals(target)
+            print_target_totals(self.env, target)
 
     def on_duplicates_found(self, event, duplicates):
         print("Found %d duplicates of %s" % (len(duplicates) - 1, duplicates[0].path))
@@ -121,11 +123,11 @@ def do_scan(env, paths, n_workers):
     if encsync is None:
         return ret
 
-    scanner = Scanner(env["encsync"], n_workers)
+    scanner = Scanner(env["encsync"], env["config_dir"], n_workers)
 
     targets = []
 
-    target_receiver = TargetReceiver()
+    target_receiver = TargetReceiver(env)
 
     for path in paths:
         path, scan_type = common.recognize_path(path)

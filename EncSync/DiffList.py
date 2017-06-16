@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from . import CentDB
 from .EncPath import EncPath
 from . import Paths
 
 class DiffList(object):
-    def __init__(self, encsync, path=None, *args, **kwargs):
-        if path is None:
+    def __init__(self, encsync, directory=None, *args, **kwargs):
+        if directory is None:
             path = "encsync_diffs.db"
+        else:
+            path = os.path.join(directory, "encsync_diffs.db")
 
         kwargs.setdefault("isolation_level", None)
 

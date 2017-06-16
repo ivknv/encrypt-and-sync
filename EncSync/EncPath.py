@@ -29,8 +29,8 @@ class EncPath(object):
 
         return copy
 
-    def get_IVs_from_db(self):
-        rlist = RemoteFileList()
+    def get_IVs_from_db(self, directory=None):
+        rlist = RemoteFileList(directory)
 
         node = rlist.find_node(self.remote)
 

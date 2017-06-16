@@ -1,17 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from .FileList import FileList
 from .. import Paths
 from .. import CentDB
 from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 
 class LocalFileList(FileList):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, directory=None, *args, **kwargs):
         FileList.__init__(self)
 
         kwargs.setdefault("isolation_level", None)
-        path = "local_filelist.db"
+
+        if directory is None:
+            path = "local_filelist.db"
+        else:
+            path = os.path.join(directory, "local_filelist.db")
 
         self.conn = CentDB.connect(path, *args, **kwargs)
 

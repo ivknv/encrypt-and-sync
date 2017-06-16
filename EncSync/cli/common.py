@@ -193,3 +193,16 @@ def make_encsync(env, config_path=None, master_password=None):
 
 def show_error(msg):
     print(msg, file=sys.stderr)
+
+def create_config_dir(env):
+    path = env["config_dir"]
+
+    try:
+        os.mkdir(path, mode=0o755)
+    except FileExistsError:
+        return 0
+    except FileNotFoundError:
+        show_error("Error: no such file or directory: %r" % path)
+        return 1
+
+    return 0

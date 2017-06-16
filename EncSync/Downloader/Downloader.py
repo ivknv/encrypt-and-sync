@@ -14,12 +14,14 @@ from .DownloadTask import DownloadTask
 from .DownloadTarget import DownloadTarget
 
 class Downloader(Worker):
-    def __init__(self, encsync, n_workers=2):
+    def __init__(self, encsync, directory, n_workers=2):
         Worker.__init__(self)
 
         self.encsync = encsync
         self.targets = []
         self.n_workers = n_workers
+        self.directory = directory
+
         self.targets_lock = threading.Lock()
         self.speed_limit = 1024**4 / n_workers # Bytes per second
 
@@ -104,7 +106,7 @@ class Downloader(Worker):
         logger.debug("Done starting workers")
 
     def scan(self, target):
-        rlist = RemoteFileList()
+        rlist = RemoteFileList(self.directory)
 
         rlist.create()
 

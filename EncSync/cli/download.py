@@ -128,7 +128,7 @@ def download(env, paths, n_workers):
     if encsync is None:
         return ret
 
-    downloader = Downloader(encsync, n_workers)
+    downloader = Downloader(encsync, env["config_dir"], n_workers)
 
     downloader_receiver = DownloaderReceiver(downloader)
     downloader.add_receiver(downloader_receiver)

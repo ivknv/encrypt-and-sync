@@ -19,7 +19,7 @@ def show_diffs(env, local, remote):
     if not remote.startswith("/"):
         remote = "/" + remote
 
-    for diff in compare_lists(encsync, local, remote):
+    for diff in compare_lists(encsync, local, remote, env["config_dir"]):
         print_diff(diff)
 
     return 0

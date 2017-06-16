@@ -13,8 +13,8 @@ from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler
 from ..DiffList import DiffList
 
-def print_diffs(encsync, target):
-    difflist = DiffList(encsync)
+def print_diffs(env, encsync, target):
+    difflist = DiffList(encsync, env["config_dir"])
 
     local, remote = target.local, target.remote
 
@@ -40,20 +40,20 @@ def prompt_continue():
 
     return values[answer]
 
-def view_diffs(encsync, target):
+def view_diffs(env, encsync, target):
     funcs = {"r": view_rm_diffs, "d": view_dirs_diffs, "f": view_files_diffs}
     while True:
         answer = input("What differences? [(r)m/(d)irs/(f)iles/(s)top]: ").lower()
 
         if answer in funcs.keys():
-            funcs[answer](encsync, target)
+            funcs[answer](env, encsync, target)
         elif answer == "s":
             break
 
-def view_rm_diffs(encsync, target):
+def view_rm_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
-    difflist = DiffList(encsync)
+    difflist = DiffList(encsync, env["config_dir"])
 
     diffs = difflist.select_rm_differences(local, remote)
 
@@ -61,10 +61,10 @@ def view_rm_diffs(encsync, target):
     for diff in diffs:
         print("  %s %s" % (diff[1], diff[2].remote))
 
-def view_dirs_diffs(encsync, target):
+def view_dirs_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
-    difflist = DiffList(encsync)
+    difflist = DiffList(encsync, env["config_dir"])
 
     diffs = difflist.select_dirs_differences(local, remote)
 
@@ -72,10 +72,10 @@ def view_dirs_diffs(encsync, target):
     for diff in diffs:
         print("  %s" % (diff[2].remote))
 
-def view_files_diffs(encsync, target):
+def view_files_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
-    difflist = DiffList(encsync)
+    difflist = DiffList(encsync, env["config_dir"])
 
     diffs = difflist.select_files_differences(local, remote)
 
@@ -138,7 +138,7 @@ class SynchronizerReceiver(EventHandler):
         target = self.synchronizer.cur_target
 
         if stage == "scan":
-            print_diffs(self.synchronizer.encsync, target)
+            print_diffs(self.env, self.synchronizer.encsync, target)
 
             if not self.env.get("ask", False):
                 return
@@ -146,7 +146,7 @@ class SynchronizerReceiver(EventHandler):
             action = prompt_continue()
 
             while action == "view":
-                view_diffs(self.synchronizer.encsync, target)
+                view_diffs(self.env, self.synchronizer.encsync, target)
                 action = prompt_continue()
 
             if action == "stop":
@@ -161,10 +161,10 @@ class SynchronizerReceiver(EventHandler):
         print("Synchronizer exited stage %r" % stage)
 
 class TargetReceiver(EventHandler):
-    def __init__(self):
+    def __init__(self, env):
         EventHandler.__init__(self)
 
-        self.scan_target_receiver = ScanTargetReceiver()
+        self.scan_target_receiver = ScanTargetReceiver(env)
 
         self.add_callback("status_changed", self.on_status_changed)
         self.add_callback("local_scan", self.on_local_scan)
@@ -310,11 +310,11 @@ def do_sync(env, paths, n_workers, no_scan=False, no_check=False):
     if encsync is None:
         return ret
 
-    synchronizer = Synchronizer(env["encsync"], n_workers, n_workers)
+    synchronizer = Synchronizer(env["encsync"], env["config_dir"], n_workers, n_workers)
     synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
     synchronizer.add_receiver(synchronizer_receiver)
 
-    target_receiver = TargetReceiver()
+    target_receiver = TargetReceiver(env)
 
     targets = []
 

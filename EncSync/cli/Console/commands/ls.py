@@ -26,7 +26,7 @@ def _cmd_ls(console, ns):
             encpath = EncPath(encsync)
             encpath.remote_prefix = prefix
             encpath.path = Paths.cut_prefix(path, prefix)
-            IVs = encpath.get_IVs_from_db()
+            IVs = encpath.get_IVs_from_db(console.env["config_dir"])
             encpath.IVs = IVs
 
             if encpath.remote_prefix != encpath.remote and not IVs:

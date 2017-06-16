@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from .. import Paths
 from .. import CentDB
 
@@ -8,10 +10,13 @@ def prepare_path(path):
     return Paths.join_properly("/", path)
 
 class DuplicateList(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, directory=None, *args, **kwargs):
         kwargs.setdefault("isolation_level", None)
 
-        path = "duplicates.db"
+        if directory is None:
+            path = "duplicates.db"
+        else:
+            path = os.path.join(directory, "duplicates.db")
 
         self.conn = CentDB.connect(path, *args, **kwargs)
 

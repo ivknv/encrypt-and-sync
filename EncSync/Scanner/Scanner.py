@@ -12,20 +12,21 @@ from .Task import ScanTask
 from .Target import ScanTarget
 
 class Scanner(Worker):
-    def __init__(self, encsync, n_workers=2):
+    def __init__(self, encsync, directory, n_workers=2):
         Worker.__init__(self)
 
         self.encsync = encsync
         self.n_workers = n_workers
+        self.directory = directory
 
         self.targets = []
         self.targets_lock = threading.Lock()
 
         self.cur_target = None
 
-        self.shared_llist = LocalFileList()
-        self.shared_rlist = RemoteFileList()
-        self.shared_duplist = DuplicateList()
+        self.shared_llist = LocalFileList(directory)
+        self.shared_rlist = RemoteFileList(directory)
+        self.shared_duplist = DuplicateList(directory)
 
         self.pool = []
         self.pool_lock = threading.Lock()

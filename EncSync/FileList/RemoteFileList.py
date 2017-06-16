@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from .FileList import FileList
 from .. import Paths
 from .. import CentDB
@@ -10,9 +12,15 @@ def prepare_path(path):
     return Paths.join_properly("/", path)
 
 class RemoteFileList(FileList):
-    def __init__(self, path="remote_filelist.db", *args, **kwargs):
+    def __init__(self, directory=None, *args, **kwargs):
         FileList.__init__(self)
+
         kwargs.setdefault("isolation_level", None)
+        if directory is None:
+            path = "remote_filelist.db"
+        else:
+            path = os.path.join(directory, "remote_filelist.db")
+
         self.conn = CentDB.connect(path, *args, **kwargs)
 
     def time_since_last_commit(self):

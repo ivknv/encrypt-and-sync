@@ -38,10 +38,6 @@ def get_queue_result(func):
 
 class Connection(object):
     def __init__(self, cdb, *args, **kwargs):
-        self.cdb = cdb
-        self.conn = sqlite3.connect(cdb.path, *args, check_same_thread=False, **kwargs)
-        self.cur = self.conn.cursor()
-
         self._closed = False
         self._using_with = False
         self._with_lock = threading.Lock()
@@ -49,6 +45,10 @@ class Connection(object):
         self._with_count = 0
 
         self.last_commit = time.time()
+
+        self.cdb = cdb
+        self.conn = sqlite3.connect(cdb.path, *args, check_same_thread=False, **kwargs)
+        self.cur = self.conn.cursor()
 
         cdb.inc_connection_count()
 
@@ -343,6 +343,7 @@ class CDB(object):
             self.thread = None
 
 def connect(path, *args, **kwargs):
+    logger.debug("connect %r" % path)
     path = os.path.abspath(os.path.expanduser(path))
     cdb = CDB.databases.get(path, None)
 

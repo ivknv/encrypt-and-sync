@@ -23,12 +23,13 @@ from .. import Paths
 from .. import FileComparator
 
 class Synchronizer(StagedWorker):
-    def __init__(self, encsync, n_workers=2, n_scan_workers=2):
+    def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2):
         StagedWorker.__init__(self)
 
         self.encsync = encsync
         self.n_workers = n_workers
         self.n_scan_workers = n_scan_workers
+        self.directory = directory
 
         self.targets = []
         self.targets_lock = threading.Lock()
@@ -38,9 +39,9 @@ class Synchronizer(StagedWorker):
         self.cur_target = None
         self.diffs = None
 
-        self.shared_llist = LocalFileList()
-        self.shared_rlist = RemoteFileList()
-        self.shared_duplist = DuplicateList()
+        self.shared_llist = LocalFileList(directory)
+        self.shared_rlist = RemoteFileList(directory)
+        self.shared_duplist = DuplicateList(directory)
 
         self.stage_order = ("scan", "rm", "dirs", "files", "check")
 
@@ -122,13 +123,14 @@ class Synchronizer(StagedWorker):
     def build_diffs_table(self):
         assert(self.cur_target is not None)
 
-        difflist = DiffList(self.encsync)
+        difflist = DiffList(self.encsync, self.directory)
 
         logger.debug("Building differences")
 
         diffs = FileComparator.compare_lists(self.encsync,
                                              self.cur_target.local,
-                                             self.cur_target.remote)
+                                             self.cur_target.remote,
+                                             self.directory)
         try:
             difflist.begin_transaction()
             difflist.clear_differences(self.cur_target.local,
@@ -153,13 +155,13 @@ class Synchronizer(StagedWorker):
     def work(self):
         logger.debug("Dispatcher started working")
 
-        llist = LocalFileList()
-        rlist = RemoteFileList()
+        llist = LocalFileList(self.directory)
+        rlist = RemoteFileList(self.directory)
 
         llist.create()
         rlist.create()
 
-        difflist = DiffList(self.encsync)
+        difflist = DiffList(self.encsync, self.directory)
         difflist.create()
 
         while not self.stopped:
@@ -226,7 +228,7 @@ class Synchronizer(StagedWorker):
     def init_rm_stage(self):
         logger.debug("Dispatcher began initializing stage 'rm'")
 
-        d = DiffList(self.encsync)
+        d = DiffList(self.encsync, self.directory)
         self.diffs = d.select_rm_differences(self.cur_target.local,
                                              self.cur_target.remote)
 
@@ -244,7 +246,7 @@ class Synchronizer(StagedWorker):
     def init_dirs_stage(self):
         logger.debug("Dispatcher began initializing stage 'dirs'")
 
-        d = DiffList(self.encsync)
+        d = DiffList(self.encsync, self.directory)
         self.diffs = d.select_dirs_differences(self.cur_target.local,
                                                self.cur_target.remote)
 
@@ -262,7 +264,7 @@ class Synchronizer(StagedWorker):
     def init_files_stage(self):
         logger.debug("Dispatcher began initializing stage 'files'")
 
-        d = DiffList(self.encsync)
+        d = DiffList(self.encsync, self.directory)
         self.diffs = d.select_files_differences(self.cur_target.local,
                                                 self.cur_target.remote)
 
@@ -410,7 +412,7 @@ class Synchronizer(StagedWorker):
 
             self.build_diffs_table()
 
-            difflist = DiffList(self.encsync)
+            difflist = DiffList(self.encsync, self.directory)
 
             if difflist.get_difference_count(self.cur_target.local, self.cur_target.remote):
                 self.cur_target.emit_event("integrity_check_failed")

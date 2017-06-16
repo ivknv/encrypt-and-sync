@@ -12,12 +12,12 @@ def try_next(it, default=None):
         return default
 
 class FileComparator(object):
-    def __init__(self, encsync, prefix1, prefix2):
+    def __init__(self, encsync, prefix1, prefix2, directory=None):
         self.encsync = encsync
         self.prefix1 = Paths.from_sys(prefix1)
         self.prefix2 = prefix2
 
-        llist, rlist = LocalFileList(), RemoteFileList()
+        llist, rlist = LocalFileList(directory), RemoteFileList(directory)
 
         self.nodes1 = llist.find_node_children(prefix1)
         self.nodes2 = rlist.find_node_children(prefix2)
@@ -148,8 +148,8 @@ class FileComparator(object):
     def is_transitioned(self):
         return self.node1 and self.node2 and self.type1 != self.type2
 
-def compare_lists(encsync, prefix1, prefix2):
-    comparator = FileComparator(encsync, prefix1, prefix2)
+def compare_lists(encsync, prefix1, prefix2, directory=None):
+    comparator = FileComparator(encsync, prefix1, prefix2, directory)
 
     for i in comparator:
         for j in i:

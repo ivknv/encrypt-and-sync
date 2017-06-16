@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
 import argparse
+import os
+import sys
 
+from .cli import common
 from .cli.Environment import Environment
 from .cli.scan import do_scan
 from .cli.show_diffs import show_diffs
@@ -30,8 +32,18 @@ def main(args):
     env = Environment()
 
     env["master_password"] = ns.master_password
-    env["config_path"] = ns.config
     env["ask"] = ns.ask
+
+    if ns.config_dir is not None or env.get("config_dir", None) is None:
+        if ns.config_dir is None:
+            ns.config_dir = "~/.encsync"
+
+        env["config_dir"] = os.path.realpath(os.path.expanduser(ns.config_dir))
+        env["config_path"] = os.path.join(env["config_dir"], "config.json")
+
+    common.create_config_dir(env)
+    if not os.path.exists(env["config_path"]):
+        make_config(env, env["config_path"])
 
     actions = (("scan", lambda: do_scan(env, ns.scan, ns.n_workers)),
                ("sync", lambda: do_sync(env, ns.sync, ns.n_workers, ns.no_scan, ns.no_check)),
@@ -83,7 +95,7 @@ def parse_args(args):
     parser.add_argument("--ask", default=False, action="store_true")
 
     config_group = parser.add_argument_group("config")
-    config_group.add_argument("--config", metavar="PATH", default="config.json")
+    config_group.add_argument("-c", "--config-dir", metavar="PATH", default=None)
     config_group.add_argument("--n-workers", "-w", type=positive_int, default=1)
 
     actions_group = parser.add_mutually_exclusive_group()
