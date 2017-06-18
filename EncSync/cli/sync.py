@@ -12,6 +12,7 @@ from ..Synchronizer import Synchronizer
 from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler
 from ..DiffList import DiffList
+from .SignalManagers import GenericSignalManager
 
 def print_diffs(env, encsync, target):
     difflist = DiffList(encsync, env["config_dir"])
@@ -26,13 +27,16 @@ def print_diffs(env, encsync, target):
     print("[%s -> %s]: %d new directories" % (local, remote, n_dirs))
     print("[%s -> %s]: %d files to upload" % (local, remote, n_files))
 
-def prompt_continue():
+def prompt_continue(synchronizer):
     answer = None
     values = {"y": "continue", "n": "stop", "v": "view"}
 
     default = "y"
 
     while answer not in values.keys():
+        if synchronizer.stopped:
+            return "stop"
+
         answer = input("Continue synchronization? [Y/n/(v)iew differences]: ").lower()
 
         if answer == "":
@@ -138,24 +142,22 @@ class SynchronizerReceiver(EventHandler):
         target = self.synchronizer.cur_target
 
         if stage == "scan":
-            print_diffs(self.env, self.synchronizer.encsync, target)
-
-            if not self.env.get("ask", False):
-                return
-
-            action = prompt_continue()
-
-            while action == "view":
-                view_diffs(self.env, self.synchronizer.encsync, target)
-                action = prompt_continue()
-
-            if action == "stop":
-                self.synchronizer.stop()
-
             if not target.enable_scan:
                 return
 
-        if stage == "check" and target.skip_integrity_check:
+            if target.status not in ("failed", "suspended"):
+                print_diffs(self.env, self.synchronizer.encsync, target)
+
+                if self.env.get("ask", False):
+                    action = prompt_continue(self.synchronizer)
+
+                    while action == "view":
+                        view_diffs(self.env, self.synchronizer.encsync, target)
+                        action = prompt_continue(self.synchronizer)
+
+                    if action == "stop":
+                        self.synchronizer.stop()
+        elif stage == "check" and target.skip_integrity_check:
             return
 
         print("Synchronizer exited stage %r" % stage)
@@ -311,38 +313,40 @@ def do_sync(env, paths, n_workers, no_scan=False, no_check=False):
         return ret
 
     synchronizer = Synchronizer(env["encsync"], env["config_dir"], n_workers, n_workers)
-    synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
-    synchronizer.add_receiver(synchronizer_receiver)
 
-    target_receiver = TargetReceiver(env)
+    with GenericSignalManager(synchronizer):
+        synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
+        synchronizer.add_receiver(synchronizer_receiver)
 
-    targets = []
+        target_receiver = TargetReceiver(env)
 
-    for path1, path2 in zip(paths[::2], paths[1::2]):
-        path1, path1_type = common.recognize_path(path1)
-        path2, path2_type = common.recognize_path(path2)
+        targets = []
 
-        if path1_type == path2_type:
-            show_error("Error: expected a pair of both local and remote paths")
+        for path1, path2 in zip(paths[::2], paths[1::2]):
+            path1, path1_type = common.recognize_path(path1)
+            path2, path2_type = common.recognize_path(path2)
+
+            if path1_type == path2_type:
+                show_error("Error: expected a pair of both local and remote paths")
+                return 1
+
+            if path1_type == "local":
+                local, remote = path1, path2
+            else:
+                local, remote = path2, path1
+
+            local = os.path.realpath(os.path.expanduser(local))
+            remote = common.prepare_remote_path(remote)
+
+            target = synchronizer.add_new_target(not no_scan, local, remote, None)
+            target.skip_integrity_check = no_check
+            target.add_receiver(target_receiver)
+            targets.append(target)
+
+        synchronizer.start()
+        synchronizer.join()
+
+        if any(i.status != "finished" for i in targets):
             return 1
 
-        if path1_type == "local":
-            local, remote = path1, path2
-        else:
-            local, remote = path2, path1
-
-        local = os.path.realpath(os.path.expanduser(local))
-        remote = common.prepare_remote_path(remote)
-
-        target = synchronizer.add_new_target(not no_scan, local, remote, None)
-        target.skip_integrity_check = no_check
-        target.add_receiver(target_receiver)
-        targets.append(target)
-
-    synchronizer.start()
-    synchronizer.join()
-
-    if any(i.status != "finished" for i in targets):
-        return 1
-
-    return 0
+        return 0

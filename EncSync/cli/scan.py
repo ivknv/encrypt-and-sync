@@ -8,6 +8,7 @@ from ..Scanner import Scanner
 from ..Event.EventHandler import EventHandler
 from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from .. import Paths
+from .SignalManagers import GenericSignalManager
 
 from . import common
 
@@ -125,29 +126,30 @@ def do_scan(env, paths, n_workers):
 
     scanner = Scanner(env["encsync"], env["config_dir"], n_workers)
 
-    targets = []
+    with GenericSignalManager(scanner):
+        targets = []
 
-    target_receiver = TargetReceiver(env)
+        target_receiver = TargetReceiver(env)
 
-    for path in paths:
-        path, scan_type = common.recognize_path(path)
-        if scan_type == "local":
-            path = os.path.realpath(os.path.expanduser(path))
-        else:
-            path = common.prepare_remote_path(path)
+        for path in paths:
+            path, scan_type = common.recognize_path(path)
+            if scan_type == "local":
+                path = os.path.realpath(os.path.expanduser(path))
+            else:
+                path = common.prepare_remote_path(path)
 
-        target = scanner.add_dir(scan_type, path)
-        target.add_receiver(target_receiver)
-        targets.append(target)
+            target = scanner.add_dir(scan_type, path)
+            target.add_receiver(target_receiver)
+            targets.append(target)
 
-    scanner_receiver = ScannerReceiver(scanner)
+        scanner_receiver = ScannerReceiver(scanner)
 
-    scanner.add_receiver(scanner_receiver)
+        scanner.add_receiver(scanner_receiver)
 
-    scanner.start()
-    scanner.join()
+        scanner.start()
+        scanner.join()
 
-    if any(i.status != "finished" for i in targets):
-        return 1
+        if any(i.status != "finished" for i in targets):
+            return 1
 
-    return 0
+        return 0

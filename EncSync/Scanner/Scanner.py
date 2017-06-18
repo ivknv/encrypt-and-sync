@@ -35,8 +35,9 @@ class Scanner(Worker):
 
     def change_status(self, status):
         with self.targets_lock:
-            for i in self.targets:
-                i.change_status(status)
+            for i in self.targets + [self.cur_target]:
+                if i is not None:
+                    i.change_status(status)
 
     def add_dir(self, scan_type, path):
         target = ScanTarget(scan_type, path)

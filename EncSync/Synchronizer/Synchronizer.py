@@ -57,8 +57,9 @@ class Synchronizer(StagedWorker):
         self.add_event("next_target")
 
     def change_status(self, status):
-        for i in self.get_targets():
-            i.change_status(status)
+        for i in self.get_targets() + [self.cur_target]:
+            if i is not None:
+                i.change_status(status)
 
     def add_target(self, target):
         with self.targets_lock:

@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import os
-import time
 
 from ..Downloader import Downloader
 from ..Event.EventHandler import EventHandler
 
 from . import common
 from .common import show_error, get_progress_str, make_size_readable
+from .SignalManagers import GenericSignalManager
 
 def print_target_totals(target):
     n_finished = target.progress["finished"]
@@ -130,37 +130,38 @@ def download(env, paths, n_workers):
 
     downloader = Downloader(encsync, env["config_dir"], n_workers)
 
-    downloader_receiver = DownloaderReceiver(downloader)
-    downloader.add_receiver(downloader_receiver)
+    with GenericSignalManager(downloader):
+        downloader_receiver = DownloaderReceiver(downloader)
+        downloader.add_receiver(downloader_receiver)
 
-    target_receiver = TargetReceiver()
+        target_receiver = TargetReceiver()
 
-    targets = []
+        targets = []
 
-    if len(paths) == 1:
-        local = os.getcwd()
-    else:
-        local = paths.pop()
+        if len(paths) == 1:
+            local = os.getcwd()
+        else:
+            local = paths.pop()
 
-    for path in paths:
-        path, path_type = common.recognize_path(path)
+        for path in paths:
+            path, path_type = common.recognize_path(path)
 
-        path = common.prepare_remote_path(path)
+            path = common.prepare_remote_path(path)
 
-        prefix = encsync.find_encrypted_dir(path)
+            prefix = encsync.find_encrypted_dir(path)
 
-        if prefix is None:
-            show_error("%r does not appear to be encrypted" % path)
+            if prefix is None:
+                show_error("%r does not appear to be encrypted" % path)
+                return 1
+
+            target = downloader.add_download(prefix, path, local)
+            target.add_receiver(target_receiver)
+            targets.append(target)
+
+        downloader.start()
+        downloader.join()
+
+        if any(i.status != "finished" for i in targets):
             return 1
-
-        target = downloader.add_download(prefix, path, local)
-        target.add_receiver(target_receiver)
-        targets.append(target)
-
-    downloader.start()
-    downloader.join()
-
-    if any(i.status != "finished" for i in targets):
-        return 1
 
     return 0

@@ -31,8 +31,9 @@ class Downloader(Worker):
         self.add_event("next_task")
 
     def change_status(self, status):
-        for i in self.get_targets():
-            i.change_status(status)
+        for i in self.get_targets() + [self.cur_target]:
+            if i is not None:
+                i.change_status(status)
 
     def get_targets(self):
         with self.targets_lock:
