@@ -53,6 +53,10 @@ def main(args):
 
     env["master_password"] = ns.master_password
     env["ask"] = ns.ask
+    env["all"] = ns.all
+
+    if ns.n_workers is not None:
+        env["n_workers"] = ns.n_workers
 
     if ns.config_dir is not None or env.get("config_dir", None) is None:
         if ns.config_dir is None:
@@ -67,10 +71,10 @@ def main(args):
 
     setup_logging(env)
 
-    actions = (("scan", lambda: do_scan(env, ns.scan, ns.n_workers)),
-               ("sync", lambda: do_sync(env, ns.sync, ns.n_workers, ns.no_scan, ns.no_check)),
+    actions = (("scan", lambda: do_scan(env, ns.scan)),
+               ("sync", lambda: do_sync(env, ns.sync, ns.no_scan, ns.no_check)),
                ("show_diffs", lambda: show_diffs(env, *ns.show_diffs[:2])),
-               ("download", lambda: download(env, ns.download, ns.n_workers)),
+               ("download", lambda: download(env, ns.download)),
                ("encrypt", lambda: encrypt(env, ns.encrypt)),
                ("encrypt_filename", lambda: encrypt_filename(env,
                                                              ns.encrypt_filename,
@@ -115,15 +119,16 @@ def parse_args(args):
     parser.add_argument("--no-scan", default=False, action="store_true")
     parser.add_argument("--no-check", default=False, action="store_true")
     parser.add_argument("--ask", default=False, action="store_true")
+    parser.add_argument("-a", "--all", default=False, action="store_true")
 
     config_group = parser.add_argument_group("config")
     config_group.add_argument("-c", "--config-dir", metavar="PATH", default=None)
-    config_group.add_argument("--n-workers", "-w", type=positive_int, default=1)
+    config_group.add_argument("--n-workers", "-w", type=positive_int)
 
     actions_group = parser.add_mutually_exclusive_group()
     actions_group.add_argument("-s", "--scan", nargs="+")
     actions_group.add_argument("-d", "--show-diffs", nargs=2)
-    actions_group.add_argument("-S", "--sync", nargs="+")
+    actions_group.add_argument("-S", "--sync", nargs="*")
     actions_group.add_argument("-D", "--download", nargs="+")
     actions_group.add_argument("--encrypt", nargs="+")
     actions_group.add_argument("--decrypt", nargs="+")

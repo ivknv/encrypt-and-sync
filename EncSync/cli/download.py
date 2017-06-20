@@ -122,13 +122,16 @@ class TaskReceiver(EventHandler):
 
         print(progress_str + ": failed to obtain download link")
 
-def download(env, paths, n_workers):
+def download(env, paths):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
 
+    n_workers = env.get("n_workers", encsync.download_threads)
+
     downloader = Downloader(encsync, env["config_dir"], n_workers)
+    downloader.set_speed_limit(encsync.download_limit)
 
     with GenericSignalManager(downloader):
         downloader_receiver = DownloaderReceiver(downloader)

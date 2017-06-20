@@ -12,7 +12,7 @@ def cmd_download(console, args):
     parser = argparse.ArgumentParser(description="Download file from Yandex Disk",
                                      prog=args[0])
     parser.add_argument("paths", nargs="+")
-    parser.add_argument("--n-workers", "-w", default=1, type=positive_int)
+    parser.add_argument("--n-workers", "-w", type=positive_int)
 
     ns = parser.parse_args(args[1:])
 
@@ -24,4 +24,7 @@ def cmd_download(console, args):
 
     env = Environment(console.env)
 
-    return download(env, paths, ns.n_workers)
+    if ns.n_workers is not None:
+        env["n_workers"] = ns.n_workers
+
+    return download(env, paths)

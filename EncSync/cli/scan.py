@@ -119,10 +119,12 @@ class WorkerReceiver(EventHandler):
 
         print(scannable.path)
 
-def do_scan(env, paths, n_workers):
+def do_scan(env, paths):
     encsync, ret = common.make_encsync(env)
     if encsync is None:
         return ret
+
+    n_workers = env.get("n_workers", encsync.scan_threads)
 
     scanner = Scanner(env["encsync"], env["config_dir"], n_workers)
 

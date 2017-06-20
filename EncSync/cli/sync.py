@@ -8,6 +8,7 @@ from .common import show_error, get_progress_str
 from .scan import WorkerReceiver as ScanWorkerReceiver
 from .scan import TargetReceiver as ScanTargetReceiver
 
+from .. import Paths
 from ..Synchronizer import Synchronizer
 from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler
@@ -306,13 +307,34 @@ class TaskReceiver(EventHandler):
 
         print(progress_str + ": filename is too long (>= 160)")
 
-def do_sync(env, paths, n_workers, no_scan=False, no_check=False):
+def do_sync(env, paths, no_scan=False, no_check=False):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
 
-    synchronizer = Synchronizer(env["encsync"], env["config_dir"], n_workers, n_workers)
+    paths = list(paths)
+
+    if env.get("all", False):
+        for target in encsync.targets:
+            local, remote = target["local"], target["remote"]
+
+            paths.append(local)
+            paths.append(Paths.join("disk://", remote))
+
+    if len(paths) == 0:
+        show_error("Error: no paths given")
+        return 1
+
+    if len(paths) % 2 != 0:
+        show_error("Error: expected pairs of paths")
+        return 1
+
+    n_sync_workers = env.get("n_workers", encsync.sync_threads)
+    n_scan_workers = env.get("n_workers", encsync.scan_threads)
+
+    synchronizer = Synchronizer(encsync, env["config_dir"], n_sync_workers, n_scan_workers)
+    synchronizer.set_speed_limit(encsync.upload_limit)
 
     with GenericSignalManager(synchronizer):
         synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
@@ -342,6 +364,10 @@ def do_sync(env, paths, n_workers, no_scan=False, no_check=False):
             target.skip_integrity_check = no_check
             target.add_receiver(target_receiver)
             targets.append(target)
+
+        print("Targets to sync:")
+        for target in targets:
+            print("[%s -> %s]" % (target.local, target.remote))
 
         synchronizer.start()
         synchronizer.join()

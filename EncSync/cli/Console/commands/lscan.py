@@ -16,4 +16,4 @@ def cmd_lscan(console, args):
 
     env = Environment(console.env)
 
-    return do_scan(env, ["local://" + i for i in ns.dirs], 1)
+    return do_scan(env, ["local://" + i for i in ns.dirs])
