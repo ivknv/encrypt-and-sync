@@ -50,7 +50,7 @@ def print_diffs(env, encsync, target):
 
 def ask_continue(synchronizer):
     answer = None
-    values = {"y": "continue", "n": "stop", "v": "view"}
+    values = {"y": "continue", "n": "stop", "v": "view", "s": "skip"}
 
     default = "y"
 
@@ -59,7 +59,7 @@ def ask_continue(synchronizer):
             if synchronizer.stopped:
                 return "stop"
 
-            answer = input("Continue synchronization? [Y/n/(v)iew differences]: ").lower()
+            answer = input("Continue synchronization? [Y/n/s(kip)/(v)iew differences]: ").lower()
 
             if answer == "":
                 answer = default
@@ -184,6 +184,8 @@ class SynchronizerReceiver(EventHandler):
 
                     if action == "stop":
                         self.synchronizer.stop()
+                    elif action == "skip":
+                        target.change_status("suspended")
         elif stage == "check" and target.skip_integrity_check:
             return
 
@@ -410,7 +412,10 @@ def do_sync(env, paths):
         synchronizer.start()
         synchronizer.join()
 
-        if any(i.status != "finished" for i in targets):
+        if any(i.status not in ("finished", "suspended") for i in targets):
+            return 1
+
+        if synchronizer.stopped:
             return 1
 
         return 0
