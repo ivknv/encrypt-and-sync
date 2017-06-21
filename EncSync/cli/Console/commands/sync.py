@@ -17,6 +17,8 @@ def cmd_sync(console, args):
     parser.add_argument("--ask", default=False, action="store_true")
     parser.add_argument("--no-scan", default=False, action="store_true")
     parser.add_argument("--no-check", default=False, action="store_true")
+    parser.add_argument("--no-choice", default=False, action="store_true")
+    parser.add_argument("--no-diffs", default=False, action="store_true")
 
     ns = parser.parse_args(args[1:])
 
@@ -33,8 +35,12 @@ def cmd_sync(console, args):
     env = Environment(console.env)
     env["all"] = ns.all
     env["ask"] = ns.ask
+    env["no_check"] = ns.no_check
+    env["no_scan"] = ns.no_scan
+    env["no_diffs"] = ns.no_diffs
+    env["no_choice"] = ns.no_choice
 
     if ns.n_workers is not None:
         env["n_workers"] = ns.n_workers
 
-    return do_sync(env, paths, ns.no_scan, ns.no_check)
+    return do_sync(env, paths)

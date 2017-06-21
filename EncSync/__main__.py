@@ -53,6 +53,10 @@ def main(args):
 
     env["master_password"] = ns.master_password
     env["ask"] = ns.ask
+    env["no_choice"] = ns.no_choice
+    env["no_check"] = ns.no_check
+    env["no_scan"] = ns.no_scan
+    env["no_diffs"] = ns.no_diffs
     env["all"] = ns.all
 
     if ns.n_workers is not None:
@@ -72,7 +76,7 @@ def main(args):
     setup_logging(env)
 
     actions = (("scan", lambda: do_scan(env, ns.scan)),
-               ("sync", lambda: do_sync(env, ns.sync, ns.no_scan, ns.no_check)),
+               ("sync", lambda: do_sync(env, ns.sync)),
                ("show_diffs", lambda: show_diffs(env, *ns.show_diffs[:2])),
                ("download", lambda: download(env, ns.download)),
                ("encrypt", lambda: encrypt(env, ns.encrypt)),
@@ -118,6 +122,8 @@ def parse_args(args):
     parser.add_argument("--prefix", default=None)
     parser.add_argument("--no-scan", default=False, action="store_true")
     parser.add_argument("--no-check", default=False, action="store_true")
+    parser.add_argument("--no-choice", default=False, action="store_true")
+    parser.add_argument("--no-diffs", default=False, action="store_true")
     parser.add_argument("--ask", default=False, action="store_true")
     parser.add_argument("-a", "--all", default=False, action="store_true")
 

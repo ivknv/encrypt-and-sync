@@ -9,11 +9,31 @@ from .scan import WorkerReceiver as ScanWorkerReceiver
 from .scan import TargetReceiver as ScanTargetReceiver
 
 from .. import Paths
-from ..Synchronizer import Synchronizer
+from ..Synchronizer import Synchronizer, SyncTarget
 from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler
 from ..DiffList import DiffList
 from .SignalManagers import GenericSignalManager
+from .parse_choice import interpret_choice
+
+def ask_target_choice(targets):
+    for i, target in enumerate(targets):
+        local, remote = target.local, target.remote
+        print("[%d] [%s -> %s]" % (i + 1, local, remote))
+
+    while True:
+        try:
+            answer = input("Enter numbers of targets [default: all]: ")
+        except (KeyboardInterrupt, EOFError):
+            return []
+
+        if answer.isspace() or not answer:
+            answer = "all"
+
+        try:
+            return interpret_choice(answer, targets)
+        except (ValueError, IndexError) as e:
+            print("Error: %s" % str(e))
 
 def print_diffs(env, encsync, target):
     difflist = DiffList(encsync, env["config_dir"])
@@ -28,20 +48,23 @@ def print_diffs(env, encsync, target):
     print("[%s -> %s]: %d new directories" % (local, remote, n_dirs))
     print("[%s -> %s]: %d files to upload" % (local, remote, n_files))
 
-def prompt_continue(synchronizer):
+def ask_continue(synchronizer):
     answer = None
     values = {"y": "continue", "n": "stop", "v": "view"}
 
     default = "y"
 
-    while answer not in values.keys():
-        if synchronizer.stopped:
-            return "stop"
+    try:
+        while answer not in values.keys():
+            if synchronizer.stopped:
+                return "stop"
 
-        answer = input("Continue synchronization? [Y/n/(v)iew differences]: ").lower()
+            answer = input("Continue synchronization? [Y/n/(v)iew differences]: ").lower()
 
-        if answer == "":
-            answer = default
+            if answer == "":
+                answer = default
+    except (KeyboardInterrupt, EOFError):
+        answer = "n"
 
     return values[answer]
 
@@ -149,12 +172,15 @@ class SynchronizerReceiver(EventHandler):
             if target.status not in ("failed", "suspended"):
                 print_diffs(self.env, self.synchronizer.encsync, target)
 
-                if self.env.get("ask", False):
-                    action = prompt_continue(self.synchronizer)
+                ask = self.env.get("ask", False)
+                no_diffs = self.env.get("no_diffs", False)
+
+                if ask and not no_diffs:
+                    action = ask_continue(self.synchronizer)
 
                     while action == "view":
                         view_diffs(self.env, self.synchronizer.encsync, target)
-                        action = prompt_continue(self.synchronizer)
+                        action = ask_continue(self.synchronizer)
 
                     if action == "stop":
                         self.synchronizer.stop()
@@ -307,11 +333,16 @@ class TaskReceiver(EventHandler):
 
         print(progress_str + ": filename is too long (>= 160)")
 
-def do_sync(env, paths, no_scan=False, no_check=False):
+def do_sync(env, paths):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
+
+    no_scan = env.get("no_scan", False)
+    no_check = env.get("no_check", False)
+    no_choice = env.get("no_choice", False)
+    ask = env.get("ask", False)
 
     paths = list(paths)
 
@@ -360,10 +391,17 @@ def do_sync(env, paths, no_scan=False, no_check=False):
             local = os.path.realpath(os.path.expanduser(local))
             remote = common.prepare_remote_path(remote)
 
-            target = synchronizer.add_new_target(not no_scan, local, remote, None)
+            target = SyncTarget(synchronizer, local, remote)
+            target.enable_scan = not no_scan
             target.skip_integrity_check = no_check
-            target.add_receiver(target_receiver)
             targets.append(target)
+
+        if ask and not no_choice:
+            targets = ask_target_choice(targets)
+
+        for target in targets:
+            synchronizer.add_target(target)
+            target.add_receiver(target_receiver)
 
         print("Targets to sync:")
         for target in targets:
