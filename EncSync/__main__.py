@@ -96,9 +96,10 @@ def main(args):
                ("execute_script", lambda: execute_script(env, ns.execute_script)))
 
     if any_not_none(("scan", "sync", "download", "show_diffs", "console"), ns):
-        ret = check_token(env)
-        if ret:
-            return ret
+        if not ns.no_token_check:
+            ret = check_token(env)
+            if ret:
+                return ret
 
     for key, func in actions:
         if getattr(ns, key) is not None:
@@ -120,12 +121,13 @@ def parse_args(args):
 
     parser.add_argument("--master-password", default=None)
     parser.add_argument("--prefix", default=None)
-    parser.add_argument("--no-scan", default=False, action="store_true")
-    parser.add_argument("--no-check", default=False, action="store_true")
-    parser.add_argument("--no-choice", default=False, action="store_true")
-    parser.add_argument("--no-diffs", default=False, action="store_true")
-    parser.add_argument("--ask", default=False, action="store_true")
-    parser.add_argument("-a", "--all", default=False, action="store_true")
+    parser.add_argument("--no-scan", action="store_true")
+    parser.add_argument("--no-check", action="store_true")
+    parser.add_argument("--no-choice", action="store_true")
+    parser.add_argument("--no-diffs", action="store_true")
+    parser.add_argument("--no-token-check", action="store_true")
+    parser.add_argument("--ask", action="store_true")
+    parser.add_argument("-a", "--all", action="store_true")
 
     config_group = parser.add_argument_group("config")
     config_group.add_argument("-c", "--config-dir", metavar="PATH", default=None)
