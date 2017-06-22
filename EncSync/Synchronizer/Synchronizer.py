@@ -202,7 +202,7 @@ class Synchronizer(StagedWorker):
             logger.debug("Running stages: %s" % repr(stages))
 
             for stage in stages:
-                if self.stopped:
+                if self.stopped or target.status != "pending":
                     break
 
                 target.stage = stage
