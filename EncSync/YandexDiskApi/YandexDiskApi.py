@@ -10,6 +10,8 @@ except ImportError:
 
 import requests
 
+from . import Exceptions
+
 def parse_date(s):
     return time.strptime(s[:-3] + s[-2:], "%Y-%m-%dT%H:%M:%S%z")
 
@@ -64,6 +66,16 @@ class YndApi(object):
         return self.prepare_response(r)
 
     @staticmethod
+    def prepare_error(error_dict):
+        error_type = error_dict["error"]
+        description = error_dict["description"]
+
+        try:
+            return Exceptions.exception_map[error_type](description)
+        except KeyError:
+            return Exceptions.YandexDiskError(error_type, description)
+
+    @staticmethod
     def prepare_response(response, success_codes=None):
         if success_codes is None:
             success_codes = {200}
@@ -75,6 +87,13 @@ class YndApi(object):
             ret["data"] = response.json()
         except (ValueError, RuntimeError):
             ret["data"] = None
+
+        if not ret["success"]:
+            if ret["data"] is not None:
+                raise YndApi.prepare_error(ret["data"])
+            else:
+                msg = "Server returned %d" % response.status_code
+                raise Exceptions.YandexDiskError(None, msg)
 
         return ret
 
@@ -116,23 +135,39 @@ class YndApi(object):
 
         return ret
 
+    def exists(self, path,
+               max_retries=DEFAULT_MAX_RETRIES,
+               timeout=DEFAULT_TIMEOUT, **kwargs):
+        try:
+            r = self.get_meta(path, max_retries, timeout, **kwargs)
+
+            return True
+        except Exceptions.DiskNotFoundError:
+            return False
 
     def get_type(self, path,
                  max_retries=DEFAULT_MAX_RETRIES,
                  timeout=DEFAULT_TIMEOUT, **kwargs):
         r = self.get_meta(path, max_retries, timeout, **kwargs)
+
         if r["success"]:
             return r["data"]["type"]
 
     def is_file(self, path,
                 max_retries=DEFAULT_MAX_RETRIES,
                 timeout=DEFAULT_TIMEOUT, **kwargs):
-        return self.get_type(path, max_retries, timeout, **kwargs) == "file"
+        try:
+            return self.get_type(path, max_retries, timeout, **kwargs) == "file"
+        except Exceptions.DiskNotFoundError:
+            return False
 
     def is_dir(self, path,
                max_retries=DEFAULT_MAX_RETRIES,
                timeout=DEFAULT_TIMEOUT, **kwargs):
-        return self.get_type(path, max_retries, timeout, **kwargs) == "dir"
+        try:
+            return self.get_type(path, max_retries, timeout, **kwargs) == "dir"
+        except Exceptions.DiskNotFoundError:
+            return False
 
     def ls(self, path,
            max_retries=DEFAULT_MAX_RETRIES,
