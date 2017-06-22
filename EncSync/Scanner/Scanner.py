@@ -10,6 +10,7 @@ from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..Scannable import LocalScannable, RemoteScannable
 from .Task import ScanTask
 from .Target import ScanTarget
+from ..YandexDiskApi.Exceptions import DiskNotFoundError
 
 class Scanner(Worker):
     def __init__(self, encsync, directory, n_workers=2):
@@ -102,7 +103,12 @@ class Scanner(Worker):
         self.shared_rlist.remove_node_children(target.path)
 
         scannable = RemoteScannable(self.encsync, target.path)
-        scannable.identify()
+
+        try:
+            scannable.identify()
+        except DiskNotFoundError:
+            return
+
         self.shared_rlist.insert_node(scannable.to_node())
         self.add_task(scannable)
 
