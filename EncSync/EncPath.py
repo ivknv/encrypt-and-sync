@@ -125,7 +125,7 @@ class EncPath(object):
     def path(self, value):
         if value is not None:
             self._path = Paths.from_sys(value)
-            if self._path.startswith("/"):
+            if self._path.startswith("/") and self._path != "/":
                 self._path = self._path[1:]
         else:
             self._path = None
