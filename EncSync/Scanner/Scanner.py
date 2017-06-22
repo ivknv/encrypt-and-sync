@@ -169,10 +169,11 @@ class Scanner(Worker):
                     filelist.rollback()
                     self.shared_duplist.rollback()
             except:
-                target.change_status("failed")
+                logger.exception("An error occured")
+                self.stop_workers()
                 filelist.rollback()
                 self.shared_duplist.rollback()
-                logger.exception("An error occured")
+                target.change_status("failed")
             finally:
                 self.cur_target = None
 
