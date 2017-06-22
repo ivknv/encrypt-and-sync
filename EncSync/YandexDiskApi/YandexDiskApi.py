@@ -93,7 +93,7 @@ class YndApi(object):
                 raise YndApi.prepare_error(ret["data"])
             else:
                 msg = "Server returned %d" % response.status_code
-                raise Exceptions.YandexDiskError(None, msg)
+                raise Exceptions.UnknownYandexDiskError(msg)
 
         return ret
 

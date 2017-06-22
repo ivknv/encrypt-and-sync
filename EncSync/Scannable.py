@@ -8,6 +8,7 @@ from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
 from .Node import normalize_node
 from .YandexDiskApi import parse_date
+from .YandexDiskApi.Exceptions import UnknownYandexDiskError
 
 class BaseScannable(object):
     def __init__(self, path=None, type=None, modified=0, size=0):
@@ -176,7 +177,7 @@ class RemoteScannable(BaseScannable):
                                  "size": data.get("size", 0),
                                  "IVs": IVs})
                 break
-            except Exception as e:
+            except UnknownYandexDiskError as e:
                 dirs.clear()
                 if j == 9:
                     raise e

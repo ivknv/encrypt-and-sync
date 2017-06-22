@@ -7,6 +7,10 @@ class YandexDiskError(BaseException):
 
         self.error_type = error_type
 
+class UnknownYandexDiskError(YandexDiskError):
+    def __init__(self, msg=""):
+        YandexDiskError.__init__(self, None, msg)
+
 class DiskNotFoundError(YandexDiskError):
     error_type = "DiskNotFoundError"
 
