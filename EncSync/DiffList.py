@@ -72,7 +72,7 @@ class DiffList(object):
             self.conn.execute("""SELECT * FROM differences
                                  WHERE diff_type='new' AND type='d' AND
                                  (local_prefix=? OR local_prefix=?) AND
-                                 (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
+                                 (remote_prefix=? OR remote_prefix=?) ORDER BY remote_prefix + path ASC""",
                               (local_prefix, Paths.dir_normalize(local_prefix),
                                remote_prefix, Paths.dir_normalize(remote_prefix)))
 

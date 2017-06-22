@@ -21,6 +21,7 @@ from ..Scannable import LocalScannable, RemoteScannable
 from ..Encryption import pad_size, MIN_ENC_SIZE
 from .. import Paths
 from .. import FileComparator
+from ..YandexDiskApi.Exceptions import DiskNotFoundError
 
 class Synchronizer(StagedWorker):
     def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2):
@@ -319,27 +320,41 @@ class Synchronizer(StagedWorker):
 
         target.change_status("pending")
 
-        self.add_task(scannable)
-
         filelist = {"local":  self.shared_llist,
                     "remote": self.shared_rlist}[scan_type]
 
         filelist.begin_transaction()
 
-        filelist.remove_node_children(target.path)
+        try:
+            filelist.remove_node_children(target.path)
 
-        scannable.identify()
-        filelist.insert_node(scannable.to_node())
+            scannable.identify()
 
-        if scan_type == "local":
-            self.start_worker(LocalScanWorker, self, target)
-        elif scan_type == "remote":
-            self.start_workers(self.n_scan_workers, RemoteScanWorker, self, target)
+            self.add_task(scannable)
 
-            self.wait_workers()
-            self.stop_workers()
+            filelist.insert_node(scannable.to_node())
 
-        self.join_workers()
+            if scan_type == "local":
+                self.start_worker(LocalScanWorker, self, target)
+            elif scan_type == "remote":
+                self.start_workers(self.n_scan_workers, RemoteScanWorker, self, target)
+
+                self.wait_workers()
+                self.stop_workers()
+
+            self.join_workers()
+        except DiskNotFoundError:
+            pass
+        except:
+            logger.exception("An error occured")
+            filelist.rollback()
+            target.change_status("failed")
+
+            self.cur_target.emit_event("%s_scan_failed" % scan_type, target)
+            if self.cur_target.status == "pending":
+                self.cur_target.change_status("failed")
+
+            return False
 
         if target.status == "pending" and self.cur_target.status == "pending":
             filelist.commit()
