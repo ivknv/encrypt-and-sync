@@ -47,7 +47,10 @@ def setup_logging(env):
 
         logger.addHandler(handler)
 
-def main(args):
+def main(args=None):
+    if args is None:
+        args = sys.argv
+
     ns = parse_args(args)
 
     env = Environment()

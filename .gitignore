@@ -5,3 +5,6 @@
 TestDir/
 DownloadTest/
 config.json
+dist/
+build/
+*.egg-info/
