@@ -59,6 +59,8 @@ def main(args):
     env["no_scan"] = ns.no_scan
     env["no_diffs"] = ns.no_diffs
     env["all"] = ns.all
+    env["local_only"] = ns.local_only
+    env["remote_only"] = ns.remote_only
 
     if ns.n_workers is not None:
         env["n_workers"] = ns.n_workers
@@ -132,12 +134,16 @@ def parse_args(args):
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("-I", "--integrity-check", action="store_true")
 
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--local-only", action="store_true")
+    group.add_argument("--remote-only", action="store_true")
+
     config_group = parser.add_argument_group("config")
     config_group.add_argument("-c", "--config-dir", metavar="PATH", default=None)
     config_group.add_argument("--n-workers", "-w", type=positive_int)
 
     actions_group = parser.add_mutually_exclusive_group()
-    actions_group.add_argument("-s", "--scan", nargs="+")
+    actions_group.add_argument("-s", "--scan", nargs="*")
     actions_group.add_argument("-d", "--show-diffs", nargs=2)
     actions_group.add_argument("-S", "--sync", nargs="*")
     actions_group.add_argument("-D", "--download", nargs="+")

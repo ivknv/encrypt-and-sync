@@ -11,8 +11,15 @@ from .... import Paths
 def cmd_scan(console, args):
     parser = argparse.ArgumentParser(description="Scan directories",
                                      prog=args[0])
-    parser.add_argument("dirs", nargs="+")
+    parser.add_argument("dirs", nargs="*")
+    parser.add_argument("-a", "--all", action="store_true")
+    parser.add_argument("--ask", action="store_true")
+    parser.add_argument("--no-choice", action="store_true")
     parser.add_argument("--n-workers", "-w", type=positive_int)
+    
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--local-only", action="store_true")
+    group.add_argument("--remote-only", action="store_true")
 
     ns = parser.parse_args(args[1:])
 
@@ -27,6 +34,12 @@ def cmd_scan(console, args):
         paths.append(path)
 
     env = Environment(console.env)
+
+    env["all"] = ns.all
+    env["ask"] = ns.ask
+    env["no_choice"] = ns.no_choice
+    env["local_only"] = ns.local_only
+    env["remote_only"] = ns.remote_only
 
     if ns.n_workers is not None:
         env["n_workers"] = ns.n_workers

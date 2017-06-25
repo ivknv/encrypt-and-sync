@@ -4,15 +4,35 @@
 import os
 import time
 
-from ..Scanner import Scanner
+from ..Scanner import Scanner, ScanTarget
 from ..Event.EventHandler import EventHandler
 from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from .. import Paths
 from .SignalManagers import GenericSignalManager
+from .parse_choice import interpret_choice
 
 from . import common
 
 PRINT_RATE_LIMIT = 1.0
+
+def ask_target_choice(targets):
+    for i, target in enumerate(targets):
+        path = get_path_with_schema(target)
+        print("[%d] [%s]" % (i + 1, path))
+
+    while True:
+        try:
+            answer = input("Enter numbers of targets [default: all]: ")
+        except (KeyboardInterrupt, EOFError):
+            return []
+
+        if answer.isspace() or not answer:
+            answer = "all"
+
+        try:
+            return interpret_choice(answer, targets)
+        except (ValueError, IndexError) as e:
+            print("Error: %s" % str(e))
 
 def get_path_with_schema(target):
     if target.type == "remote":
@@ -125,6 +145,24 @@ def do_scan(env, paths):
         return ret
 
     n_workers = env.get("n_workers", encsync.scan_threads)
+    ask = env.get("ask", False)
+    no_choice = env.get("no_choice", False)
+
+    paths = list(paths)
+
+    if env.get("all", False):
+        for target in encsync.targets:
+            local, remote = target["local"], target["remote"]
+
+            if not env.get("remote_only", False):
+                paths.append(local)
+
+            if not env.get("local_only", False):
+                paths.append(Paths.join("disk://", remote))
+
+    if len(paths) == 0:
+        common.show_error("Error: no paths given")
+        return 1
 
     scanner = Scanner(env["encsync"], env["config_dir"], n_workers)
 
@@ -140,9 +178,19 @@ def do_scan(env, paths):
             else:
                 path = common.prepare_remote_path(path)
 
-            target = scanner.add_dir(scan_type, path)
-            target.add_receiver(target_receiver)
+            target = ScanTarget(scan_type, path)
             targets.append(target)
+
+        if ask and not no_choice:
+            targets = ask_target_choice(targets)
+
+        for target in targets:
+            scanner.add_target(target)
+            target.add_receiver(target_receiver)
+
+        print("Targets to scan:")
+        for target in targets:
+            print("[%s]" % get_path_with_schema(target))
 
         scanner_receiver = ScannerReceiver(scanner)
 
