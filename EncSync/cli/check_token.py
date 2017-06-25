@@ -5,32 +5,39 @@ import sys
 
 from . import common
 from ..EncSync import EncSync, AUTH_URL
+from ..YandexDiskApi.Exceptions import YandexDiskError
 
 def check_token(env):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
-    
-    if encsync.check_token():
-        return 0
+
+    try:    
+        if encsync.check_token():
+            return 0
+    except YandexDiskError as e:
+        show_error("Yandex.Disk error: %s: %s" % (e.error_type, str(e)))
+        return 1
 
     try:
         while True:
-            print("Go to the following URL: {}".format(AUTH_URL))
-            code = input("Enter the confirmation code here: ")
+            print("Go to the following URL: %s" % AUTH_URL)
+            code = input("Confirmation code: ")
             
-            response = encsync.ynd.get_token(code)
+            try:
+                response = encsync.ynd.get_token(code)
+            except YandexDiskError as e:
+                show_error("Yandex.Disk error: %s: %s" % (e.error_type, str(e)))
+                show_error("Failed to get token. Try again")
+                continue
 
-            if response["success"]:
-                token = response["data"]["access_token"]
-                break
-            else:
-                print("Failed to get token. Try again", file=sys.stderr)
+            token = response["data"]["access_token"]
+            break
 
         encsync.set_token(token)
-        config = encsync.make_config()
-        EncSync.store_config(config, env["config_path"], encsync.master_key)
+        enc_data = encsync.make_encrypted_data()
+        EncSync.store_encrypted_data(enc_data, env["enc_data_path"], encsync.master_key)
 
         return 0
     except (KeyboardInterrupt, EOFError):

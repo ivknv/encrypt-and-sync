@@ -8,7 +8,8 @@ import json
 import sys
 import os
 
-from ..EncSync import EncSync, InvalidConfigError
+from ..EncSync import EncSync, InvalidEncryptedDataError
+from ..Config.Exceptions import InvalidConfigError
 from ..Downloader import DownloadTask
 from ..Synchronizer import SyncTask
 from ..Encryption import DecryptionError
@@ -120,12 +121,12 @@ def recognize_path(path, default="local"):
 def prepare_remote_path(path, cwd="/"):
     return Paths.join(cwd, path)
 
-def authenticate(env, config_path, master_password=None):
-    if not os.path.exists(config_path):
-        show_error("Error: file not found: %r" % config_path)
+def authenticate(env, enc_data_path, master_password=None):
+    if not os.path.exists(enc_data_path):
+        show_error("Error: file not found: %r" % enc_data_path)
         return None, 1
-    elif os.path.isdir(config_path):
-        show_error("Error: %r is a directory" % config_path)
+    elif os.path.isdir(enc_data_path):
+        show_error("Error: %r is a directory" % enc_data_path)
         return None, 1
 
     if master_password is None:
@@ -140,19 +141,19 @@ def authenticate(env, config_path, master_password=None):
         key = hashlib.sha256(master_password.encode("utf8")).digest()
 
         try:
-            if EncSync.check_master_key(key, config_path):
+            if EncSync.check_master_key(key, enc_data_path):
                 env["master_password_sha256"] = key
                 return master_password, 0
             else:
                 show_error("Wrong master password. Try again")
         except FileNotFoundError:
-            show_error("Error: file not found: %r" % config_path)
+            show_error("Error: file not found: %r" % enc_data_path)
             return None, 1
         except IsADirectoryError:
-            show_error("Error: %r is a directory" % config_path)
+            show_error("Error: %r is a directory" % enc_data_path)
             return None, 1
         except DecryptionError as e:
-            show_error("Error: failed to decrypt file %r: %s" % (config_path, e))
+            show_error("Error: failed to decrypt file %r: %s" % (enc_data_path, e))
             return None, 1
 
         master_password = ask_master_password()
@@ -166,7 +167,7 @@ def ask_master_password(msg="Master password: "):
     except (KeyboardInterrupt, EOFError):
         return
 
-def make_encsync(env, config_path=None, master_password=None):
+def make_encsync(env, enc_data_path=None, config_path=None, master_password=None):
     encsync = env.get("encsync", None)
     if encsync is not None:
         return encsync, 0
@@ -174,17 +175,27 @@ def make_encsync(env, config_path=None, master_password=None):
     if config_path is None:
         config_path = env["config_path"]
 
-    master_password, ret = authenticate(env, config_path, master_password)
+    if enc_data_path is None:
+        enc_data_path = env["enc_data_path"]
+
+    master_password, ret = authenticate(env, enc_data_path, master_password)
 
     if master_password is None:
         return None, ret
 
     encsync = EncSync(master_password)
     try:
-        config = EncSync.load_config(config_path, encsync.master_key)
+        config = EncSync.load_config(config_path)
         encsync.set_config(config)
     except InvalidConfigError as e:
         show_error("Error: invalid configuration: %s" % e)
+        return None, 1
+
+    try:
+        enc_data = EncSync.load_encrypted_data(enc_data_path, encsync.master_key)
+        encsync.set_encrypted_data(enc_data)
+    except InvalidEncryptedDataError:
+        show_error("Error: invalid encrypted data")
         return None, 1
 
     env["encsync"] = encsync

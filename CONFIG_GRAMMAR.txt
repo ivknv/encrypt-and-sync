@@ -1,0 +1,13 @@
+Tokens:
+    Undefined
+    SimpleWord [a-zA-Z0-9_-]+
+    Word
+    LCBr {
+    RCBr }
+    Sep
+    End
+
+Grammar:
+    Config -> (Command | Block)* End
+    Block -> SimpleWord (Word | SimpleWord)* LCBr Command* RCBr
+    Command -> (Word | SimpleWord)* Sep

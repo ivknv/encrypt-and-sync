@@ -11,6 +11,12 @@ class UnknownYandexDiskError(YandexDiskError):
     def __init__(self, msg=""):
         YandexDiskError.__init__(self, None, msg)
 
+class UnauthorizedError(YandexDiskError):
+    error_type = "UnauthorizedError"
+
+    def __init__(self, msg=""):
+        YandexDiskError.__init__(self, UnauthorizedError.error_type, msg)
+
 class DiskNotFoundError(YandexDiskError):
     error_type = "DiskNotFoundError"
 
@@ -35,7 +41,8 @@ class PathExistsError(YandexDiskError):
     def __init__(self, msg=""):
         YandexDiskError.__init__(self, PathExistsError.error_type, msg)
 
-exception_map = {DiskNotFoundError.error_type: DiskNotFoundError,
-                 PathNotFoundError.error_type: PathNotFoundError,
-                 DirectoryExistsError.error_type: DirectoryExistsError,
-                 PathExistsError.error_type: PathExistsError}
+exception_map = {i.error_type: i for i in (UnauthorizedError,
+                                           DiskNotFoundError,
+                                           PathNotFoundError,
+                                           DirectoryExistsError,
+                                           PathExistsError)}

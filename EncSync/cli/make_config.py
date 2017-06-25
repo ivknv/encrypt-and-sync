@@ -1,36 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashlib
-import os
+from .common import show_error
 
-from .common import ask_master_password, show_error
-from ..EncSync import EncSync
+DEFAULT_CONFIG = """\
+sync-threads 2
+scan-threads 2
+download-threads 2
+
+upload-limit inf
+download-limit inf
+
+targets {
+
+}
+
+encrypted-dirs {
+
+}"""
 
 def make_config(env, path):
-    if os.path.isdir(path):
-        show_error("Error: %r is a directory" % path)
-        return 1
-
-    e = EncSync("")
-    config = e.make_config()
-    del e
-
-    while True:
-        master_password = ask_master_password("Master password for %r: " % path)
-
-        if master_password is None:
-            return 130
-
-        confirm = ask_master_password("Confirm master password: ")
-
-        if confirm == master_password:
-            break
-
-    key = hashlib.sha256(master_password.encode("utf8")).digest()
-
     try:
-        EncSync.store_config(config, path, key)
+        with open(path, "w") as f:
+            f.write(DEFAULT_CONFIG)
     except FileNotFoundError:
         show_error("Error: no such file or directory: %r" % path)
         return 1

@@ -6,7 +6,7 @@ import os
 
 from .common import show_error, ask_master_password
 from . import common
-from ..EncSync import EncSync, InvalidConfigError
+from ..EncSync import EncSync
 
 READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 
@@ -53,57 +53,6 @@ def encrypt(env, paths):
         except IsADirectoryError:
             show_error("Error: %r is a directory" % out_path)
             return 1
-
-    return 0
-
-def encrypt_config(env, in_path, out_path=None):
-    if out_path is None:
-        out_path = in_path
-
-    if os.path.isdir(out_path):
-        show_error("Error: %r is a directory" % out_path)
-        return 1
-
-    try:
-        config = EncSync.load_config(in_path, None, False)
-
-        valid, msg = EncSync.validate_config(config)
-
-        if not valid:
-            raise InvalidConfigError(msg)
-    except InvalidConfigError as e:
-        show_error("Error: invalid configuration: %s" % e)
-        return 1
-    except FileNotFoundError:
-        show_error("Error: no such file or directory: %r" % in_path)
-        return 1
-    except IsADirectoryError:
-        show_error("Error: %r is a directory" % in_path)
-        return 1
-
-    while True:
-        master_password = ask_master_password("Master password to encrypt with: ")
-
-        if master_password is None:
-            return 130
-
-        confirm = ask_master_password("Confirm master password: ")
-
-        if confirm == master_password:
-            break
-        elif confirm is None:
-            print("")
-
-    key = hashlib.sha256(master_password.encode("utf8")).digest()
-
-    try:
-        EncSync.store_config(config, out_path, key)
-    except IsADirectoryError:
-        show_error("Error: %r is a directory" % out_path)
-        return 1
-    except FileNotFoundError:
-        show_error("Error: no such file or directory: %r" % out_path)
-        return 1
 
     return 0
 

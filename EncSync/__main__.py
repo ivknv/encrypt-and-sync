@@ -12,10 +12,11 @@ from .cli.show_diffs import show_diffs
 from .cli.sync import do_sync
 from .cli.download import download
 from .cli.check_token import check_token
-from .cli.encrypt import encrypt, encrypt_config, encrypt_filename
-from .cli.decrypt import decrypt, decrypt_config, decrypt_filename
+from .cli.encrypt import encrypt, encrypt_filename
+from .cli.decrypt import decrypt, decrypt_filename
 from .cli.show_duplicates import show_duplicates
 from .cli.make_config import make_config
+from .cli.make_encrypted_data import make_encrypted_data
 from .cli.Console import run_console
 from .cli.execute import execute, execute_script
 
@@ -67,11 +68,15 @@ def main(args):
             ns.config_dir = "~/.encsync"
 
         env["config_dir"] = os.path.realpath(os.path.expanduser(ns.config_dir))
-        env["config_path"] = os.path.join(env["config_dir"], "config.json")
+        env["config_path"] = os.path.join(env["config_dir"], "encsync.conf")
+        env["enc_data_path"] = os.path.join(env["config_dir"], "encrypted_data.json")
 
     common.create_config_dir(env)
     if not os.path.exists(env["config_path"]):
         make_config(env, env["config_path"])
+
+    if not os.path.exists(env["enc_data_path"]):
+        make_encrypted_data(env, env["enc_data_path"])
 
     setup_logging(env)
 
@@ -83,12 +88,10 @@ def main(args):
                ("encrypt_filename", lambda: encrypt_filename(env,
                                                              ns.encrypt_filename,
                                                              ns.prefix or "/")),
-               ("encrypt_config", lambda: encrypt_config(env, *ns.encrypt_config[:2])),
                ("decrypt", lambda: decrypt(env, ns.decrypt)),
                ("decrypt_filename", lambda: decrypt_filename(env,
                                                              ns.decrypt_filename,
                                                              ns.prefix or "/")),
-               ("decrypt_config", lambda: decrypt_config(env, *ns.decrypt_config[:2])),
                ("show_duplicates", lambda: show_duplicates(env, ns.show_duplicates)),
                ("console", lambda: run_console(env)),
                ("make_config", lambda: make_config(env, ns.make_config)),
@@ -142,8 +145,6 @@ def parse_args(args):
     actions_group.add_argument("--decrypt", nargs="+")
     actions_group.add_argument("--encrypt-filename", nargs="+")
     actions_group.add_argument("--decrypt-filename", nargs="+")
-    actions_group.add_argument("--encrypt-config", nargs="+")
-    actions_group.add_argument("--decrypt-config", nargs="+")
     actions_group.add_argument("--show-duplicates", nargs="+")
     actions_group.add_argument("--console", default=None, action="store_true")
     actions_group.add_argument("--make-config")

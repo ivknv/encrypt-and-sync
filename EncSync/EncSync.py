@@ -8,8 +8,10 @@ import tempfile
 import io
 
 from . import YandexDiskApi
+from .YandexDiskApi.Exceptions import UnauthorizedError 
 from . import Encryption
 from . import Paths
+from .Config import Config
 
 try:
     JSONDecodeError = json.JSONDecodeError
@@ -36,10 +38,7 @@ TEMP_ENCRYPT_BUFFER_LIMIT = 80 * 1024**2 # In bytes
 class EncSyncError(BaseException):
     pass
 
-class ConfigError(EncSyncError):
-    pass
-
-class InvalidConfigError(ConfigError):
+class InvalidEncryptedDataError(EncSyncError):
     pass
 
 class WrongMasterKeyError(EncSyncError):
@@ -55,11 +54,11 @@ class EncSync(object):
         self.ynd_token = ""
         self.ynd_secret = APP_SECRET
         self.ynd = YandexDiskApi.YndApi(self.ynd_id, "", self.ynd_secret)
-        self.upload_limit = 1024**4
-        self.download_limit = 1024**4
-        self.sync_threads = 2
-        self.download_threads = 2
-        self.scan_threads = 2
+        self.upload_limit = float("inf")
+        self.download_limit = float("inf")
+        self.sync_threads = 1
+        self.download_threads = 1
+        self.scan_threads = 1
         self.encrypted_dirs = set()
 
     def find_encrypted_dir(self, path):
@@ -81,44 +80,41 @@ class EncSync(object):
         self.master_key = hashlib.sha256(master_key.encode("utf8")).digest()
 
     def check_token(self, max_retries=1):
-        r = self.ynd.get_disk_data(max_retries=max_retries)
-
-        if not r["success"] and r["data"] is not None:
-            return r["data"]["error"] != "UnauthorizedError"
+        try:
+            r = self.ynd.get_disk_data(max_retries=max_retries)
+        except UnauthorizedError:
+            return False
 
         return True
 
     @staticmethod
-    def check_master_key(master_key, config_path):
-        with open(config_path, "rb") as f:
+    def check_master_key(master_key, enc_data_path):
+        with open(enc_data_path, "rb") as f:
             data = Encryption.decrypt_data(f.read(), master_key)
             return data[:len(CONFIG_TEST)] == CONFIG_TEST
 
-    @staticmethod
-    def validate_config(config):
-        required_fields = ("targets", "encryptedDirs", "downloadSpeedLimit",
-                           "uploadSpeedLimit", "key", "nSyncThreads",
-                           "nDownloadThreads", "nScanThreads", "yandexAppToken")
-
-        for field in required_fields:
-            if field not in config:
-                return (False, "Missing field %r" % field)
-
-        return (True, "No errors")
-
     def make_config(self):
-        return {"targets":            self.targets,
-                "encryptedDirs":      sorted(self.encrypted_dirs),
-                "downloadSpeedLimit": self.download_limit,
-                "uploadSpeedLimit":   self.upload_limit,
-                "key":                self.plain_key,
-                "nSyncThreads":       self.sync_threads,
-                "nDownloadThreads":   self.download_threads,
-                "nScanThreads":       self.scan_threads,
-                "yandexAppToken":     self.ynd_token}
+        config = Config()
+        config.targets          = self.targets
+        config.encrypted_dirs   = self.encrypted_dirs
+        config.download_limit   = self.download_limit
+        config.upload_limit     = self.upload_limit
+        config.sync_threads     = self.sync_threads
+        config.scan_threads     = self.scan_threads
+        config.download_threads = self.download_threads
+
+        return config
+
+    def make_encrypted_data(self):
+        return {"key":            self.plain_key,
+                "yandexAppToken": self.ynd_token}
+
+    def set_encrypted_data(self, enc_data):
+        self.set_key(enc_data["key"])
+        self.set_token(enc_data["yandexAppToken"])
 
     @staticmethod
-    def load_config(path, master_key, enable_test=True):
+    def load_encrypted_data(path, master_key, enable_test=True):
         with open(path, "rb") as f:
             data = f.read()
 
@@ -129,27 +125,27 @@ class EncSync(object):
 
             if test_string != CONFIG_TEST:
                 if master_key is not None:
-                    raise WrongMasterKeyError("Wrong master key")
+                    raise WrongMasterKeyError("wrong master key")
                 elif enable_test:
-                    raise InvalidConfigError("test string is missing")
+                    raise InvalidEncryptedDataError("test string is missing")
             else:
                 data = data[len(CONFIG_TEST):]
 
             try:
                 data = data.decode("utf8")
             except UnicodeDecodeError:
-                raise InvalidConfigError("failed to decode")
+                raise InvalidEncryptedDataError("failed to decode")
 
             try:
-                config = json.loads(data)
+                enc_data = json.loads(data)
             except JSONDecodeError:
-                raise InvalidConfigError("not proper JSON")
+                raise InvalidEncryptedDataError("not proper JSON")
 
-            return config
+            return enc_data
 
     @staticmethod
-    def store_config(config, path, master_key, enable_test=True):
-        js = json.dumps(config, indent=4, sort_keys=True).encode("utf8")
+    def store_encrypted_data(enc_data, path, master_key, enable_test=True):
+        js = json.dumps(enc_data).encode("utf8")
 
         if enable_test:
             js = CONFIG_TEST + js
@@ -160,27 +156,18 @@ class EncSync(object):
         with open(path, "wb") as f:
             f.write(js)
 
+    @staticmethod
+    def load_config(path):
+        return Config.load(path)
+
     def set_config(self, config):
-        valid, msg = EncSync.validate_config(config)
-
-        if not valid:
-            raise InvalidConfigError("Invalid config: %s" % msg)
-
-        self.targets = config["targets"]
-        self.set_key(config["key"])
-
-        self.encrypted_dirs = config.get("encryptedDirs", self.encrypted_dirs)
-
-        self.encrypted_dirs = set(map(lambda x: Paths.dir_normalize(Paths.join_properly("/", x)),
-                                      self.encrypted_dirs))
-
-        self.ynd_token = config["yandexAppToken"]
-        self.download_limit = config.get("downloadSpeedLimit", self.download_limit)
-        self.upload_limit = config.get("uploadSpeedLimit", self.upload_limit)
-        self.sync_threads = config.get("nSyncThreads", self.sync_threads)
-        self.download_threads = config.get("nDownloadThreads", self.download_threads)
-        self.scan_threads = config.get("nScanThreads", self.scan_threads)
-        self.ynd = YandexDiskApi.YndApi(self.ynd_id, self.ynd_token, self.ynd_secret)
+        self.targets = config.targets
+        self.encrypted_dirs = config.encrypted_dirs
+        self.download_limit = config.download_limit
+        self.upload_limit = config.upload_limit
+        self.sync_threads = config.sync_threads
+        self.download_threads = config.download_threads
+        self.scan_threads = config.scan_threads
 
     def temp_encrypt(self, path):
         size = os.path.getsize(path)
