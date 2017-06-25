@@ -55,7 +55,7 @@ def main(args):
     env["master_password"] = ns.master_password
     env["ask"] = ns.ask
     env["no_choice"] = ns.no_choice
-    env["no_check"] = ns.no_check
+    env["no_check"] = not ns.integrity_check
     env["no_scan"] = ns.no_scan
     env["no_diffs"] = ns.no_diffs
     env["all"] = ns.all
@@ -125,12 +125,12 @@ def parse_args(args):
     parser.add_argument("--master-password", default=None)
     parser.add_argument("--prefix", default=None)
     parser.add_argument("--no-scan", action="store_true")
-    parser.add_argument("--no-check", action="store_true")
     parser.add_argument("--no-choice", action="store_true")
     parser.add_argument("--no-diffs", action="store_true")
     parser.add_argument("--no-token-check", action="store_true")
     parser.add_argument("--ask", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
+    parser.add_argument("-I", "--integrity-check", action="store_true")
 
     config_group = parser.add_argument_group("config")
     config_group.add_argument("-c", "--config-dir", metavar="PATH", default=None)

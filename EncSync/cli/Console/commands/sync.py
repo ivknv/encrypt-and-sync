@@ -12,13 +12,13 @@ def cmd_sync(console, args):
     parser = argparse.ArgumentParser(description="Sync directories",
                                      prog=args[0])
     parser.add_argument("dirs", nargs="*")
-    parser.add_argument("-a", "--all", default=False, action="store_true")
+    parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("--n-workers", "-w", type=positive_int)
-    parser.add_argument("--ask", default=False, action="store_true")
-    parser.add_argument("--no-scan", default=False, action="store_true")
-    parser.add_argument("--no-check", default=False, action="store_true")
-    parser.add_argument("--no-choice", default=False, action="store_true")
-    parser.add_argument("--no-diffs", default=False, action="store_true")
+    parser.add_argument("--ask", action="store_true")
+    parser.add_argument("--no-scan", action="store_true")
+    parser.add_argument("--no-choice", action="store_true")
+    parser.add_argument("--no-diffs", action="store_true")
+    parser.add_argument("-I", "--integrity-check", action="store_true")
 
     ns = parser.parse_args(args[1:])
 
@@ -35,7 +35,7 @@ def cmd_sync(console, args):
     env = Environment(console.env)
     env["all"] = ns.all
     env["ask"] = ns.ask
-    env["no_check"] = ns.no_check
+    env["no_check"] = not ns.integrity_check
     env["no_scan"] = ns.no_scan
     env["no_diffs"] = ns.no_diffs
     env["no_choice"] = ns.no_choice
