@@ -19,6 +19,8 @@ from .cli.make_config import make_config
 from .cli.make_encrypted_data import make_encrypted_data
 from .cli.Console import run_console
 from .cli.execute import execute, execute_script
+from .cli.set_key import set_key
+from .cli.get_key import get_key
 
 def any_not_none(keys, container):
     for key in keys:
@@ -101,7 +103,9 @@ def main(args=None):
                ("console", lambda: run_console(env)),
                ("make_config", lambda: make_config(env, ns.make_config)),
                ("execute", lambda: execute(env, ns.execute)),
-               ("execute_script", lambda: execute_script(env, ns.execute_script)))
+               ("execute_script", lambda: execute_script(env, ns.execute_script)),
+               ("set_key", lambda: set_key(env)),
+               ("get_key", lambda: get_key(env)))
 
     if any_not_none(("scan", "sync", "download", "show_diffs", "console"), ns):
         if not ns.no_token_check:
@@ -159,6 +163,8 @@ def parse_args(args):
     actions_group.add_argument("--make-config")
     actions_group.add_argument("-e", "--execute")
     actions_group.add_argument("-E", "--execute-script")
+    actions_group.add_argument("--set-key", default=None, action="store_true")
+    actions_group.add_argument("--get-key", default=None, action="store_true")
 
     return parser.parse_args(args[1:])
 
