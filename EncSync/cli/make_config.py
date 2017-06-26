@@ -4,19 +4,31 @@
 from .common import show_error
 
 DEFAULT_CONFIG = """\
+# Number of threads for synchronizer, scanner and downloader respectively
 sync-threads 2
 scan-threads 2
 download-threads 2
 
+# Upload/Download speed limits
+# inf means infinity or no speed limit
+# 8192 means 8912 Bytes
+# 1.2m means 1.2 MiB
+# 500k means 500 KiB
 upload-limit inf
 download-limit inf
 
+# List of targets to sync
 targets {
-
+    # preferred-target-name /path/to/local/dir /path/to/remote/dir
+    # OR
+    # /path/to/local/dir /path/to/remote/dir
 }
 
+# List of remote directories that are known to be encrypted
+# This is required by console commands like 'ls', 'cat', etc.
 encrypted-dirs {
-
+    # /path/to/remote/dir1
+    # /path/to/remote/dir2
 }"""
 
 def make_config(env, path):
