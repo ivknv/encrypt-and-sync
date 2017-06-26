@@ -16,6 +16,7 @@ def parse_date(s):
     return time.strptime(s[:-3] + s[-2:], "%Y-%m-%dT%H:%M:%S%z")
 
 RETRY_CODES = {500, 503}
+UPLOAD_RETRY_INTERVAL = 3.0
 
 DEFAULT_MAX_RETRIES = 10
 DEFAULT_GET_META_LIMIT = 5000
@@ -252,13 +253,6 @@ class YndApi(object):
     def upload(self, in_file, out_path,
                max_retries=DEFAULT_MAX_RETRIES,
                timeout=DEFAULT_UPLOAD_TIMEOUT, **kwargs):
-        res = self.get_upload_link(out_path, max_retries, timeout, **kwargs)
-
-        if not res["success"]:
-            return res
-
-        href = res["data"]["href"]
-
         close_in = False
 
         if isinstance(in_file, str):
@@ -267,18 +261,27 @@ class YndApi(object):
 
         fpos = in_file.tell()
 
-        try:
-            for i in range(max_retries + 1):
+        for i in range(max_retries + 1):
+            res = self.get_upload_link(out_path, max_retries, timeout, **kwargs)
+
+            if not res["success"]:
+                return res
+
+            href = res["data"]["href"]
+
+            try:
                 in_file.seek(fpos)
                 r = self.make_session().put(href, data=in_file,
                                             timeout=timeout, stream=True)
+            finally:
+                if close_in:
+                    in_file.close()
 
-                if r.status_code not in RETRY_CODES:
-                    break
-            return self.prepare_response(r, {201})
-        finally:
-            if close_in:
-                in_file.close()
+            if r.status_code not in RETRY_CODES:
+                break
+
+            time.sleep(UPLOAD_RETRY_INTERVAL)
+        return self.prepare_response(r, {201})
 
     def get_download_link(self, in_path,
                           max_retries=DEFAULT_MAX_RETRIES,
