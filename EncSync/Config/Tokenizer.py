@@ -61,6 +61,9 @@ class Char(object):
             return self.char in ("\r",)
         return self.char in (" ", "\r", "\n", "\t")
 
+    def is_newline(self):
+        return not self.escaped and self.char == "\n"
+
     def is_separator(self):
         return not self.escaped and self.char in (";", "\n")
 
@@ -79,6 +82,9 @@ class Char(object):
     def is_rcbr(self):
         return not self.escaped and self.char == "}"
 
+    def is_comment(self):
+        return not self.escaped and self.char == "#"
+
     def __repr__(self):
         if self.escaped:
             if self._char == "'":
@@ -91,7 +97,8 @@ class Tokenizer(object):
     STATE_INITIAL    = 0
     STATE_SIMPLEWORD = 1
     STATE_WORD       = 2
-    STATE_FINAL      = 3
+    STATE_COMMENT    = 3
+    STATE_FINAL      = 4
 
     def __init__(self):
         self.state = Tokenizer.STATE_INITIAL
@@ -102,7 +109,8 @@ class Tokenizer(object):
 
         self._state_handlers = {Tokenizer.STATE_INITIAL:    self._handle_initial,
                                 Tokenizer.STATE_SIMPLEWORD: self._handle_simpleword,
-                                Tokenizer.STATE_WORD:       self._handle_word}
+                                Tokenizer.STATE_WORD:       self._handle_word,
+                                Tokenizer.STATE_COMMENT:    self._handle_comment}
 
     def _change_state(self, new_state):
         self.state = new_state
@@ -163,11 +171,15 @@ class Tokenizer(object):
                 self.cur_token.string += char.char
 
             return
-        elif char.is_quotes():
+        elif char.is_quotes() and self.state != Tokenizer.STATE_COMMENT:
             if self.state == Tokenizer.STATE_INITIAL:
                 self.state = Tokenizer.STATE_WORD
 
             self._enter_quotes(char.char)
+            return
+        elif char.is_comment() and self.state != Tokenizer.STATE_COMMENT:
+            self._push_token(output)
+            self._change_state(Tokenizer.STATE_COMMENT)
             return
 
         self._state_handlers[self.state](char, output)
@@ -273,3 +285,7 @@ class Tokenizer(object):
             else:
                 self.cur_token.type = Token.WORD
                 self._change_state(Tokenizer.STATE_WORD)
+
+    def _handle_comment(self, char, output):
+        if char.is_newline():
+            self._change_state(Tokenizer.STATE_INITIAL)
