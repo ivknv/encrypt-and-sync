@@ -21,6 +21,7 @@ from .cli.Console import run_console
 from .cli.execute import execute, execute_script
 from .cli.set_key import set_key
 from .cli.get_key import get_key
+from .cli.set_master_password import set_master_password
 
 def any_not_none(keys, container):
     for key in keys:
@@ -105,7 +106,8 @@ def main(args=None):
                ("execute", lambda: execute(env, ns.execute)),
                ("execute_script", lambda: execute_script(env, ns.execute_script)),
                ("set_key", lambda: set_key(env)),
-               ("get_key", lambda: get_key(env)))
+               ("get_key", lambda: get_key(env)),
+               ("set_master_password", lambda: set_master_password(env)))
 
     if any_not_none(("scan", "sync", "download", "show_diffs", "console"), ns):
         if not ns.no_token_check:
@@ -165,6 +167,7 @@ def parse_args(args):
     actions_group.add_argument("-E", "--execute-script")
     actions_group.add_argument("--set-key", default=None, action="store_true")
     actions_group.add_argument("--get-key", default=None, action="store_true")
+    actions_group.add_argument("--set-master-password", default=None, action="store_true")
 
     return parser.parse_args(args[1:])
 
