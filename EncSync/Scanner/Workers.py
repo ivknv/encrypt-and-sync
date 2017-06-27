@@ -69,7 +69,7 @@ class LocalScanWorker(ScanWorker):
 
         task.change_status("pending")
 
-        local_files = scan_files(scannable)
+        local_files = scan_files(scannable, self.encsync.allowed_paths)
 
         for s, n in local_files:
             self.cur_path = n["path"]

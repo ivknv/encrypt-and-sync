@@ -11,6 +11,7 @@ from ..Scannable import LocalScannable, RemoteScannable
 from .Task import ScanTask
 from .Target import ScanTarget
 from ..YandexDiskApi.Exceptions import DiskNotFoundError
+from .. import PathMatch
 
 class Scanner(Worker):
     def __init__(self, encsync, directory, n_workers=2):
@@ -114,6 +115,9 @@ class Scanner(Worker):
 
     def begin_local_scan(self, target):
         self.shared_llist.remove_node_children(target.path)
+
+        if not PathMatch.match(target.path, self.encsync.allowed_paths):
+            return
 
         scannable = LocalScannable(target.path)
         scannable.identify()

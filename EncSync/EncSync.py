@@ -12,6 +12,7 @@ from .YandexDiskApi.Exceptions import UnauthorizedError
 from . import Encryption
 from . import Paths
 from .Config import Config
+from . import PathMatch
 
 try:
     JSONDecodeError = json.JSONDecodeError
@@ -60,6 +61,8 @@ class EncSync(object):
         self.download_threads = 1
         self.scan_threads = 1
         self.encrypted_dirs = set()
+        self.allowed_paths = [] # Compiled
+        self._allowed_paths = [] # Uncompiled
 
     def find_encrypted_dir(self, path):
         p = "/"
@@ -102,6 +105,7 @@ class EncSync(object):
         config.sync_threads     = self.sync_threads
         config.scan_threads     = self.scan_threads
         config.download_threads = self.download_threads
+        config.allowed_paths    = self._allowed_paths
 
         return config
 
@@ -168,6 +172,8 @@ class EncSync(object):
         self.sync_threads = config.sync_threads
         self.download_threads = config.download_threads
         self.scan_threads = config.scan_threads
+        self._allowed_paths = config.allowed_paths
+        self.allowed_paths = PathMatch.compile_patterns(self._allowed_paths)
 
     def temp_encrypt(self, path):
         size = os.path.getsize(path)

@@ -14,7 +14,9 @@ class Config(object):
                 "upload-limit":     commands.set_upload_limit,
                 "download-limit":   commands.set_download_limit}
     block_map = {"targets":        blocks.exec_targets_block,
-                 "encrypted-dirs": blocks.exec_encrypted_dirs_block}
+                 "encrypted-dirs": blocks.exec_encrypted_dirs_block,
+                 "include":        blocks.exec_include_block,
+                 "exclude":        blocks.exec_exclude_block}
 
     def __init__(self):
         self.sync_threads = 1
@@ -25,6 +27,7 @@ class Config(object):
 
         self.encrypted_dirs = set()
         self.targets = []
+        self.allowed_paths = []
 
     @staticmethod
     def load(path_or_file):
@@ -51,48 +54,6 @@ class Config(object):
             raise InvalidConfigError(str(e))
 
         return config
-
-    def validate(self):
-        for k, v in {"sync_threads":     self.sync_threads,
-                     "scan_threads":     self.scan_threads,
-                     "download_threads": self.download_threads}.items():
-            if not is_positive_int(v):
-                return False, "%r must be a positive integer" % k
-
-        for k, v in {"upload_limit":   self.upload_limit,
-                     "download_limit": self.download_limit}.items():
-            if not isinstance(v, (int, float)):
-                return False, "%r must be an instance of int or float" % k
-            elif v < 0:
-                return False, "%r must be positive" % k
-            elif v != v:
-                return False, "%r must not be NaN" % k
-
-        target_fields = {"local":  str,
-                         "remote": str,
-                         "name":   (str, None)}
-
-        for target in self.targets:
-            if not isinstance(target, dict):
-                return False, "target must be an instance of dict"
-
-            for field, types in target_fields.items():
-                if field not in target:
-                    return False, "target is missing %r field" % field
-                elif not isinstance(target[field], types):
-                    if isinstance(types, tuple):
-                        return False, "target field %r must be of types %r" % (field, types,)
-                    else:
-                        return False, "target field %r must be of type %r" % (field, types,)
-
-        if not isinstance(self.encrypted_dirs, (set, list)):
-            return False, "'encrypted_dirs' must be an instance of set or list"
-
-        for path in self.encrypted_dirs:
-            if not isinstance(path, str):
-                return False, "'encrypted_dirs': path must be an instance of str"
-
-        return True, "no errors"
 
 def interpret_ast(config, ast):
     for child in ast.children:

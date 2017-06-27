@@ -9,6 +9,7 @@ from .Encryption import pad_size, MIN_ENC_SIZE
 from .Node import normalize_node
 from .YandexDiskApi import parse_date
 from .YandexDiskApi.Exceptions import UnknownYandexDiskError
+from . import PathMatch
 
 class BaseScannable(object):
     def __init__(self, path=None, type=None, modified=0, size=0):
@@ -20,7 +21,7 @@ class BaseScannable(object):
     def identify(self):
         raise NotImplementedError
 
-    def listdir(self):
+    def listdir(self, allowed_paths=None):
         raise NotImplementedError
 
     def to_node(self):
@@ -29,7 +30,10 @@ class BaseScannable(object):
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, self.path)
 
-    def scan(self, *sort_args, **sort_kwargs):
+    def scan(self, allowed_paths=None, *sort_args, **sort_kwargs):
+        if allowed_paths is None:
+            allowed_paths = []
+
         if self.type is None:
             self.identify()
 
@@ -38,7 +42,7 @@ class BaseScannable(object):
         if self.type != "d":
             return res
 
-        content = list(self.listdir())
+        content = list(self.listdir(allowed_paths))
 
         for i in content:
             if i.type is None:
@@ -53,8 +57,14 @@ class BaseScannable(object):
 
         return res
 
-    def full_scan(self):
-        flist = self.scan()
+    def full_scan(self, allowed_paths=None):
+        if allowed_paths is None:
+            allowed_paths = []
+
+        if not PathMatch.match(self.path, allowed_paths):
+            return
+
+        flist = self.scan(allowed_paths)
         flist["d"].reverse()
 
         while True:
@@ -70,7 +80,7 @@ class BaseScannable(object):
 
             yield s
 
-            scan_result = s.scan()
+            scan_result = s.scan(allowed_paths)
             scan_result["d"].reverse()
 
             flist["f"] = scan_result["f"]
@@ -102,9 +112,15 @@ class LocalScannable(BaseScannable):
         except OverflowError:
             self.modified = 0
 
-    def listdir(self):
+    def listdir(self, allowed_paths=None):
+        if allowed_paths is None:
+            allowed_paths = []
+
         for i in os.listdir(self.path):
-            yield LocalScannable(os.path.join(self.path, i))
+            path = os.path.join(self.path, i)
+
+            if PathMatch.match(path, allowed_paths):
+                yield LocalScannable(path)
 
     def to_node(self):
         node = {"type": self.type,
@@ -161,7 +177,10 @@ class RemoteScannable(BaseScannable):
         self.size = data.get("size", 0)
         self.type = data["type"][0]
 
-    def listdir(self):
+    def listdir(self, allowed_paths=None):
+        if allowed_paths is None:
+            allowed_paths = []
+
         dirs = []
         for j in range(10):
             try:
@@ -169,6 +188,9 @@ class RemoteScannable(BaseScannable):
                     data = i["data"]
                     enc_path = Paths.join(self.enc_path, data["name"])
                     path, IVs = self.encsync.decrypt_path(enc_path, self.prefix)
+
+                    if not PathMatch.match(path, allowed_paths):
+                        continue
 
                     dirs.append({"path": path,
                                  "enc_path": enc_path,
@@ -195,6 +217,9 @@ class RemoteScannable(BaseScannable):
 
         return node
 
-def scan_files(scannable):
-    for i in scannable.full_scan():
+def scan_files(scannable, allowed_paths=None):
+    if allowed_paths is None:
+        allowed_paths = []
+
+    for i in scannable.full_scan(allowed_paths):
         yield (i, i.to_node())
