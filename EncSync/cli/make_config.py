@@ -29,6 +29,21 @@ targets {
 encrypted-dirs {
     # /path/to/remote/dir1
     # /path/to/remote/dir2
+}
+
+# List of patterns to exclude when performing local scan
+# The synchronizer will think they don't exist
+# You can have multiple include/exclude blocks
+# They will be interpreted in specified order
+exclude {
+    # /path/to/local/*.txt
+    # /path/to/local/dir2
+}
+
+# This can cancel out any previous exclude blocks, works the same way
+include {
+    # /path/to/local/*.txt
+    # /path/to/local/dir2
 }"""
 
 def make_config(env, path):
