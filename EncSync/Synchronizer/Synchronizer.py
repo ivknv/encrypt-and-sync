@@ -4,7 +4,7 @@
 import threading
 import os
 
-from .Workers import UploadWorker, MkdirWorker, RmWorker
+from .Workers import UploadWorker, MkdirWorker, RmWorker, RmDupWorker
 from ..Scanner.Workers import LocalScanWorker, RemoteScanWorker
 from ..Scanner.Task import ScanTask
 from ..Scanner.Target import ScanTarget
@@ -44,16 +44,17 @@ class Synchronizer(StagedWorker):
         self.shared_rlist = RemoteFileList(directory)
         self.shared_duplist = DuplicateList(directory)
 
-        self.stage_order = ("scan", "rm", "dirs", "files", "check")
+        self.stage_order = ("scan", "duplicates", "rm", "dirs", "files", "check")
 
         self.scannables = []
         self.scannables_lock = threading.Lock()
 
-        self.add_stage("scan",  self.init_scan_stage,  self.finalize_scan_stage)
-        self.add_stage("rm",    self.init_rm_stage,    self.finalize_rm_stage)
-        self.add_stage("dirs",  self.init_dirs_stage,  self.finalize_dirs_stage)
-        self.add_stage("files", self.init_files_stage, self.finalize_files_stage)
-        self.add_stage("check", self.init_check_stage, self.finalize_check_stage)
+        self.add_stage("scan",       self.init_scan_stage,       self.finalize_scan_stage)
+        self.add_stage("duplicates", self.init_duplicates_stage, self.finalize_duplicates_stage)
+        self.add_stage("rm",         self.init_rm_stage,         self.finalize_rm_stage)
+        self.add_stage("dirs",       self.init_dirs_stage,       self.finalize_dirs_stage)
+        self.add_stage("files",      self.init_files_stage,      self.finalize_files_stage)
+        self.add_stage("check",      self.init_check_stage,      self.finalize_check_stage)
 
         self.add_event("next_target")
 
@@ -226,6 +227,21 @@ class Synchronizer(StagedWorker):
         logger.debug("Dispatcher finished working")
 
         assert(self.stage is None)
+
+    def init_duplicates_stage(self):
+        logger.debug("Dispatcher began initializing stage 'duplicates'")
+
+        d = DiffList(self.encsync, self.directory)
+        self.diffs = d.select_rmdup_differences(self.cur_target.remote)
+
+        self.shared_duplist.begin_transaction()
+
+        self.start_workers(self.n_workers, RmDupWorker, self)
+
+        logger.debug("Dispatcher finished initializing stage 'duplicates'")
+
+    def finalize_duplicates_stage(self):
+        self.shared_duplist.commit()
 
     def init_rm_stage(self):
         logger.debug("Dispatcher began initializing stage 'rm'")

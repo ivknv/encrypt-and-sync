@@ -40,10 +40,12 @@ def print_diffs(env, encsync, target):
 
     local, remote = target.local, target.remote
 
+    n_rmdup = difflist.count_rmdup_differences(local, remote)
     n_rm = difflist.count_rm_differences(local, remote)
     n_dirs = difflist.count_dirs_differences(local, remote)
     n_files = difflist.count_files_differences(local, remote)
 
+    print("[%s -> %s]: %d duplicate removals" % (local, remote, n_rmdup))
     print("[%s -> %s]: %d removals" % (local, remote, n_rm))
     print("[%s -> %s]: %d new directories" % (local, remote, n_dirs))
     print("[%s -> %s]: %d files to upload" % (local, remote, n_files))
@@ -69,14 +71,27 @@ def ask_continue(synchronizer):
     return values[answer]
 
 def view_diffs(env, encsync, target):
-    funcs = {"r": view_rm_diffs, "d": view_dirs_diffs, "f": view_files_diffs}
+    funcs = {"du": view_rmdup_diffs, "r": view_rm_diffs,
+             "d": view_dirs_diffs,   "f": view_files_diffs}
+
     while True:
-        answer = input("What differences? [(r)m/(d)irs/(f)iles/(s)top]: ").lower()
+        answer = input("What differences? [(du)plicates/(r)m/(d)irs/(f)iles/(s)top]: ").lower()
 
         if answer in funcs.keys():
             funcs[answer](env, encsync, target)
         elif answer == "s":
             break
+
+def view_rmdup_diffs(env, encsync, target):
+    local, remote = target.local, target.remote
+
+    difflist = DiffList(encsync, env["config_dir"])
+
+    diffs = difflist.select_rmdup_differences(remote)
+
+    print("Duplicate removals:")
+    for diff in diffs:
+        print("  %s %s" % (diff[1], diff[2].remote))
 
 def view_rm_diffs(env, encsync, target):
     local, remote = target.local, target.remote
@@ -280,6 +295,11 @@ class WorkerReceiver(EventHandler):
                 msg += "removing remote file"
             elif task.type == "d":
                 msg += "removing remote directory"
+        elif task.task_type == "rmdup":
+            if task.type == "f":
+                msg += "removing remote file duplicate"
+            elif task.type == "f":
+                msg += "removing remote directory duplicate"
 
         print(msg)
 

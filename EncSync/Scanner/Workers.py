@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from functools import reduce
+
 from ..Worker import Waiter
 from .Logging import logger
 from ..Scannable import scan_files
@@ -114,7 +116,6 @@ class RemoteScanWorker(ScanWorker):
         self.cur_path = scannable.path
 
         scan_result = scannable.scan()
-        scan_result["d"].reverse()
 
         scannables = {}
 
@@ -124,33 +125,26 @@ class RemoteScanWorker(ScanWorker):
             scannables.setdefault(path, [])
             scannables[path].append(s)
 
+        del scan_result
+
         for i in scannables.values():
-            if len(i) > 1:
-                task.emit_event("duplicates_found", i)
-                self.cur_target.emit_event("duplicates_found", i)
+            original = reduce(lambda x, y: x if x.modified > y.modified else y, i)
+
+            i.remove(original)
+
+            if i:
+                task.emit_event("duplicates_found", [original] + i)
+                self.cur_target.emit_event("duplicates_found", [original] + i)
+
                 for s in i:
-                    self.duplist.insert(s.type, s.enc_path)
+                    self.duplist.insert(s.type, s.IVs, s.path)
 
-        del scannables
-
-        while True:
-            while len(scan_result["f"]) > 0:
-                s = scan_result["f"].pop(0)
-
-                if not self.insert_remote_scannable(s):
-                    task.emit_event("interrupt")
-                    return False
-
-            if len(scan_result["d"]) == 0:
-                break
-
-            s = scan_result["d"].pop()
-
-            if not self.insert_remote_scannable(s):
+            if not self.insert_remote_scannable(original):
                 task.emit_event("interrupt")
                 return False
 
-            self.parent.add_task(s)
+            if original.type == "d":
+                self.parent.add_task(original)
 
         task.change_status("finished")
 

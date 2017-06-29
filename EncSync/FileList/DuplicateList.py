@@ -29,19 +29,20 @@ class DuplicateList(object):
     def create(self):
         self.conn.execute("""CREATE TABLE IF NOT EXISTS duplicates
                              (type TEXT,
-                              path_enc TEXT UNIQUE ON CONFLICT REPLACE)""")
+                              IVs TEXT,
+                              path TEXT)""")
 
-    def insert(self, node_type, path_enc):
-        path_enc = prepare_path(path_enc)
+    def insert(self, node_type, IVs, path):
+        path = prepare_path(path)
 
-        self.conn.execute("INSERT INTO duplicates VALUES (?, ?)",
-                          (node_type, path_enc))
+        self.conn.execute("INSERT INTO duplicates VALUES (?, ?, ?)",
+                          (node_type, IVs, path))
 
-    def remove(self, path_enc):
-        path_enc = prepare_path(path_enc)
+    def remove(self, IVs, path):
+        path = prepare_path(path)
 
-        self.conn.execute("DELETE FROM duplicates WHERE path_enc=? OR path_enc=?",
-                          (path_enc, Paths.dir_normalize(path_enc)))
+        self.conn.execute("DELETE FROM duplicates WHERE (path=? OR path=?) AND IVs=?",
+                          (path, Paths.dir_normalize(path), IVs))
 
     def remove_children(self, path):
         path = prepare_path(Paths.dir_normalize(path))
@@ -49,19 +50,19 @@ class DuplicateList(object):
         path = path.replace("%", "\\%")
         path = path.replace("_", "\\_")
 
-        self.conn.execute("DELETE FROM duplicates WHERE path_enc LIKE ? ESCAPE '\\'",
+        self.conn.execute("DELETE FROM duplicates WHERE path LIKE ? ESCAPE '\\'",
                           (path + "%",))
 
     def clear(self):
         self.conn.execute("DELETE FROM duplicates")
 
-    def find(self, path_enc):
-        path_enc = prepare_path(path_enc)
+    def find(self, IVs, path):
+        path = prepare_path(path)
 
         with self.conn:
             self.conn.execute("""SELECT * FROM duplicates
-                                 WHERE path_enc=? OR path_enc=? LIMIT 1""",
-                              (path_enc, Paths.dir_normalize(path_enc)))
+                                 WHERE IVs=? AND (path=? OR path=?) LIMIT 1""",
+                              (IVs, path, Paths.dir_normalize(path)))
             return self.conn.fetchone()
 
     def find_children(self, path):
@@ -72,7 +73,7 @@ class DuplicateList(object):
 
         with self.conn:
             self.conn.execute("""SELECT * FROM duplicates
-                                 WHERE path_enc LIKE ? ESCAPE '\\'""",
+                                 WHERE path LIKE ? ESCAPE '\\'""",
                               (path + "%",))
 
             return self.conn.genfetch()
@@ -97,7 +98,7 @@ class DuplicateList(object):
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM
                                  (SELECT * FROM duplicates
-                                  WHERE path_enc LIKE ? ESCAPE '\\' LIMIT 1)""",
+                                  WHERE path LIKE ? ESCAPE '\\' LIMIT 1)""",
                               (path + "%",))
             return self.conn.fetchone()[0] == 0
 

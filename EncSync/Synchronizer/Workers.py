@@ -28,6 +28,7 @@ class SynchronizerWorker(Worker):
 
         self.llist = dispatcher.shared_llist
         self.rlist = dispatcher.shared_rlist
+        self.duplist = dispatcher.shared_duplist
 
         self.add_event("next_task")
 
@@ -255,6 +256,40 @@ class RmWorker(SynchronizerWorker):
                 with self.rlist:
                     self.rlist.remove_node_children(remote_path)
                     self.rlist.remove_node(remote_path)
+                    self.autocommit()
+                task.change_status("finished")
+            else:
+                task.change_status("failed")
+                logger.debug("Remove task failed")
+        except:
+            task.change_status("failed")
+            logger.exception("An error occured")
+
+class RmDupWorker(SynchronizerWorker):
+    def get_info(self):
+        if self.path is not None:
+            return {"operation": "removing duplicate",
+                    "path": self.path.path}
+        else:
+            return {"operation": "removing duplicate"}
+
+    def get_IVs(self):
+        return self.cur_task.path.IVs
+
+    def work_func(self):
+        remote_path = self.path.remote
+        remote_path_enc = self.path.remote_enc
+
+        task = self.cur_task
+
+        logger.debug("Removing duplicate {}".format(remote_path))
+
+        try:
+            r = self.encsync.ynd.rm(remote_path_enc)
+
+            if r["success"]:
+                with self.duplist:
+                    self.duplist.remove(self.path.IVs, remote_path)
                     self.autocommit()
                 task.change_status("finished")
             else:

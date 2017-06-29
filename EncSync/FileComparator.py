@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from . import Paths
-from .FileList import LocalFileList, RemoteFileList
+from .FileList import LocalFileList, RemoteFileList, DuplicateList
 from .EncPath import EncPath
 
 def try_next(it, default=None):
@@ -16,11 +16,13 @@ class FileComparator(object):
         self.encsync = encsync
         self.prefix1 = Paths.from_sys(prefix1)
         self.prefix2 = prefix2
+        self.directory = directory
 
         llist, rlist = LocalFileList(directory), RemoteFileList(directory)
 
         self.nodes1 = llist.find_node_children(prefix1)
         self.nodes2 = rlist.find_node_children(prefix2)
+        self.duplicates = None
 
         self.it1 = iter(self.nodes1)
         self.it2 = iter(self.nodes2)
@@ -73,10 +75,13 @@ class FileComparator(object):
 
         return diffs
 
+    def diff_rmdup(self):
+        return [("duplicate", "rmdup", self.type2, self.encpath2)[1:]]
+
     def __next__(self):
         while True:
             if self.node1 is None and self.node2 is None:
-                raise StopIteration
+                break
 
             if self.node1 is None:
                 self.type1 = None
@@ -126,6 +131,25 @@ class FileComparator(object):
             else:
                 self.node1 = try_next(self.it1)
                 self.node2 = try_next(self.it2)
+
+        if self.duplicates is None:
+            duplist = DuplicateList(self.directory)
+            self.duplicates = iter(duplist.find_children(self.prefix2))
+
+        row = try_next(self.duplicates)
+        if row is None:
+            raise StopIteration
+
+        self.type2 = row[0]
+        self.IVs = row[1]
+        self.path2 = Paths.cut_prefix(row[2], self.prefix2) or "/"
+
+        self.encpath2 = EncPath(self.encsync, self.path2)
+        self.encpath2.local_prefix = self.prefix1
+        self.encpath2.remote_prefix = self.prefix2
+        self.encpath2.IVs = self.IVs
+
+        return self.diff_rmdup()
 
     def is_newer(self):
         condition = self.node1 is not None and self.node2 is not None
