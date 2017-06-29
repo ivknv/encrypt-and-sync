@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 setup(name="EncSync",
-      version="0.1.0",
+      version="0.1.1",
       description="Yandex.Disk encrypted sync tool",
       author="Ivan Konovalov",
       packages=find_packages(),
