@@ -20,8 +20,8 @@ class FileComparator(object):
 
         llist, rlist = LocalFileList(directory), RemoteFileList(directory)
 
-        self.nodes1 = llist.find_node_children(prefix1)
-        self.nodes2 = rlist.find_node_children(prefix2)
+        self.nodes1 = llist.find_node_children(self.prefix1)
+        self.nodes2 = rlist.find_node_children(self.prefix2)
         self.duplicates = None
 
         self.it1 = iter(self.nodes1)

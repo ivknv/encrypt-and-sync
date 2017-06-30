@@ -40,7 +40,7 @@ def print_diffs(env, encsync, target):
 
     local, remote = target.local, target.remote
 
-    n_rmdup = difflist.count_rmdup_differences(local, remote)
+    n_rmdup = difflist.count_rmdup_differences(remote)
     n_rm = difflist.count_rm_differences(local, remote)
     n_dirs = difflist.count_dirs_differences(local, remote)
     n_files = difflist.count_files_differences(local, remote)

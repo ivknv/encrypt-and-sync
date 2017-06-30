@@ -58,6 +58,7 @@ class DiffList(object):
             yield (i[0], i[1], encpath)
 
     def select_rm_differences(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         with self.conn:
             self.conn.execute("""SELECT * FROM differences
                                  WHERE diff_type='rm' AND
@@ -76,6 +77,7 @@ class DiffList(object):
             return self.fetch_differences()
 
     def select_dirs_differences(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         with self.conn:
             self.conn.execute("""SELECT * FROM differences
                                  WHERE diff_type='new' AND type='d' AND
@@ -87,6 +89,7 @@ class DiffList(object):
             return self.fetch_differences()
 
     def count_dirs_differences(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE diff_type='new' AND type='d' AND
@@ -97,6 +100,7 @@ class DiffList(object):
             return self.conn.fetchone()[0]
 
     def count_files_differences(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE diff_type='new' AND type='f' AND
@@ -107,6 +111,7 @@ class DiffList(object):
             return self.conn.fetchone()[0]
 
     def count_rm_differences(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE diff_type='rm' AND
@@ -116,17 +121,16 @@ class DiffList(object):
                                remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.conn.fetchone()[0]
 
-    def count_rmdup_differences(self, local_prefix, remote_prefix):
+    def count_rmdup_differences(self, remote_prefix):
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE diff_type='rmdup' AND
-                                 (local_prefix=? OR local_prefix=?) AND
                                  (remote_prefix=? OR remote_prefix=?)""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
+                              (remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.conn.fetchone()[0]
 
     def select_files_differences(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         with self.conn:
             self.conn.execute("""SELECT * FROM differences
                                  WHERE diff_type='new' AND type='f' AND
@@ -146,6 +150,7 @@ class DiffList(object):
                 self.insert_difference(i)
 
     def get_difference_count(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM differences
                                  WHERE (local_prefix=? OR local_prefix=?) AND
