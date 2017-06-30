@@ -175,6 +175,9 @@ class EncSync(object):
         self._allowed_paths = config.allowed_paths
         self.allowed_paths = PathMatch.compile_patterns(self._allowed_paths)
 
+        for target in self.targets:
+            self.encrypted_dirs.add(Paths.dir_normalize(target["remote"]))
+
     def temp_encrypt(self, path):
         size = os.path.getsize(path)
         if size < TEMP_ENCRYPT_BUFFER_LIMIT:

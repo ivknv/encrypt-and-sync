@@ -4,7 +4,7 @@
 from ... import Paths
 
 def prepare_remote_path(path):
-    return Paths.join_properly("/", path)
+    return Paths.dir_normalize(Paths.join_properly("/", path))
 
 def exec_encrypted_dirs_block(config, args, commands):
     if len(args) != 0:

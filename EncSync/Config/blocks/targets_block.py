@@ -8,7 +8,7 @@ def prepare_local_path(path):
     return os.path.realpath(os.path.expanduser(path))
 
 def prepare_remote_path(path):
-    return Paths.join_properly("/", path)
+    return Paths.dir_normalize(Paths.join_properly("/", path))
 
 def exec_targets_block(config, args, commands):
     if len(args) != 0:
