@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import readline
+try:
+    import readline
+except ImportError:
+    import pyreadline as readline
+
 import subprocess
 import shlex
 
