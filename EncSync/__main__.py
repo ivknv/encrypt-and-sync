@@ -58,7 +58,7 @@ def main(args=None):
 
     env = Environment()
 
-    if ns.master_password is None:
+    if ns.master_password is None and not ns.force_ask_password:
         try:
             env["master_password"] = os.environ["ENCSYNC_MASTER_PASSWORD"]
         except KeyError:
@@ -141,6 +141,7 @@ def parse_args(args):
                                      prog=args[0])
 
     parser.add_argument("--master-password", default=None)
+    parser.add_argument("--force-ask-password", action="store_true")
     parser.add_argument("--prefix", default=None)
     parser.add_argument("--no-scan", action="store_true")
     parser.add_argument("--no-choice", action="store_true")
