@@ -15,7 +15,7 @@ from . import Exceptions
 def parse_date(s):
     return time.strptime(s[:-3] + s[-2:], "%Y-%m-%dT%H:%M:%S%z")
 
-RETRY_CODES = {500, 503}
+RETRY_CODES = {500, 502, 503, 504}
 UPLOAD_RETRY_INTERVAL = 3.0
 
 DEFAULT_MAX_RETRIES = 10
@@ -59,10 +59,14 @@ class YndApi(object):
         kwargs["client_secret"] = self.secret
 
         for i in range(max_retries + 1):
-            r = requests.post(URL, data=kwargs, timeout=timeout)
+            try:
+                r = requests.post(URL, data=kwargs, timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         return self.prepare_response(r)
 
@@ -100,11 +104,15 @@ class YndApi(object):
 
     def get_disk_data(self, max_retries=DEFAULT_MAX_RETRIES, timeout=DEFAULT_TIMEOUT):
         for i in range(max_retries + 1):
-            r = self.make_session().get("https://cloud-api.yandex.net/v1/disk/",
-                                        timeout=timeout)
+            try:
+                r = self.make_session().get("https://cloud-api.yandex.net/v1/disk/",
+                                            timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         return self.prepare_response(r)
 
@@ -119,10 +127,14 @@ class YndApi(object):
         URL = baseURL + "?" + urlencode(kwargs)
 
         for i in range(max_retries + 1):
-            r = self.make_session().get(URL, timeout=timeout)
+            try:
+                r = self.make_session().get(URL, timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         ret = self.prepare_response(r)
 
@@ -243,10 +255,14 @@ class YndApi(object):
         URL = baseURL + "?" + urlencode(kwargs)
 
         for i in range(max_retries + 1):
-            r = self.make_session().get(URL, timeout=timeout)
+            try:
+                r = self.make_session().get(URL, timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         return self.prepare_response(r, {200})
 
@@ -273,12 +289,15 @@ class YndApi(object):
                 in_file.seek(fpos)
                 r = self.make_session().put(href, data=in_file,
                                             timeout=timeout, stream=True)
+
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
             finally:
                 if close_in:
                     in_file.close()
-
-            if r.status_code not in RETRY_CODES:
-                break
 
             time.sleep(UPLOAD_RETRY_INTERVAL)
         return self.prepare_response(r, {201})
@@ -291,10 +310,14 @@ class YndApi(object):
         URL = baseURL + "?" + urlencode(kwargs)
 
         for i in range(max_retries + 1):
-            r = self.make_session().get(URL, timeout=timeout)
+            try:
+                r = self.make_session().get(URL, timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         return self.prepare_response(r)
 
@@ -318,15 +341,19 @@ class YndApi(object):
             fpos = out_file.tell()
 
             for i in range(max_retries + 1):
-                r = self.make_session().get(href, timeout=timeout, stream=True)
-                out_file.seek(fpos)
+                try:
+                    r = self.make_session().get(href, timeout=timeout, stream=True)
+                    out_file.seek(fpos)
 
-                for chunk in r.iter_content(chunk_size=4096):
-                    if len(chunk):
-                        out_file.write(chunk)
+                    for chunk in r.iter_content(chunk_size=4096):
+                        if len(chunk):
+                            out_file.write(chunk)
 
-                if r.status_code not in RETRY_CODES:
-                    break
+                    if r.status_code not in RETRY_CODES:
+                        break
+                except requests.exceptions.RequestException as e:
+                    if i == max_retries:
+                        raise e
 
             return self.prepare_response(r)
         finally:
@@ -341,10 +368,14 @@ class YndApi(object):
         URL = baseURL + "?" + urlencode(kwargs)
 
         for i in range(max_retries + 1):
-            r = self.make_session().delete(URL, timeout=timeout)
+            try:
+                r = self.make_session().delete(URL, timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         return self.prepare_response(r, {202, 204})
 
@@ -356,10 +387,14 @@ class YndApi(object):
         URL = baseURL + "?" + urlencode(kwargs)
 
         for i in range(max_retries + 1):
-            r = self.make_session().put(URL, timeout=timeout)
+            try:
+                r = self.make_session().put(URL, timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         return self.prepare_response(r, {201})
 
@@ -370,9 +405,13 @@ class YndApi(object):
         URL = baseURL + "?" + urlencode(kwargs)
 
         for i in range(max_retries + 1):
-            r = self.make_session().get(URL, timeout=timeout)
+            try:
+                r = self.make_session().get(URL, timeout=timeout)
 
-            if r.status_code not in RETRY_CODES:
-                break
+                if r.status_code not in RETRY_CODES:
+                    break
+            except requests.exceptions.RequestException as e:
+                if i == max_retries:
+                    raise e
 
         return self.prepare_response(r)
