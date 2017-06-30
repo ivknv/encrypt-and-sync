@@ -35,7 +35,7 @@ class Synchronizer(StagedWorker):
         self.targets = []
         self.targets_lock = threading.Lock()
 
-        self.speed_limit = 1024**4 / self.n_workers # Bytes per second
+        self.speed_limit = float("inf") # Bytes per second
 
         self.cur_target = None
         self.diffs = None
@@ -84,7 +84,7 @@ class Synchronizer(StagedWorker):
             return list(self.targets)
 
     def set_speed_limit(self, limit):
-        self.speed_limit = int(limit / self.n_workers)
+        self.speed_limit = limit / float(self.n_workers)
 
         for worker in self.get_worker_list():
             worker.speed_limit = self.speed_limit

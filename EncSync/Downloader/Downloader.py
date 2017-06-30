@@ -23,7 +23,7 @@ class Downloader(Worker):
         self.directory = directory
 
         self.targets_lock = threading.Lock()
-        self.speed_limit = 1024**4 / n_workers # Bytes per second
+        self.speed_limit = float("inf") # Bytes per second
 
         self.cur_target = None
 
@@ -56,7 +56,7 @@ class Downloader(Worker):
         return target
 
     def set_speed_limit(self, limit):
-        self.speed_limit = limit / self.n_workers
+        self.speed_limit = limit / float(self.n_workers)
 
         for worker in self.get_worker_list():
             worker.speed_limit = self.speed_limit
