@@ -22,6 +22,7 @@ from .cli.execute import execute, execute_script
 from .cli.set_key import set_key
 from .cli.get_key import get_key
 from .cli.set_master_password import set_master_password
+from .cli.password_prompt import password_prompt
 
 def any_not_none(keys, container):
     for key in keys:
@@ -58,7 +59,8 @@ def main(args=None):
 
     env = Environment()
 
-    if ns.master_password is None and not ns.force_ask_password:
+    
+    if ns.master_password is None and not ns.force_ask_password and not ns.password_prompt:
         try:
             env["master_password"] = os.environ["ENCSYNC_MASTER_PASSWORD"]
         except KeyError:
@@ -114,7 +116,8 @@ def main(args=None):
                ("execute_script", lambda: execute_script(env, ns.execute_script)),
                ("set_key", lambda: set_key(env)),
                ("get_key", lambda: get_key(env)),
-               ("set_master_password", lambda: set_master_password(env)))
+               ("set_master_password", lambda: set_master_password(env)),
+               ("password_prompt", lambda: password_prompt(env)))
 
     if any_not_none(("scan", "sync", "download", "show_diffs", "console"), ns):
         if not ns.no_token_check:
@@ -176,6 +179,7 @@ def parse_args(args):
     actions_group.add_argument("--set-key", default=None, action="store_true")
     actions_group.add_argument("--get-key", default=None, action="store_true")
     actions_group.add_argument("--set-master-password", default=None, action="store_true")
+    actions_group.add_argument("--password-prompt", default=None, action="store_true")
 
     return parser.parse_args(args[1:])
 
