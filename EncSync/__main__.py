@@ -58,7 +58,14 @@ def main(args=None):
 
     env = Environment()
 
-    env["master_password"] = ns.master_password
+    if ns.master_password is None:
+        try:
+            env["master_password"] = os.environ["ENCSYNC_MASTER_PASSWORD"]
+        except KeyError:
+            pass
+    else:
+        env["master_password"] = ns.master_password
+
     env["ask"] = ns.ask
     env["no_choice"] = ns.no_choice
     env["no_check"] = not ns.integrity_check
