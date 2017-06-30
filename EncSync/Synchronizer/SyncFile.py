@@ -12,6 +12,10 @@ class SyncFile(object):
     def __init__(self, file, worker, task):
         self.file = file
         self.limit = worker.speed_limit
+
+        if self.limit != float("inf"):
+            self.limit = int(self.limit)
+
         self.last_delay = 0
         self.cur_read = 0
         self.stop_condition = worker.stop_condition
