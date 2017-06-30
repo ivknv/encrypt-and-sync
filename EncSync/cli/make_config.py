@@ -24,7 +24,7 @@ targets {
     # /path/to/local/dir /path/to/remote/dir
 }
 
-# List of remote directories that are known to be encrypted
+# List of remote directories that are known to be encrypted but not listed in targets
 # This is required by console commands like 'ls', 'cat', etc.
 encrypted-dirs {
     # /path/to/remote/dir1
