@@ -269,9 +269,9 @@ class CDB(object):
         self.thread.start()
         return self.thread
 
-    def join(self):
+    def join(self, timeout=None):
         if self.thread is not None:
-            self.thread.join()
+            self.thread.join(timeout)
 
     def is_alive(self):
         return self.thread.is_alive() if self.thread is not None else False

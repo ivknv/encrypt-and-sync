@@ -5,8 +5,8 @@ import threading
 from .Worker import Worker
 
 class Waiter(Worker):
-    def __init__(self, parent):
-        Worker.__init__(self, parent)
+    def __init__(self, parent, daemon=None):
+        Worker.__init__(self, parent, daemon)
         self._dirty = threading.Event()
         self._idle = threading.Event()
 

@@ -2,8 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import threading
+import sys
+import time
 
 from ..Event.EventHandler import EventHandler
+
+if sys.platform.startswith("win"):
+    DEFAULT_JOIN_INTERVAL = 1
+else:
+    DEFAULT_JOIN_INTERVAL = None
 
 class WorkerBase(EventHandler):
     def __init__(self, parent=None):
@@ -67,8 +74,25 @@ class WorkerBase(EventHandler):
     def start(self):
         raise NotImplementedError
 
-    def join(self):
+    def actual_join(self, timeout=None):
         raise NotImplementedError
+
+    def join(self, timeout=None, interval=None):
+        if interval is None:
+            interval = DEFAULT_JOIN_INTERVAL
+
+        if interval is None:
+            self.actual_join(timeout)
+        elif timeout is None:
+            while self.is_alive():
+                self.actual_join(interval)
+        else:
+            interval = min(interval, timeout)
+
+            while self.is_alive() and timeout > 0.0:
+                last_time = time.time()
+                self.actual_join(interval)
+                timeout -= time.time() - last_time
 
     def is_alive(self):
         raise NotImplementedError
@@ -83,7 +107,7 @@ class WorkerBase(EventHandler):
     def get_worker_list(self):
         raise NotImplementedError
 
-    def join_worker(self, worker):
+    def join_worker(self, worker, timeout=None, interval=None):
         raise NotImplementedError
 
     def get_num_alive(self):
@@ -102,23 +126,41 @@ class WorkerBase(EventHandler):
         for i in range(n_workers):
             self.start_worker(worker_class, *args, **kwargs)
 
-    def join_workers(self):
+    def join_workers(self, timeout=None, each_timeout=None, interval=None):
         workers = self.get_worker_list()
 
-        while len(workers):
+        if timeout is not None:
+            if each_timeout is None:
+                each_timeout = timeout
+            else:
+                each_timeout = min(each_timeout, timeout)
+
+        while len(workers) and (timeout is None or timeout > 0):
             for worker in workers:
-                self.join_worker(worker)
+                t = time.time()
+
+                self.join_worker(worker, each_timeout, interval)
+
+                dt = time.time() - t
+
+                if timeout is not None:
+                    timeout -= dt
             workers = self.get_worker_list()
 
     def stop_workers(self):
         for worker in self.get_worker_list():
             worker.stop()
 
-    def full_stop(self):
+    def full_stop(self, timeout=None, each_timeout=None, interval=None):
         self.stop()
+
+        last_time = time.time()
 
         while len(self.get_worker_list()):
             self.stop_workers()
-            self.join_workers()
+            self.join_workers(timeout, each_timeout, interval)
 
-        self.join()
+        if timeout is not None:
+            timeout -= time.time() - last_time
+
+        self.join(timeout, interval)

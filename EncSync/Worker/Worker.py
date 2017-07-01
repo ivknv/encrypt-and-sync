@@ -2,12 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import threading
+import sys
 
 from .WorkerBase import WorkerBase
 
+DEFAULT_DAEMON = sys.platform.startswith("win")
+
 class Worker(WorkerBase):
-    def __init__(self, parent=None, daemon=False):
+    def __init__(self, parent=None, daemon=None):
         WorkerBase.__init__(self, parent)
+
+        if daemon is None:
+            daemon = DEFAULT_DAEMON
 
         self.workers = {}
         self.workers_lock = threading.Lock()
@@ -21,9 +27,9 @@ class Worker(WorkerBase):
             self.thread = threading.Thread(target=self.run, daemon=self.daemon)
         self.thread.start()
 
-    def join(self):
+    def actual_join(self, timeout=None):
         if self.thread is not None:
-            self.thread.join()
+            self.thread.join(timeout)
 
     def is_alive(self):
         return self.thread.is_alive()
@@ -38,11 +44,12 @@ class Worker(WorkerBase):
 
         return worker
 
-    def join_worker(self, worker):
-        worker.join()
+    def join_worker(self, worker, timeout=None, interval=None):
+        worker.join(timeout, interval)
 
-        with self.workers_lock:
-            self.workers.pop(worker.ident, None)
+        if not worker.is_alive():
+            with self.workers_lock:
+                self.workers.pop(worker.ident, None)
 
     def get_worker_list(self):
         with self.workers_lock:
