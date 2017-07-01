@@ -27,6 +27,6 @@ def node_tuple_to_dict(t):
 
 def normalize_node(node, local=True):
     if local:
-        node["path"] = Paths.from_sys(node["path"])
+        node["path"] = Paths.from_sys_sep(node["path"])
     if node["type"] == "d":
         node["path"] = Paths.dir_normalize(node["path"])

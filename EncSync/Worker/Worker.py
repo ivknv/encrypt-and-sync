@@ -32,10 +32,12 @@ class Worker(WorkerBase):
             self.thread.join(timeout)
 
     def is_alive(self):
-        return self.thread.is_alive()
+        return self.thread is not None and self.thread.is_alive()
 
     @property
     def ident(self):
+        if self.thread is None:
+            return None
         return self.thread.ident
 
     def add_worker(self, worker):

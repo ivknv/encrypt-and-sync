@@ -38,7 +38,7 @@ class EncPath(object):
 
     def get_path(self):
         if None not in {self._local_prefix, self._local}:
-            return Paths.from_sys(Paths.cut_prefix(self._local, self._local_prefix, sep=os.path.sep)) or "/"
+            return Paths.from_sys_sep(Paths.cut_prefix(self._local, self._local_prefix, sep=os.path.sep)) or "/"
         elif self._remote_prefix is not None:
             if self._remote is not None:
                 return Paths.cut_prefix(self._remote, self._remote_prefix) or "/"
@@ -80,7 +80,7 @@ class EncPath(object):
 
     def get_local_prefix(self):
         if None not in {self.path, self.local}:
-            return Paths.to_sys(Paths.cut_off(Paths.from_sys(self.local), self.path))
+            return Paths.to_sys(Paths.cut_off(Paths.from_sys_sep(self.local), self.path))
 
     def get_remote_prefix(self):
         if None not in {self.path, self.remote}:
@@ -124,7 +124,7 @@ class EncPath(object):
     @path.setter
     def path(self, value):
         if value is not None:
-            self._path = Paths.from_sys(value)
+            self._path = Paths.from_sys_sep(value)
             if self._path.startswith("/") and self._path != "/":
                 self._path = self._path[1:]
         else:

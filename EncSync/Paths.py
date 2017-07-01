@@ -96,14 +96,13 @@ def path_map(path, f, sep="/"):
 
 if sys.platform.startswith("win"):
     def from_sys(path, target_sep="/"):
-        path = path.replace(os.path.sep, target_sep)
+        path = path.replace(os.path.sep, target_sep).lower()
         path = explicit(path, target_sep)
         return path
 
     def explicit(path, sep="/"):
-        path = path.lower()
         if path.startswith(sep):
-            sys_drive_path = from_sys(os.path.realpath("/")).lower()
+            sys_drive_path = from_sys(os.path.realpath("/"))
             path = join(sys_drive_path, path, sep)
 
         return path
@@ -113,6 +112,9 @@ else:
 
     def explicit(path, sep="/"):
         return path
+
+def from_sys_sep(path, sep="/"):
+    return path.replace(os.path.sep, sep)
 
 def sys_explicit(path):
     return explicit(path, os.path.sep)

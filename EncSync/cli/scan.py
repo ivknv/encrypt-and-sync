@@ -47,10 +47,10 @@ def print_target_totals(env, target):
 
     if target.type == "local":
         filelist = LocalFileList(env["config_dir"])
+        children = filelist.find_node_children(Paths.from_sys(target.path))
     elif target.type == "remote":
         filelist = RemoteFileList(env["config_dir"])
-
-    children = filelist.find_node_children(Paths.from_sys(target.path))
+        children = filelist.find_node_children(target.path)
 
     for i in children:
         if i["type"] == "f":
