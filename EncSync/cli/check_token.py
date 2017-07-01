@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
-
-from . import common
+from .common import make_encsync, show_error
 from ..EncSync import EncSync, AUTH_URL
 from ..YandexDiskApi.Exceptions import YandexDiskError
 
 def check_token(env):
-    encsync, ret = common.make_encsync(env)
+    encsync, ret = make_encsync(env)
 
     if encsync is None:
         return ret
 
-    try:    
+    try:
         if encsync.check_token():
             return 0
     except YandexDiskError as e:
@@ -24,7 +22,7 @@ def check_token(env):
         while True:
             print("Go to the following URL: %s" % AUTH_URL)
             code = input("Confirmation code: ")
-            
+
             try:
                 response = encsync.ynd.get_token(code)
             except YandexDiskError as e:
