@@ -43,6 +43,7 @@ class DiffList(object):
                           (diff[0], diff[1], p.path, local_prefix, remote_prefix, p.IVs))
 
     def clear_differences(self, local_prefix, remote_prefix):
+        local_prefix = Paths.from_sys(local_prefix)
         self.conn.execute("""DELETE FROM differences
                              WHERE (local_prefix=? OR local_prefix=?) AND
                                    (remote_prefix=? OR remote_prefix=?)""",

@@ -5,7 +5,7 @@ import os
 from ... import Paths
 
 def prepare_local_path(path):
-    return os.path.realpath(os.path.expanduser(path))
+    return Paths.sys_explicit(os.path.realpath(os.path.expanduser(path)))
 
 def prepare_remote_path(path):
     return Paths.dir_normalize(Paths.join_properly("/", path))

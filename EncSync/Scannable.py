@@ -118,8 +118,11 @@ class LocalScannable(BaseScannable):
 
         for i in os.listdir(self.path):
             path = os.path.join(self.path, i)
+            path_norm = Paths.from_sys(path)
+            if os.path.isdir(path):
+                path_norm = Paths.dir_normalize(path_norm)
 
-            if PathMatch.match(path, allowed_paths):
+            if PathMatch.match(path_norm, allowed_paths):
                 yield LocalScannable(path)
 
     def to_node(self):

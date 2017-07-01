@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 def dir_normalize(path, sep="/"):
     return path if path.endswith(sep) else path + sep
@@ -87,11 +88,31 @@ def split(path, sep="/"):
 
     return (sep if not res[0] else res[0], res[1])
 
-def from_sys(path, target_sep="/"):
-    return path.replace(os.path.sep, target_sep)
-
 def to_sys(path, orig_sep="/"):
     return path.replace(orig_sep, os.path.sep)
 
 def path_map(path, f, sep="/"):
     return sep.join(f(i) for i in path.split(sep))
+
+if sys.platform.startswith("win"):
+    def from_sys(path, target_sep="/"):
+        path = path.replace(os.path.sep, target_sep)
+        path = explicit(path, target_sep)
+        return path
+
+    def explicit(path, sep="/"):
+        path = path.lower()
+        if path.startswith(sep):
+            sys_drive_path = from_sys(os.path.realpath("/")).lower()
+            path = join(sys_drive_path, path, sep)
+
+        return path
+else:
+    def from_sys(path, target_sep="/"):
+        return path.replace(os.path.sep, target_sep)
+
+    def explicit(path, sep="/"):
+        return path
+
+def sys_explicit(path):
+    return explicit(path, os.path.sep)
