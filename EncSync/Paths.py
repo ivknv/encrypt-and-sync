@@ -96,7 +96,7 @@ def path_map(path, f, sep="/"):
 
 if sys.platform.startswith("win"):
     def from_sys(path, target_sep="/"):
-        path = path.replace(os.path.sep, target_sep).lower()
+        path = path.replace(os.path.sep, target_sep)
         path = explicit(path, target_sep)
         return path
 
