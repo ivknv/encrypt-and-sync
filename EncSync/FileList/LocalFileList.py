@@ -8,6 +8,9 @@ from .. import Paths
 from .. import CentDB
 from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 
+def escape_glob(s):
+    return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
+
 class LocalFileList(FileList):
     def __init__(self, directory=None, *args, **kwargs):
         FileList.__init__(self)
@@ -61,12 +64,10 @@ class LocalFileList(FileList):
 
     def remove_node_children(self, path):
         path = Paths.dir_normalize(path)
+        path = escape_glob(path)
 
-        path = path.replace("%", "\\%")
-        path = path.replace("_", "\\_")
-
-        self.conn.execute("DELETE FROM filelist WHERE path LIKE ? ESCAPE '\\'",
-                          (path + "%",))
+        self.conn.execute("DELETE FROM filelist WHERE path GLOB ?",
+                          (path + "*",))
 
     def clear(self):
         self.conn.execute("""DELETE FROM filelist""")
@@ -79,19 +80,14 @@ class LocalFileList(FileList):
             return node_tuple_to_dict(self.conn.fetchone())
 
     def find_node_children(self, path):
+        path = escape_glob(path)
         path_n = Paths.dir_normalize(path)
-
-        path = path.replace("%", "\\%")
-        path = path.replace("_", "\\_")
-        path_n = path_n.replace("%", "\\%")
-        path_n = path_n.replace("_", "\\_")
 
         with self.conn:
             self.conn.execute("""SELECT * FROM filelist
-                                 WHERE path LIKE ? ESCAPE '\\'
-                                       OR path=? OR path=? ORDER BY path ASC""",
-                              (path_n + "%", path_n, path))
-
+                                 WHERE path GLOB ? OR path=? OR path=?
+                                 ORDER BY path ASC""",
+                              (path_n + "*", path_n, path))
             return (node_tuple_to_dict(i) for i in self.conn.genfetch())
 
     def select_all_nodes(self):

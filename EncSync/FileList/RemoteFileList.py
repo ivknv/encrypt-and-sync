@@ -11,11 +11,15 @@ from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 def prepare_path(path):
     return Paths.join_properly("/", path)
 
+def escape_glob(s):
+    return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
+
 class RemoteFileList(FileList):
     def __init__(self, directory=None, *args, **kwargs):
         FileList.__init__(self)
 
         kwargs.setdefault("isolation_level", None)
+
         if directory is None:
             path = "remote_filelist.db"
         else:
@@ -63,12 +67,9 @@ class RemoteFileList(FileList):
 
     def remove_node_children(self, path):
         path = prepare_path(Paths.dir_normalize(path))
+        path = escape_glob(path)
 
-        path = path.replace("%", "\\%")
-        path = path.replace("_", "\\_")
-
-        self.conn.execute("DELETE FROM filelist WHERE path LIKE ? ESCAPE '\\'",
-                          (path + "%",))
+        self.conn.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
 
     def clear(self):
         self.conn.execute("""DELETE FROM filelist""")
@@ -84,18 +85,14 @@ class RemoteFileList(FileList):
 
     def find_node_children(self, path):
         path = prepare_path(path)
+        path = escape_glob(path)
         path_n = Paths.dir_normalize(path)
-
-        path = path.replace("%", "\\%")
-        path = path.replace("_", "\\_")
-        path_n = path_n.replace("%", "\\%")
-        path_n = path_n.replace("_", "\\_")
 
         with self.conn:
             self.conn.execute("""SELECT * FROM filelist
-                                WHERE path LIKE ? ESCAPE '\\'
-                                      OR path=? OR path=? ORDER BY path ASC""",
-                              (path_n + "%", path, path_n))
+                                 WHERE path GLOB ? OR path=? OR path=?
+                                 ORDER BY path ASC""",
+                              (path_n + "*", path, path_n))
 
             return (node_tuple_to_dict(i) for i in self.conn.genfetch())
 
@@ -107,27 +104,22 @@ class RemoteFileList(FileList):
 
     def is_empty(self, parent_dir="/"):
         parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
-
-        parent_dir = parent_dir.replace("%", "\\%")
-        parent_dir = parent_dir.replace("_", "\\_")
+        parent_dir = escape_glob(parent_dir)
 
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM filelist
-                                 WHERE path LIKE ? ESCAPE '\\' LIMIT 1""",
-                              (parent_dir + "%",))
+                                 WHERE path GLOB ? LIMIT 1""",
+                              (parent_dir + "*",))
 
             return self.conn.fetchone()[0] == 0
 
     def get_file_count(self, parent_dir="/"):
         parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
-
-        parent_dir = parent_dir.replace("%", "\\%")
-        parent_dir = parent_dir.replace("_", "\\_")
+        parent_dir = escape_glob(parent_dir)
 
         with self.conn:
-            self.conn.execute("""SELECT COUNT(*) FROM filelist
-                                 WHERE path LIKE ? ESCAPE '\\'""",
-                              (parent_dir + "%",))
+            self.conn.execute("""SELECT COUNT(*) FROM filelist WHERE path GLOB ?""",
+                              (parent_dir + "*",))
 
             return self.conn.fetchone()[0]
 

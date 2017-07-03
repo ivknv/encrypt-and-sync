@@ -9,6 +9,9 @@ from .. import CentDB
 def prepare_path(path):
     return Paths.join_properly("/", path)
 
+def escape_glob(s):
+    return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
+
 class DuplicateList(object):
     def __init__(self, directory=None, *args, **kwargs):
         kwargs.setdefault("isolation_level", None)
@@ -46,12 +49,9 @@ class DuplicateList(object):
 
     def remove_children(self, path):
         path = prepare_path(Paths.dir_normalize(path))
+        path = escape_glob(path)
 
-        path = path.replace("%", "\\%")
-        path = path.replace("_", "\\_")
-
-        self.conn.execute("DELETE FROM duplicates WHERE path LIKE ? ESCAPE '\\'",
-                          (path + "%",))
+        self.conn.execute("DELETE FROM duplicates WHERE path GLOB ?", (path + "*",))
 
     def clear(self):
         self.conn.execute("DELETE FROM duplicates")
@@ -67,14 +67,11 @@ class DuplicateList(object):
 
     def find_children(self, path):
         path = prepare_path(Paths.dir_normalize(path))
-
-        path = path.replace("%", "\\%")
-        path = path.replace("_", "\\_")
+        path = escape_glob(path)
 
         with self.conn:
-            self.conn.execute("""SELECT * FROM duplicates
-                                 WHERE path LIKE ? ESCAPE '\\'""",
-                              (path + "%",))
+            self.conn.execute("""SELECT * FROM duplicates WHERE path GLOB ?""",
+                              (path + "*",))
 
             return self.conn.genfetch()
 
@@ -91,15 +88,13 @@ class DuplicateList(object):
 
     def is_empty(self, path="/"):
         path = prepare_path(Paths.dir_normalize(path))
-
-        path = path.replace("%", "\\%")
-        path = path.replace("_", "\\_")
+        path = escape_glob(path)
 
         with self.conn:
             self.conn.execute("""SELECT COUNT(*) FROM
                                  (SELECT * FROM duplicates
-                                  WHERE path LIKE ? ESCAPE '\\' LIMIT 1)""",
-                              (path + "%",))
+                                  WHERE path GLOB ? LIMIT 1)""",
+                              (path + "*",))
             return self.conn.fetchone()[0] == 0
 
     def begin_transaction(self, *args, **kwargs):
