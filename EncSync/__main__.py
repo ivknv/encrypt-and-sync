@@ -24,6 +24,12 @@ from .cli.get_key import get_key
 from .cli.set_master_password import set_master_password
 from .cli.password_prompt import password_prompt
 
+def cleanup(env):
+    try:
+        os.remove(os.path.join(env["config_dir"], "encsync_diffs.db"))
+    except (FileNotFoundError, IsADirectoryError):
+        pass
+
 def any_not_none(keys, container):
     for key in keys:
         if getattr(container, key) is not None:
@@ -58,7 +64,6 @@ def main(args=None):
     ns = parse_args(args)
 
     env = Environment()
-
     
     if ns.master_password is None and not ns.force_ask_password and not ns.password_prompt:
         try:
@@ -96,6 +101,8 @@ def main(args=None):
         make_encrypted_data(env, env["enc_data_path"])
 
     setup_logging(env)
+
+    cleanup(env)
 
     actions = (("scan", lambda: do_scan(env, ns.scan)),
                ("sync", lambda: do_sync(env, ns.sync)),
