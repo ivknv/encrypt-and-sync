@@ -61,7 +61,7 @@ def ask_continue(synchronizer):
             if synchronizer.stopped:
                 return "stop"
 
-            answer = input("Continue synchronization? [Y/n/s(kip)/(v)iew differences]: ").lower()
+            answer = input("Continue synchronization? [Y/n/(s)kip/(v)iew differences]: ").lower()
 
             if answer == "":
                 answer = default
