@@ -69,6 +69,7 @@ def print_target_totals(env, target):
         return
 
     duplist = DuplicateList(env["config_dir"])
+    duplist.create()
 
     children = duplist.find_children(target.path)
     n_duplicates = sum(1 for i in children)

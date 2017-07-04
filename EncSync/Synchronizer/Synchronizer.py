@@ -163,6 +163,7 @@ class Synchronizer(StagedWorker):
 
         llist.create()
         rlist.create()
+        self.shared_duplist.create()
 
         difflist = DiffList(self.encsync, self.directory)
         difflist.create()

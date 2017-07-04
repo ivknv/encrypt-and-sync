@@ -134,6 +134,7 @@ class FileComparator(object):
 
         if self.duplicates is None:
             duplist = DuplicateList(self.directory)
+            duplist.create()
             self.duplicates = iter(duplist.find_children(self.prefix2))
 
         row = try_next(self.duplicates)
