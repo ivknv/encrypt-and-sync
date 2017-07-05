@@ -9,6 +9,7 @@ from .SyncFile import SyncFile, SyncFileInterrupt
 from .Exceptions import TooLongFilenameError
 from ..Encryption import pad_size
 from .. import Paths
+from ..YandexDiskApi.Exceptions import DiskNotFoundError
 
 from ..Worker import Worker
 
@@ -215,7 +216,10 @@ class RmWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        r = self.encsync.ynd.rm(remote_path_enc)
+        try:
+            r = self.encsync.ynd.rm(remote_path_enc)
+        except DiskNotFoundError:
+            pass
 
         self.rlist.remove_node_children(remote_path)
         self.rlist.remove_node(remote_path)
@@ -240,7 +244,10 @@ class RmDupWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        r = self.encsync.ynd.rm(remote_path_enc)
+        try:
+            r = self.encsync.ynd.rm(remote_path_enc)
+        except DiskNotFoundError:
+            pass
 
         self.duplist.remove(self.path.IVs, remote_path)
         self.autocommit()
