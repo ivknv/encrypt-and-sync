@@ -59,10 +59,12 @@ class LocalFileList(FileList):
                           (new_size, path))
 
     def remove_node(self, path):
+        path = Paths.from_sys(path)
         self.conn.execute("""DELETE FROM filelist WHERE path=? OR path=?""",
                           (path, Paths.dir_normalize(path)))
 
     def remove_node_children(self, path):
+        path = Paths.from_sys(path)
         path = Paths.dir_normalize(path)
         path = escape_glob(path)
 
@@ -73,6 +75,7 @@ class LocalFileList(FileList):
         self.conn.execute("""DELETE FROM filelist""")
 
     def find_node(self, path):
+        path = Paths.from_sys(path)
         with self.conn:
             self.conn.execute("""SELECT * FROM filelist
                                  WHERE path=? OR path=? LIMIT 1""",
@@ -80,6 +83,7 @@ class LocalFileList(FileList):
             return node_tuple_to_dict(self.conn.fetchone())
 
     def find_node_children(self, path):
+        path = Paths.from_sys(path)
         path = escape_glob(path)
         path_n = Paths.dir_normalize(path)
 

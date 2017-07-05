@@ -114,7 +114,7 @@ class Scanner(Worker):
     def begin_local_scan(self, target):
         self.shared_llist.remove_node_children(target.path)
 
-        if not PathMatch.match(target.path, self.encsync.allowed_paths):
+        if not PathMatch.match(Paths.from_sys(target.path), self.encsync.allowed_paths):
             return
 
         scannable = LocalScannable(target.path)
