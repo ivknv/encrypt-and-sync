@@ -66,7 +66,6 @@ class Scanner(Worker):
         return self.stopped
 
     def wait_workers(self):
-        logger.debug("Waiting workers")
         workers = self.get_worker_list()
 
         while True:
@@ -76,7 +75,6 @@ class Scanner(Worker):
             workers = self.get_worker_list()
 
             if all(worker.is_idle() for worker in workers):
-                logger.debug("Done waiting workers")
                 return
 
     def get_next_target(self):
@@ -84,7 +82,6 @@ class Scanner(Worker):
             if len(self.targets):
                 target = self.targets.pop(0)
                 self.emit_event("next_target", target)
-                logger.debug("Next {} target: {}".format(target.type, target.path))
                 return target
 
     def add_task(self, scannable):
@@ -126,8 +123,6 @@ class Scanner(Worker):
 
     def work(self):
         assert(self.n_workers >= 1)
-
-        logger.debug("Dispatcher is working")
 
         self.shared_llist.create()
         self.shared_rlist.create()
@@ -186,5 +181,3 @@ class Scanner(Worker):
                 target.change_status("failed")
             finally:
                 self.cur_target = None
-
-        logger.debug("Dispatcher is done working")

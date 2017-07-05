@@ -43,8 +43,6 @@ class SynchronizerWorker(Worker):
         raise NotImplementedError
 
     def get_IVs(self):
-        logger.debug("Getting IVs")
-
         remote_path = self.path.remote
         remote_prefix = self.path.remote_prefix
         path = self.path.path
@@ -67,11 +65,8 @@ class SynchronizerWorker(Worker):
         return self.parent.cur_target.status == "suspended" or self.stopped
 
     def work(self):
-        logger.debug("SynchronizerWorker began working")
-
         while not self.stopped:
             if self.stop_condition():
-                logger.debug("SynchronizerWorker stopped")
                 break
 
             task = self.parent.get_next_task()
@@ -86,7 +81,6 @@ class SynchronizerWorker(Worker):
                 if task is not None:
                     task.emit_event("interrupted")
 
-                logger.debug("SynchronizerWorker stopped")
                 break
 
             if task.status is None:
@@ -99,7 +93,6 @@ class SynchronizerWorker(Worker):
             if not check_filename_length(local_path):
                 task.emit_event("filename_too_long")
                 task.change_status("failed")
-                logger.debug("Filename is too long (>= 160): {}".format(local_path))
                 continue
 
             IVs = self.get_IVs()
@@ -108,8 +101,6 @@ class SynchronizerWorker(Worker):
                 self.path.IVs = IVs
 
             self.work_func()
-
-        logger.debug("SynchronizerWorker finished working")
 
 class UploadWorker(SynchronizerWorker):
     def get_info(self):
@@ -133,13 +124,10 @@ class UploadWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        logger.debug("Uploading file to {}".format(remote_path))
-
         try:
             try:
                 new_size = pad_size(os.path.getsize(local_path))
             except FileNotFoundError:
-                logger.debug("Removing %r since it doesn't exist" % local_path)
                 self.llist.remove_node(local_path)
                 self.autocommit()
 
@@ -154,12 +142,9 @@ class UploadWorker(SynchronizerWorker):
 
                     if not r["success"]:
                         task.change_status("failed")
-                        logger.debug("Upload task failed")
                 except SyncFileInterrupt:
-                    logger.debug("Upload was interrupted")
                     return
 
-            logger.debug("Updating local size")
             self.llist.update_size(local_path, new_size)
 
             if task.status != "pending":
@@ -170,8 +155,6 @@ class UploadWorker(SynchronizerWorker):
                        "padded_size": new_size,
                        "modified":    time.mktime(time.gmtime()),
                        "IVs":         IVs}
-
-            logger.debug("Inserting node")
 
             self.rlist.insert_node(newnode)
             self.autocommit()
@@ -197,8 +180,6 @@ class MkdirWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        logger.debug("Creating directory {}".format(remote_path))
-
         try:
             if not os.path.exists(local_path):
                 self.llist.remove_node(local_path)
@@ -209,11 +190,8 @@ class MkdirWorker(SynchronizerWorker):
 
             r = self.encsync.ynd.mkdir(remote_path_enc)
 
-            logger.debug(remote_path)
-
             if not r["success"]:
                 task.change_status("failed")
-                logger.debug("Folder creation task failed")
 
             if task.status == "failed":
                 return
@@ -247,8 +225,6 @@ class RmWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        logger.debug("Removing {}".format(remote_path))
-
         try:
             r = self.encsync.ynd.rm(remote_path_enc)
 
@@ -260,7 +236,6 @@ class RmWorker(SynchronizerWorker):
                 task.change_status("finished")
             else:
                 task.change_status("failed")
-                logger.debug("Remove task failed")
         except:
             task.change_status("failed")
             logger.exception("An error occured")
@@ -282,8 +257,6 @@ class RmDupWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        logger.debug("Removing duplicate {}".format(remote_path))
-
         try:
             r = self.encsync.ynd.rm(remote_path_enc)
 
@@ -294,7 +267,6 @@ class RmDupWorker(SynchronizerWorker):
                 task.change_status("finished")
             else:
                 task.change_status("failed")
-                logger.debug("Remove task failed")
         except:
             task.change_status("failed")
             logger.exception("An error occured")

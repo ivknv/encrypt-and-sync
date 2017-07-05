@@ -76,12 +76,8 @@ class Downloader(Worker):
 
             target.change_status("pending")
 
-            logger.debug("Scanning download target")
-
             if target.total_children == 0:
                 self.scan(target)
-
-            logger.debug("Done scanning download target")
 
             with target.pool_lock, target.lock:
                 for i in target.children:
@@ -94,17 +90,11 @@ class Downloader(Worker):
             self.init_workers()
             self.join_workers()
 
-        logger.debug("No more targets to download")
-
     def init_workers(self):
-        logger.debug("Starting workers")
-
         n_running = sum(1 for i in self.get_worker_list() if i.is_alive())
 
         self.start_workers(self.n_workers - n_running,
                            DownloaderWorker, self, self.cur_target)
-
-        logger.debug("Done starting workers")
 
     def scan(self, target):
         rlist = RemoteFileList(self.directory)
@@ -117,7 +107,6 @@ class Downloader(Worker):
 
         if len(nodes) == 0:
             # Fail if not found
-            logger.debug("Target path ({}) wasn't found in the database".format(dec_remote))
             target.emit_event("not_found_in_db")
             target.change_status("failed")
             return

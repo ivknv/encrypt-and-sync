@@ -98,13 +98,11 @@ class Synchronizer(StagedWorker):
 
         with self.get_sync_lock():
             if not self.available:
-                logger.debug("Dispatcher is not available")
                 return
 
             try:
                 diff = next(self.diffs)
             except StopIteration:
-                logger.debug("Dispatcher.get_next_task(): no more diffs")
                 return
 
             task = SyncTask()
@@ -128,8 +126,6 @@ class Synchronizer(StagedWorker):
 
         difflist = DiffList(self.encsync, self.directory)
 
-        logger.debug("Building differences")
-
         diffs = FileComparator.compare_lists(self.encsync,
                                              self.cur_target.local,
                                              self.cur_target.remote,
@@ -139,9 +135,7 @@ class Synchronizer(StagedWorker):
             difflist.clear_differences(self.cur_target.local,
                                        self.cur_target.remote)
             difflist.insert_differences(diffs)
-            logger.debug("Done inserting differences")
             difflist.commit()
-            logger.debug("Done commiting")
         except Exception as e:
             difflist.rollback()
             raise e
@@ -153,11 +147,7 @@ class Synchronizer(StagedWorker):
 
             self.cur_target.total_children = diff_count + n_done
 
-        logger.debug("Done building differences")
-
     def work(self):
-        logger.debug("Dispatcher started working")
-
         llist = LocalFileList(self.directory)
         rlist = RemoteFileList(self.directory)
 
@@ -175,8 +165,6 @@ class Synchronizer(StagedWorker):
 
                 target = self.targets.pop(0)
                 self.cur_target = target
-
-            logger.debug("Dispatcher is working on a new task")
 
             self.emit_event("next_target", target)
 
@@ -202,8 +190,6 @@ class Synchronizer(StagedWorker):
             elif target.stage not in {None, "scan", "check"}:
                 self.build_diffs_table()
 
-            logger.debug("Running stages: %s" % repr(stages))
-
             for stage in stages:
                 if self.stopped or target.status in ("suspended", "failed"):
                     break
@@ -225,13 +211,10 @@ class Synchronizer(StagedWorker):
                 difflist.clear_differences(target.local, target.remote)
 
             self.cur_target = None
-        logger.debug("Dispatcher finished working")
 
         assert(self.stage is None)
 
     def init_duplicates_stage(self):
-        logger.debug("Dispatcher began initializing stage 'duplicates'")
-
         d = DiffList(self.encsync, self.directory)
         self.diffs = d.select_rmdup_differences(self.cur_target.remote)
 
@@ -239,14 +222,10 @@ class Synchronizer(StagedWorker):
 
         self.start_workers(self.n_workers, RmDupWorker, self)
 
-        logger.debug("Dispatcher finished initializing stage 'duplicates'")
-
     def finalize_duplicates_stage(self):
         self.shared_duplist.commit()
 
     def init_rm_stage(self):
-        logger.debug("Dispatcher began initializing stage 'rm'")
-
         d = DiffList(self.encsync, self.directory)
         self.diffs = d.select_rm_differences(self.cur_target.local,
                                              self.cur_target.remote)
@@ -256,15 +235,11 @@ class Synchronizer(StagedWorker):
 
         self.start_workers(self.n_workers, RmWorker, self)
 
-        logger.debug("Dispatcher finished initializing stage 'rm'")
-
     def finalize_rm_stage(self):
         self.shared_llist.commit()
         self.shared_rlist.commit()
 
     def init_dirs_stage(self):
-        logger.debug("Dispatcher began initializing stage 'dirs'")
-
         d = DiffList(self.encsync, self.directory)
         self.diffs = d.select_dirs_differences(self.cur_target.local,
                                                self.cur_target.remote)
@@ -274,15 +249,11 @@ class Synchronizer(StagedWorker):
 
         self.start_worker(MkdirWorker, self)
 
-        logger.debug("Dispatcher finished initializing stage 'dirs'")
-
     def finalize_dirs_stage(self):
         self.shared_llist.commit()
         self.shared_rlist.commit()
 
     def init_files_stage(self):
-        logger.debug("Dispatcher began initializing stage 'files'")
-
         d = DiffList(self.encsync, self.directory)
         self.diffs = d.select_files_differences(self.cur_target.local,
                                                 self.cur_target.remote)
@@ -291,8 +262,6 @@ class Synchronizer(StagedWorker):
         self.shared_rlist.begin_transaction()
 
         self.start_workers(self.n_workers, UploadWorker, self)
-
-        logger.debug("Dispatcher finished initializing stage 'files'")
 
     def finalize_files_stage(self):
         self.shared_llist.commit()

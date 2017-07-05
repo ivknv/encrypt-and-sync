@@ -65,8 +65,6 @@ class DownloaderWorker(Worker):
                 "progress":  0.0}
 
     def download_file(self, task):
-        logger.debug("Downloading file {} to {}".format(task.dec_remote, task.local))
-
         if os.path.isdir(task.local):
             name = Paths.split(task.dec_remote)[1]
             task.local = os.path.join(task.local, name)
@@ -120,18 +118,13 @@ class DownloaderWorker(Worker):
 
                 tmpfile.flush()
                 tmpfile.seek(0)
-                logger.debug("Decrypting file")
                 self.encsync.decrypt_file(tmpfile, task.local)
-                logger.debug("Done decrypting file")
             task.change_status("finished")
-            logger.debug("Successfully downloaded file")
         except:
             task.change_status("failed")
             logger.exception("An error occured")
 
     def work(self):
-        logger.debug("Worker began working")
-
         try:
             while not self.stopped:
                 with self.lock:
@@ -151,8 +144,6 @@ class DownloaderWorker(Worker):
                     elif task.status != "pending":
                         continue
 
-                logger.debug("Downloading to {}".format(task.local))
-
                 if task.type == "d":
                     recursive_mkdir(task.local)
                     task.change_status("finished")
@@ -161,5 +152,3 @@ class DownloaderWorker(Worker):
                 self.download_file(task)
         except:
             logger.exception("An error occured")
-        finally:
-            logger.debug("Worker finished working")
