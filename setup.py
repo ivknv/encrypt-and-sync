@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 import sys
 
-requirements = ["requests", "PyCrypto"]
+requirements = ["requests", "pycryptodome"]
 
 if sys.platform.startswith("win"):
     requirements.append("pyreadline")
