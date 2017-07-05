@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import threading
+import traceback
 import weakref
 
 from .Exceptions import UnknownEventError, DuplicateEventError
@@ -81,8 +82,11 @@ class EventHandler(object):
         remove_list = []
 
         for callback, i in zip(callbacks, range(len(callbacks))):
-            if callback(event, *event.args, **event.kwargs) is False:
-                remove_list.append(i)
+            try:
+                if callback(event, *event.args, **event.kwargs) is False:
+                    remove_list.append(i)
+            except:
+                traceback.print_exc()
 
         with self._callbacks_lock:
             for i, j in zip(remove_list, range(len(remove_list))):
