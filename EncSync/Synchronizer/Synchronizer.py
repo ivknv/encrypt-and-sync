@@ -57,6 +57,7 @@ class Synchronizer(StagedWorker):
         self.add_stage("check",      self.init_check_stage,      self.finalize_check_stage)
 
         self.add_event("next_target")
+        self.add_event("error")
 
     def change_status(self, status):
         for i in self.get_targets() + [self.cur_target]:
@@ -331,9 +332,11 @@ class Synchronizer(StagedWorker):
             self.join_workers()
         except DiskNotFoundError:
             pass
-        except:
-            logger.exception("An error occured")
+        except Exception as e:
             filelist.rollback()
+
+            self.emit_event("error", e)
+
             target.change_status("failed")
 
             self.cur_target.emit_event("%s_scan_failed" % scan_type, target)
@@ -369,8 +372,8 @@ class Synchronizer(StagedWorker):
 
             if self.shared_rlist.is_empty(self.cur_target.remote):
                 self.do_scan("remote")
-        except:
-            logger.exception("An error occured")
+        except Exception as e:
+            self.emit_event("error", e)
             self.cur_target.change_status("failed")
             self.shared_llist.rollback()
             self.shared_rlist.rollback()
@@ -386,8 +389,8 @@ class Synchronizer(StagedWorker):
                 return
 
             self.build_diffs_table()
-        except:
-            logger.exception("An error occured")
+        except Exception as e:
+            self.emit_event("error", e)
             self.cur_target.change_status("failed")
 
     def init_check_stage(self):
@@ -400,9 +403,9 @@ class Synchronizer(StagedWorker):
             self.cur_target.emit_event("integrity_check")
 
             self.do_scan("remote")
-        except:
+        except Exception as e:
+            self.emit_event("error", e)
             self.cur_target.change_status("failed")
-            logger.exception("An error occured")
 
     def finalize_check_stage(self):
         try:
@@ -422,9 +425,9 @@ class Synchronizer(StagedWorker):
             else:
                 self.cur_target.emit_event("integrity_check_finished")
                 self.cur_target.change_status("finished")
-        except:
+        except Exception as e:
+            self.emit_event("error", e)
             self.cur_target.change_status("failed")
-            logger.exception("An error occured")
 
     def reset_diffs(self):
         self.diffs = None

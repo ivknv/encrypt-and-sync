@@ -12,6 +12,7 @@ from .Logging import logger
 from .Worker import DownloaderWorker
 from .DownloadTask import DownloadTask
 from .DownloadTarget import DownloadTarget
+from .Exceptions import NotFoundInDBError
 
 class Downloader(Worker):
     def __init__(self, encsync, directory, n_workers=2):
@@ -29,6 +30,7 @@ class Downloader(Worker):
 
         self.add_event("next_target")
         self.add_event("next_task")
+        self.add_event("error")
 
     def change_status(self, status):
         for i in self.get_targets() + [self.cur_target]:
@@ -63,32 +65,39 @@ class Downloader(Worker):
 
     def work(self):
         while not self.stopped:
-            with self.targets_lock:
-                if self.stopped or not len(self.targets):
+            try:
+                with self.targets_lock:
+                    if self.stopped or not len(self.targets):
+                        break
+                    target = self.targets.pop(0)
+                    self.cur_target = target
+
+                self.emit_event("next_target", target)
+
+                if target.status == "suspended":
+                    continue
+
+                target.change_status("pending")
+
+                if target.total_children == 0:
+                    self.scan(target)
+
+                with target.pool_lock, target.lock:
+                    for i in target.children:
+                        if i.status in {"pending", None}:
+                            target.pool.append(i)
+
+                if self.stopped:
                     break
-                target = self.targets.pop(0)
-                self.cur_target = target
 
-            self.emit_event("next_target", target)
+                self.init_workers()
+                self.join_workers()
 
-            if target.status == "suspended":
-                continue
-
-            target.change_status("pending")
-
-            if target.total_children == 0:
-                self.scan(target)
-
-            with target.pool_lock, target.lock:
-                for i in target.children:
-                    if i.status in {"pending", None}:
-                        target.pool.append(i)
-
-            if self.stopped:
-                break
-
-            self.init_workers()
-            self.join_workers()
+                self.cur_target = None
+            except Exception as e:
+                self.emit_event("error", e)
+                if self.cur_target is not None:
+                    self.cur_target.change_status("failed")
 
     def init_workers(self):
         n_running = sum(1 for i in self.get_worker_list() if i.is_alive())
@@ -107,14 +116,10 @@ class Downloader(Worker):
 
         if len(nodes) == 0:
             # Fail if not found
-            target.emit_event("not_found_in_db")
-            target.change_status("failed")
-            return
+            raise NotFoundInDBError("Path wasn't found in the database: %r" % dec_remote, dec_remote)
 
         target.type = nodes[0]["type"]
-
-        with target.lock:
-            target.total_children = 0
+        target.total_children = 0
 
         for node in nodes:
             new_task = DownloadTask()

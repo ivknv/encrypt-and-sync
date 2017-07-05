@@ -3,6 +3,7 @@
 
 import os
 import time
+import traceback
 
 from ..Scanner import Scanner, ScanTarget
 from ..Event.EventHandler import EventHandler
@@ -88,6 +89,7 @@ class ScannerReceiver(EventHandler):
         self.add_emitter_callback(scanner, "finished", self.on_finished)
         self.add_emitter_callback(scanner, "next_target", self.on_next_target)
         self.add_emitter_callback(scanner, "worker_started", self.on_worker_started)
+        self.add_emitter_callback(scanner, "error", self.on_error)
 
     def on_started(self, event):
         print("Scanner: started")
@@ -101,6 +103,9 @@ class ScannerReceiver(EventHandler):
 
     def on_worker_started(self, event, worker):
         worker.add_receiver(self.worker_receiver)
+
+    def on_error(self, event, exception):
+        traceback.print_exc()
 
 class TargetReceiver(EventHandler):
     def __init__(self, env):
@@ -129,6 +134,7 @@ class WorkerReceiver(EventHandler):
         EventHandler.__init__(self)
 
         self.add_callback("next_node", self.on_next_node)
+        self.add_callback("error", self.on_error)
 
         self.last_print = 0
 
@@ -139,6 +145,9 @@ class WorkerReceiver(EventHandler):
         self.last_print = time.time()
 
         print(scannable.path)
+
+    def on_error(self, event, exception):
+        traceback.print_exc()
 
 def do_scan(env, paths):
     encsync, ret = common.make_encsync(env)

@@ -22,6 +22,7 @@ class ScanWorker(Waiter):
         self.duplist = parent.shared_duplist
 
         self.add_event("next_node")
+        self.add_event("error")
 
     def do_scan(self, task):
         raise NotImplementedError
@@ -44,10 +45,10 @@ class ScanWorker(Waiter):
             self.cur_path = None
 
             return handle_more
-        except:
+        except Exception as e:
+            self.emit_event("error", e)
             self.cur_target.change_status("failed")
             task.change_status("failed")
-            logger.exception("An error occured")
             self.stop()
 
             return False

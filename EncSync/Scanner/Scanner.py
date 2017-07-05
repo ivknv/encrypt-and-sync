@@ -34,6 +34,7 @@ class Scanner(Worker):
         self.pool_lock = threading.Lock()
 
         self.add_event("next_target")
+        self.add_event("error")
 
     def change_status(self, status):
         with self.targets_lock:
@@ -122,26 +123,30 @@ class Scanner(Worker):
         self.add_task(scannable)
 
     def work(self):
-        assert(self.n_workers >= 1)
+        try:
+            assert(self.n_workers >= 1)
 
-        self.shared_llist.create()
-        self.shared_rlist.create()
-        self.shared_duplist.create()
+            self.shared_llist.create()
+            self.shared_rlist.create()
+            self.shared_duplist.create()
+        except Exception as e:
+            self.emit_event("error", e)
+            return
 
         while not self.stop_condition():
-            target = self.get_next_target()
-
-            if target is None:
-                break
-
-            self.cur_target = target
-
-            assert(target.type in ("local", "remote"))
-
-            filelist = {"local":  self.shared_llist,
-                        "remote": self.shared_rlist}[target.type]
-
             try:
+                target = self.get_next_target()
+
+                if target is None:
+                    break
+
+                self.cur_target = target
+
+                assert(target.type in ("local", "remote"))
+
+                filelist = {"local":  self.shared_llist,
+                            "remote": self.shared_rlist}[target.type]
+
                 if target.status == "suspended":
                     continue
 
@@ -173,11 +178,14 @@ class Scanner(Worker):
                 else:
                     filelist.rollback()
                     self.shared_duplist.rollback()
-            except:
-                logger.exception("An error occured")
+            except Exception as e:
                 self.stop_workers()
                 filelist.rollback()
                 self.shared_duplist.rollback()
-                target.change_status("failed")
+
+                self.emit_event("error", e)
+
+                if target is not None:
+                    target.change_status("failed")
             finally:
                 self.cur_target = None

@@ -6,6 +6,7 @@ import os
 
 from .Logging import logger
 from .SyncFile import SyncFile, SyncFileInterrupt
+from .Exceptions import TooLongFilenameError
 from ..Encryption import pad_size
 from .. import Paths
 
@@ -31,6 +32,7 @@ class SynchronizerWorker(Worker):
         self.duplist = dispatcher.shared_duplist
 
         self.add_event("next_task")
+        self.add_event("error")
 
     def autocommit(self):
         if self.llist.time_since_last_commit() >= COMMIT_INTERVAL:
@@ -66,41 +68,44 @@ class SynchronizerWorker(Worker):
 
     def work(self):
         while not self.stopped:
-            if self.stop_condition():
-                break
+            try:
+                if self.stop_condition():
+                    break
 
-            task = self.parent.get_next_task()
-            self.cur_task = task
-
-            if task is not None:
-                self.emit_event("next_task", task)
-
-            if task is None or self.stop_condition():
-                self.stop()
+                task = self.parent.get_next_task()
+                self.cur_task = task
 
                 if task is not None:
-                    task.emit_event("interrupted")
+                    self.emit_event("next_task", task)
 
-                break
+                if task is None or self.stop_condition():
+                    self.stop()
 
-            if task.status is None:
-                task.change_status("pending")
+                    if task is not None:
+                        task.emit_event("interrupted")
 
-            self.path = task.path
+                    break
 
-            local_path = self.path.local
+                if task.status is None:
+                    task.change_status("pending")
 
-            if not check_filename_length(local_path):
-                task.emit_event("filename_too_long")
-                task.change_status("failed")
-                continue
+                self.path = task.path
 
-            IVs = self.get_IVs()
+                local_path = self.path.local
 
-            if IVs is not None:
-                self.path.IVs = IVs
+                if not check_filename_length(local_path):
+                    raise TooLongFilenameError("Filename is too long: %r" % local_path, local_path)
 
-            self.work_func()
+                IVs = self.get_IVs()
+
+                if IVs is not None:
+                    self.path.IVs = IVs
+
+                self.work_func()
+            except Exception as e:
+                self.emit_event("error", e)
+                if self.cur_task is not None:
+                    self.cur_task.change_status("failed")
 
 class UploadWorker(SynchronizerWorker):
     def get_info(self):
@@ -160,9 +165,9 @@ class UploadWorker(SynchronizerWorker):
             self.autocommit()
 
             task.change_status("finished")
-        except:
+        except Exception as e:
+            self.emit_event("error", e)
             task.change_status("failed")
-            logger.exception("An error occured")
 
 class MkdirWorker(SynchronizerWorker):
     def get_info(self):
@@ -190,12 +195,6 @@ class MkdirWorker(SynchronizerWorker):
 
             r = self.encsync.ynd.mkdir(remote_path_enc)
 
-            if not r["success"]:
-                task.change_status("failed")
-
-            if task.status == "failed":
-                return
-
             newnode = {"type": "d",
                        "path": remote_path,
                        "modified": time.mktime(time.gmtime()),
@@ -206,9 +205,9 @@ class MkdirWorker(SynchronizerWorker):
             self.autocommit()
 
             task.change_status("finished")
-        except:
+        except Exception as e:
+            self.emit_event("error", e)
             task.change_status("failed")
-            logger.exception("An error occured")
 
 class RmWorker(SynchronizerWorker):
     def get_info(self):
@@ -228,17 +227,14 @@ class RmWorker(SynchronizerWorker):
         try:
             r = self.encsync.ynd.rm(remote_path_enc)
 
-            if r["success"]:
-                with self.rlist:
-                    self.rlist.remove_node_children(remote_path)
-                    self.rlist.remove_node(remote_path)
-                    self.autocommit()
-                task.change_status("finished")
-            else:
-                task.change_status("failed")
-        except:
+            self.rlist.remove_node_children(remote_path)
+            self.rlist.remove_node(remote_path)
+            self.autocommit()
+
+            task.change_status("finished")
+        except Exception as e:
+            self.emit_event("error", e)
             task.change_status("failed")
-            logger.exception("An error occured")
 
 class RmDupWorker(SynchronizerWorker):
     def get_info(self):
@@ -260,13 +256,9 @@ class RmDupWorker(SynchronizerWorker):
         try:
             r = self.encsync.ynd.rm(remote_path_enc)
 
-            if r["success"]:
-                with self.duplist:
-                    self.duplist.remove(self.path.IVs, remote_path)
-                    self.autocommit()
-                task.change_status("finished")
-            else:
-                task.change_status("failed")
-        except:
+            self.duplist.remove(self.path.IVs, remote_path)
+            self.autocommit()
+            task.change_status("finished")
+        except Exception as e:
+            self.emit_event("error", e)
             task.change_status("failed")
-            logger.exception("An error occured")

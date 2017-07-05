@@ -3,7 +3,6 @@
 
 import threading
 from collections import Counter
-import traceback
 
 from .Event.EventHandler import EventHandler
 

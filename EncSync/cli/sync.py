@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import traceback
 
 from . import common
 from .common import show_error, get_progress_str
@@ -151,6 +152,7 @@ class SynchronizerReceiver(EventHandler):
         self.add_emitter_callback(synchronizer, "worker_started", self.on_worker_started)
         self.add_emitter_callback(synchronizer, "entered_stage", self.on_entered_stage)
         self.add_emitter_callback(synchronizer, "exited_stage", self.on_exited_stage)
+        self.add_emitter_callback(synchronizer, "error", self.on_error)
 
     def on_started(self, event):
         print("Synchronizer: started")
@@ -205,6 +207,9 @@ class SynchronizerReceiver(EventHandler):
             return
 
         print("Synchronizer exited stage %r" % stage)
+
+    def on_error(self, event, exception):
+        traceback.print_exc()
 
 class TargetReceiver(EventHandler):
     def __init__(self, env):
@@ -281,6 +286,7 @@ class WorkerReceiver(EventHandler):
         self.task_receiver = TaskReceiver()
 
         self.add_callback("next_task", self.on_next_task)
+        self.add_callback("error", self.on_error)
 
     def on_next_task(self, event, task):
         msg = get_progress_str(task) + ": "
@@ -304,6 +310,9 @@ class WorkerReceiver(EventHandler):
         print(msg)
 
         task.add_receiver(self.task_receiver)
+
+    def on_error(self, event, exception):
+        traceback.print_exc()
 
 class TaskReceiver(EventHandler):
     def __init__(self):

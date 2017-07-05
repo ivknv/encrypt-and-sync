@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import traceback
 
 from ..Downloader import Downloader
 from ..Event.EventHandler import EventHandler
@@ -33,6 +34,7 @@ class DownloaderReceiver(EventHandler):
         self.add_emitter_callback(scanner, "finished", self.on_finished)
         self.add_emitter_callback(scanner, "next_target", self.on_next_target)
         self.add_emitter_callback(scanner, "worker_started", self.on_worker_started)
+        self.add_emitter_callback(scanner, "error", self.on_error)
 
     def on_started(self, event):
         print("Downloader: started")
@@ -45,6 +47,9 @@ class DownloaderReceiver(EventHandler):
 
     def on_worker_started(self, event, worker):
         worker.add_receiver(self.worker_receiver)
+
+    def on_error(self, event, exception):
+        traceback.print_exc()
 
 class TargetReceiver(EventHandler):
     def __init__(self):
@@ -70,6 +75,7 @@ class WorkerReceiver(EventHandler):
         self.task_receiver = TaskReceiver()
 
         self.add_callback("next_task", self.on_next_task)
+        self.add_callback("error", self.on_error)
 
     def on_next_task(self, event, task):
         progress_str = get_progress_str(task)
@@ -77,6 +83,9 @@ class WorkerReceiver(EventHandler):
         print(progress_str + ": downloading")
 
         task.add_receiver(self.task_receiver)
+
+    def on_error(self, event, exception):
+        traceback.print_exc()
 
 class TaskReceiver(EventHandler):
     def __init__(self):

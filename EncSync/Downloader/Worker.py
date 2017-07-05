@@ -10,6 +10,7 @@ from ..Worker import Worker
 from .. import Paths
 from .Logging import logger
 from ..Scannable import LocalScannable
+from .Exceptions import FailedToObtainLinkError
 
 def check_if_download(task):
     if not os.path.exists(task.local):
@@ -65,11 +66,11 @@ class DownloaderWorker(Worker):
                 "progress":  0.0}
 
     def download_file(self, task):
-        if os.path.isdir(task.local):
-            name = Paths.split(task.dec_remote)[1]
-            task.local = os.path.join(task.local, name)
-
         try:
+            if os.path.isdir(task.local):
+                name = Paths.split(task.dec_remote)[1]
+                task.local = os.path.join(task.local, name)
+
             if not check_if_download(task):
                 task.change_status("finished")
                 return
@@ -79,9 +80,7 @@ class DownloaderWorker(Worker):
             link = task.obtain_link(self.encsync.ynd)
 
             if link is None:
-                task.emit_event("obtain_link_failed")
-                task.change_status("failed")
-                return
+                raise FailedToObtainLinkError("Failed to obtain download link to %r" % task.dec_remote, task.dec_remote)
 
             task.link = link
 
@@ -99,8 +98,7 @@ class DownloaderWorker(Worker):
                         continue
 
                     tmpfile.write(chunk)
-                    with task.lock:
-                        task.downloaded += len(chunk)
+                    task.downloaded += len(chunk)
 
                     cur_downloaded += len(chunk)
 
@@ -120,13 +118,13 @@ class DownloaderWorker(Worker):
                 tmpfile.seek(0)
                 self.encsync.decrypt_file(tmpfile, task.local)
             task.change_status("finished")
-        except:
+        except Exception as e:
+            self.emit_event("error", e)
             task.change_status("failed")
-            logger.exception("An error occured")
 
     def work(self):
-        try:
-            while not self.stopped:
+        while not self.stopped:
+            try:
                 with self.lock:
                     if self.stopped or not len(self.pool):
                         break
@@ -150,5 +148,10 @@ class DownloaderWorker(Worker):
                     continue
 
                 self.download_file(task)
-        except:
-            logger.exception("An error occured")
+
+                self.cur_task = None
+            except Exception as e:
+                self.emit_event("error", e)
+
+                if self.cur_task is not None:
+                    self.cur_task.change_status("failed")
