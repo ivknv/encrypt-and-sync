@@ -118,7 +118,7 @@ class DownloaderWorker(Worker):
                 tmpfile.seek(0)
                 self.encsync.decrypt_file(tmpfile, task.local)
             task.change_status("finished")
-        except Exception as e:
+        except BaseException as e:
             self.emit_event("error", e)
             task.change_status("failed")
 
@@ -150,7 +150,7 @@ class DownloaderWorker(Worker):
                 self.download_file(task)
 
                 self.cur_task = None
-            except Exception as e:
+            except BaseException as e:
                 self.emit_event("error", e)
 
                 if self.cur_task is not None:

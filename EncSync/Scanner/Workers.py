@@ -45,7 +45,7 @@ class ScanWorker(Waiter):
             self.cur_path = None
 
             return handle_more
-        except Exception as e:
+        except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
             task.change_status("failed")

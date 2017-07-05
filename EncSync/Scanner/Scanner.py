@@ -129,7 +129,7 @@ class Scanner(Worker):
             self.shared_llist.create()
             self.shared_rlist.create()
             self.shared_duplist.create()
-        except Exception as e:
+        except BaseException as e:
             self.emit_event("error", e)
             return
 
@@ -178,7 +178,7 @@ class Scanner(Worker):
                 else:
                     filelist.rollback()
                     self.shared_duplist.rollback()
-            except Exception as e:
+            except BaseException as e:
                 self.stop_workers()
                 filelist.rollback()
                 self.shared_duplist.rollback()

@@ -102,7 +102,9 @@ class SynchronizerWorker(Worker):
                     self.path.IVs = IVs
 
                 self.work_func()
-            except Exception as e:
+
+                self.cur_task = None
+            except BaseException as e:
                 self.emit_event("error", e)
                 if self.cur_task is not None:
                     self.cur_task.change_status("failed")
@@ -130,44 +132,37 @@ class UploadWorker(SynchronizerWorker):
         task = self.cur_task
 
         try:
-            try:
-                new_size = pad_size(os.path.getsize(local_path))
-            except FileNotFoundError:
-                self.llist.remove_node(local_path)
-                self.autocommit()
-
-                task.change_status("finished")
-                return
-
-            temp_file = SyncFile(self.encsync.temp_encrypt(local_path), self, task)
-
-            if task.status == "pending":
-                try:
-                    r = self.encsync.ynd.upload(temp_file, remote_path_enc, overwrite=True)
-
-                    if not r["success"]:
-                        task.change_status("failed")
-                except SyncFileInterrupt:
-                    return
-
-            self.llist.update_size(local_path, new_size)
-
-            if task.status != "pending":
-                return
-
-            newnode = {"type":        "f",
-                       "path":        remote_path,
-                       "padded_size": new_size,
-                       "modified":    time.mktime(time.gmtime()),
-                       "IVs":         IVs}
-
-            self.rlist.insert_node(newnode)
+            new_size = pad_size(os.path.getsize(local_path))
+        except FileNotFoundError:
+            self.llist.remove_node(local_path)
             self.autocommit()
 
             task.change_status("finished")
-        except Exception as e:
-            self.emit_event("error", e)
-            task.change_status("failed")
+            return
+
+        temp_file = SyncFile(self.encsync.temp_encrypt(local_path), self, task)
+
+        if task.status == "pending":
+            try:
+                r = self.encsync.ynd.upload(temp_file, remote_path_enc, overwrite=True)
+            except SyncFileInterrupt:
+                return
+
+        self.llist.update_size(local_path, new_size)
+
+        if task.status != "pending":
+            return
+
+        newnode = {"type":        "f",
+                   "path":        remote_path,
+                   "padded_size": new_size,
+                   "modified":    time.mktime(time.gmtime()),
+                   "IVs":         IVs}
+
+        self.rlist.insert_node(newnode)
+        self.autocommit()
+
+        task.change_status("finished")
 
 class MkdirWorker(SynchronizerWorker):
     def get_info(self):
@@ -185,29 +180,25 @@ class MkdirWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        try:
-            if not os.path.exists(local_path):
-                self.llist.remove_node(local_path)
-                self.autocommit()
-
-                task.change_status("finished")
-                return
-
-            r = self.encsync.ynd.mkdir(remote_path_enc)
-
-            newnode = {"type": "d",
-                       "path": remote_path,
-                       "modified": time.mktime(time.gmtime()),
-                       "padded_size": 0,
-                       "IVs": IVs}
-
-            self.rlist.insert_node(newnode)
+        if not os.path.exists(local_path):
+            self.llist.remove_node(local_path)
             self.autocommit()
 
             task.change_status("finished")
-        except Exception as e:
-            self.emit_event("error", e)
-            task.change_status("failed")
+            return
+
+        r = self.encsync.ynd.mkdir(remote_path_enc)
+
+        newnode = {"type": "d",
+                   "path": remote_path,
+                   "modified": time.mktime(time.gmtime()),
+                   "padded_size": 0,
+                   "IVs": IVs}
+
+        self.rlist.insert_node(newnode)
+        self.autocommit()
+
+        task.change_status("finished")
 
 class RmWorker(SynchronizerWorker):
     def get_info(self):
@@ -224,17 +215,13 @@ class RmWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        try:
-            r = self.encsync.ynd.rm(remote_path_enc)
+        r = self.encsync.ynd.rm(remote_path_enc)
 
-            self.rlist.remove_node_children(remote_path)
-            self.rlist.remove_node(remote_path)
-            self.autocommit()
+        self.rlist.remove_node_children(remote_path)
+        self.rlist.remove_node(remote_path)
+        self.autocommit()
 
-            task.change_status("finished")
-        except Exception as e:
-            self.emit_event("error", e)
-            task.change_status("failed")
+        task.change_status("finished")
 
 class RmDupWorker(SynchronizerWorker):
     def get_info(self):
@@ -253,12 +240,8 @@ class RmDupWorker(SynchronizerWorker):
 
         task = self.cur_task
 
-        try:
-            r = self.encsync.ynd.rm(remote_path_enc)
+        r = self.encsync.ynd.rm(remote_path_enc)
 
-            self.duplist.remove(self.path.IVs, remote_path)
-            self.autocommit()
-            task.change_status("finished")
-        except Exception as e:
-            self.emit_event("error", e)
-            task.change_status("failed")
+        self.duplist.remove(self.path.IVs, remote_path)
+        self.autocommit()
+        task.change_status("finished")

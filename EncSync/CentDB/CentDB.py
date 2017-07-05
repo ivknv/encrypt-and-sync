@@ -298,7 +298,7 @@ class CDB(object):
 
         try:
             r["result"] = func(*args, **kwargs)
-        except Exception as e:
+        except BaseException as e:
             r["exception"] = e
 
         try:

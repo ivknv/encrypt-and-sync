@@ -137,7 +137,7 @@ class Synchronizer(StagedWorker):
                                        self.cur_target.remote)
             difflist.insert_differences(diffs)
             difflist.commit()
-        except Exception as e:
+        except BaseException as e:
             difflist.rollback()
             raise e
 
@@ -149,69 +149,78 @@ class Synchronizer(StagedWorker):
             self.cur_target.total_children = diff_count + n_done
 
     def work(self):
-        llist = LocalFileList(self.directory)
-        rlist = RemoteFileList(self.directory)
+        try:
+            llist = LocalFileList(self.directory)
+            rlist = RemoteFileList(self.directory)
 
-        llist.create()
-        rlist.create()
-        self.shared_duplist.create()
+            llist.create()
+            rlist.create()
+            self.shared_duplist.create()
 
-        difflist = DiffList(self.encsync, self.directory)
-        difflist.create()
+            difflist = DiffList(self.encsync, self.directory)
+            difflist.create()
+        except BaseException as e:
+            self.emit_event("error", e)
+            return
 
         while not self.stopped:
-            with self.targets_lock:
-                if self.stopped or not len(self.targets):
-                    break
+            try:
+                with self.targets_lock:
+                    if self.stopped or not len(self.targets):
+                        break
 
-                target = self.targets.pop(0)
-                self.cur_target = target
+                    target = self.targets.pop(0)
+                    self.cur_target = target
 
-            self.emit_event("next_target", target)
-
-            if target.status == "suspended":
-                self.cur_target = None
-                continue
-
-            target.change_status("pending")
-
-            assert(self.stage is None)
-
-            self.available = True
-
-            stages = self.stage_order
-
-            if target.stage is not None:
-                # Skip completed stages
-                idx = self.stage_order.index(target.stage)
-                stages = self.stage_order[idx:]
-
-            if target.stage is None and not target.enable_scan:
-                self.build_diffs_table()
-            elif target.stage not in {None, "scan", "check"}:
-                self.build_diffs_table()
-
-            for stage in stages:
-                if self.stopped or target.status in ("suspended", "failed"):
-                    break
-
-                target.stage = stage
-
-                self.run_stage(stage)
-
-                self.reset_diffs()
+                self.emit_event("next_target", target)
 
                 if target.status == "suspended":
-                    break
+                    self.cur_target = None
+                    continue
 
-            if target.total_children == 0 and target.stage not in (None, "scan"):
-                target.change_status("finished")
+                target.change_status("pending")
 
-            if target.status == "finished":
-                target.stage = None
-                difflist.clear_differences(target.local, target.remote)
+                assert(self.stage is None)
 
-            self.cur_target = None
+                self.available = True
+
+                stages = self.stage_order
+
+                if target.stage is not None:
+                    # Skip completed stages
+                    idx = self.stage_order.index(target.stage)
+                    stages = self.stage_order[idx:]
+
+                if target.stage is None and not target.enable_scan:
+                    self.build_diffs_table()
+                elif target.stage not in {None, "scan", "check"}:
+                    self.build_diffs_table()
+
+                for stage in stages:
+                    if self.stopped or target.status in ("suspended", "failed"):
+                        break
+
+                    target.stage = stage
+
+                    self.run_stage(stage)
+
+                    self.reset_diffs()
+
+                    if target.status == "suspended":
+                        break
+
+                if target.total_children == 0 and target.stage not in (None, "scan"):
+                    target.change_status("finished")
+
+                if target.status == "finished":
+                    target.stage = None
+                    difflist.clear_differences(target.local, target.remote)
+
+                self.cur_target = None
+            except BaseException as e:
+                self.emit_event("error", e)
+                if self.cur_target is not None:
+                    self.cur_target.change_status("failed")
 
         assert(self.stage is None)
 
@@ -332,7 +341,7 @@ class Synchronizer(StagedWorker):
             self.join_workers()
         except DiskNotFoundError:
             pass
-        except Exception as e:
+        except BaseException as e:
             filelist.rollback()
 
             self.emit_event("error", e)
@@ -372,7 +381,7 @@ class Synchronizer(StagedWorker):
 
             if self.shared_rlist.is_empty(self.cur_target.remote):
                 self.do_scan("remote")
-        except Exception as e:
+        except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
             self.shared_llist.rollback()
@@ -389,7 +398,7 @@ class Synchronizer(StagedWorker):
                 return
 
             self.build_diffs_table()
-        except Exception as e:
+        except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
 
@@ -403,7 +412,7 @@ class Synchronizer(StagedWorker):
             self.cur_target.emit_event("integrity_check")
 
             self.do_scan("remote")
-        except Exception as e:
+        except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
 
@@ -425,7 +434,7 @@ class Synchronizer(StagedWorker):
             else:
                 self.cur_target.emit_event("integrity_check_finished")
                 self.cur_target.change_status("finished")
-        except Exception as e:
+        except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
 
