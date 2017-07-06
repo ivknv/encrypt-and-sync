@@ -144,10 +144,8 @@ class SynchronizerReceiver(EventHandler):
         EventHandler.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
-        self.scan_worker_receiver = ScanWorkerReceiver(synchronizer)
+        self.scan_worker_receiver = ScanWorkerReceiver()
         self.env = env
-
-        self.synchronizer = synchronizer
 
         self.exc_manager = ExceptionManager()
 
@@ -178,7 +176,9 @@ class SynchronizerReceiver(EventHandler):
             worker.add_receiver(self.worker_receiver)
 
     def on_entered_stage(self, event, stage):
-        target = self.synchronizer.cur_target
+        synchronizer = event.emitter
+        target = synchronizer.cur_target
+
         if stage == "scan" and not target.enable_scan:
             return
 
@@ -188,27 +188,28 @@ class SynchronizerReceiver(EventHandler):
         print("Synchronizer: entered stage %r" % stage)
 
     def on_exited_stage(self, event, stage):
-        target = self.synchronizer.cur_target
+        synchronizer = event.emitter
+        target = synchronizer.cur_target
 
         if stage == "scan":
             if not target.enable_scan:
                 return
 
             if target.status not in ("failed", "suspended"):
-                print_diffs(self.env, self.synchronizer.encsync, target)
+                print_diffs(self.env, synchronizer.encsync, target)
 
                 ask = self.env.get("ask", False)
                 no_diffs = self.env.get("no_diffs", False)
 
                 if ask and not no_diffs:
-                    action = ask_continue(self.synchronizer)
+                    action = ask_continue(synchronizer)
 
                     while action == "view":
-                        view_diffs(self.env, self.synchronizer.encsync, target)
-                        action = ask_continue(self.synchronizer)
+                        view_diffs(self.env, synchronizer.encsync, target)
+                        action = ask_continue(synchronizer)
 
                     if action == "stop":
-                        self.synchronizer.stop()
+                        synchronizer.stop()
                     elif action == "skip":
                         target.change_status("suspended")
         elif stage == "check" and target.skip_integrity_check:
@@ -217,14 +218,14 @@ class SynchronizerReceiver(EventHandler):
         print("Synchronizer exited stage %r" % stage)
 
     def on_error(self, event, exc):
-        self.exc_manager.handle(exc)
+        self.exc_manager.handle(exc, event.emitter)
 
-    def on_disk_error(self, exc):
-        target = self.synchronizer.cur_target
+    def on_disk_error(self, exc, synchronizer):
+        target = synchronizer.cur_target
         print("[%s -> %s]: error: %s: %s" % (target.local, target.remote,
                                              exc.error_type, exc))
 
-    def on_exception(self, exception):
+    def on_exception(self, exc, synchronizer):
         traceback.print_exc()
 
 class TargetReceiver(EventHandler):
