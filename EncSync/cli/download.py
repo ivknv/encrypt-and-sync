@@ -5,11 +5,14 @@ import os
 import traceback
 
 from ..Downloader import Downloader
+from ..Downloader.Exceptions import NotFoundInDBError, FailedToObtainLinkError
+from ..YandexDiskApi.Exceptions import YandexDiskError
 from ..Event.EventHandler import EventHandler
 
 from . import common
 from .common import show_error, get_progress_str, make_size_readable
 from .SignalManagers import GenericSignalManager
+from ..ExceptionManager import ExceptionManager
 
 def print_target_totals(target):
     n_finished = target.progress["finished"]
@@ -25,16 +28,24 @@ def print_target_totals(target):
     print("[%s <- %s]: %s downloaded" % (local, remote, downloaded))
 
 class DownloaderReceiver(EventHandler):
-    def __init__(self, scanner):
+    def __init__(self, downloader):
         EventHandler.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
 
-        self.add_emitter_callback(scanner, "started", self.on_started)
-        self.add_emitter_callback(scanner, "finished", self.on_finished)
-        self.add_emitter_callback(scanner, "next_target", self.on_next_target)
-        self.add_emitter_callback(scanner, "worker_started", self.on_worker_started)
-        self.add_emitter_callback(scanner, "error", self.on_error)
+        self.downloader = downloader
+
+        self.add_emitter_callback(downloader, "started", self.on_started)
+        self.add_emitter_callback(downloader, "finished", self.on_finished)
+        self.add_emitter_callback(downloader, "next_target", self.on_next_target)
+        self.add_emitter_callback(downloader, "worker_started", self.on_worker_started)
+        self.add_emitter_callback(downloader, "error", self.on_error)
+
+        self.exc_manager = ExceptionManager()
+
+        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(NotFoundInDBError, self.on_not_found_error)
+        self.exc_manager.add(BaseException, self.on_exception)
 
     def on_started(self, event):
         print("Downloader: started")
@@ -48,7 +59,19 @@ class DownloaderReceiver(EventHandler):
     def on_worker_started(self, event, worker):
         worker.add_receiver(self.worker_receiver)
 
-    def on_error(self, event, exception):
+    def on_error(self, event, exc):
+        self.exc_manager.handle(exc)
+
+    def on_disk_error(self, exc):
+        target = self.downloader.cur_target
+        print("[%s <- %s]: error: %s: %s" % (target.local, target.remote,
+                                             exc.error_type, exc))
+
+    def on_not_found_error(self, exc):
+        target = self.downloader.cur_target
+        print("[%s <- %s]: error: %s" % (target.local, target.remote, exc))
+
+    def on_exception(self, exception):
         traceback.print_exc()
 
 class TargetReceiver(EventHandler):
@@ -77,6 +100,12 @@ class WorkerReceiver(EventHandler):
         self.add_callback("next_task", self.on_next_task)
         self.add_callback("error", self.on_error)
 
+        self.exc_manager = ExceptionManager()
+
+        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(FailedToObtainLinkError, self.on_failed_to_obtain_link_error)
+        self.exc_manager.add(BaseException, self.on_exception)
+
     def on_next_task(self, event, task):
         progress_str = get_progress_str(task)
 
@@ -84,7 +113,18 @@ class WorkerReceiver(EventHandler):
 
         task.add_receiver(self.task_receiver)
 
-    def on_error(self, event, exception):
+    def on_error(self, event, exc):
+        self.exc_manager.handle(exc, event.emitter)
+
+    def on_disk_error(self, exc, worker):
+        progress_str = get_progress_str(worker.cur_task)
+        print("%s: error: %s: %s" % (progress_str, exc.error_type, exc))
+
+    def on_failed_to_obtain_link_error(self, exc, worker):
+        progress_str = get_progress_str(worker.cur_task)
+        print("%s: error: failed to obtain link" % progress_str)
+
+    def on_exception(self, exception):
         traceback.print_exc()
 
 class TaskReceiver(EventHandler):
