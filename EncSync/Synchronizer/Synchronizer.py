@@ -19,6 +19,7 @@ from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..DiffList import DiffList
 from ..Scannable import LocalScannable, RemoteScannable
 from ..Encryption import pad_size, MIN_ENC_SIZE
+from .. import PathMatch
 from .. import Paths
 from .. import FileComparator
 from ..YandexDiskApi.Exceptions import DiskNotFoundError
@@ -326,13 +327,20 @@ class Synchronizer(StagedWorker):
 
             scannable.identify()
 
-            self.add_task(scannable)
-
-            filelist.insert_node(scannable.to_node())
-
             if scan_type == "local":
+                path = Paths.from_sys(scannable.path)
+                if scannable.type == "d":
+                    path = Paths.dir_normalize(path)
+
+                if PathMatch.match(path, self.encsync.allowed_paths):
+                    self.add_task(scannable)
+                    filelist.insert_node(scannable.to_node())
+
                 self.start_worker(LocalScanWorker, self, target)
-            elif scan_type == "remote":
+            else:
+                self.add_task(scannable)
+                filelist.insert_node(scannable.to_node())
+
                 self.start_workers(self.n_scan_workers, RemoteScanWorker, self, target)
 
                 self.wait_workers()

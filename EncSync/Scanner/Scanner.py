@@ -12,6 +12,7 @@ from .Task import ScanTask
 from .Target import ScanTarget
 from ..YandexDiskApi.Exceptions import DiskNotFoundError
 from .. import PathMatch
+from .. import Paths
 
 class Scanner(Worker):
     def __init__(self, encsync, directory, n_workers=2):
@@ -114,11 +115,17 @@ class Scanner(Worker):
     def begin_local_scan(self, target):
         self.shared_llist.remove_node_children(target.path)
 
-        if not PathMatch.match(Paths.from_sys(target.path), self.encsync.allowed_paths):
-            return
-
         scannable = LocalScannable(target.path)
         scannable.identify()
+
+        path = Paths.from_sys(target.path)
+
+        if scannable.type == "d":
+            path = Paths.dir_normalize(path)
+
+        if not PathMatch.match(path, self.encsync.allowed_paths):
+            return
+
         self.shared_llist.insert_node(scannable.to_node())
         self.add_task(scannable)
 
