@@ -10,7 +10,7 @@ if sys.platform.startswith("win"):
     requirements.append("pyreadline")
 
 setup(name="EncSync",
-      version="0.1.4",
+      version="0.1.5",
       description="Yandex.Disk encrypted sync tool",
       author="Ivan Konovalov",
       packages=find_packages(),
