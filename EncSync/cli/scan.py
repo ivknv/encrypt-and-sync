@@ -11,6 +11,8 @@ from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from .. import Paths
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
+from ..ExceptionManager import ExceptionManager
+from ..YandexDiskApi.Exceptions import YandexDiskError
 
 from . import common
 
@@ -79,17 +81,37 @@ def print_target_totals(env, target):
 
     print("[%s]: %d duplicates" % (path, n_duplicates))
 
+class ScanExceptionManager(ExceptionManager):
+    def __init__(self, scanner):
+        ExceptionManager.__init__(self)
+
+        self.scanner = scanner
+
+        self.add(YandexDiskError, self.on_disk_error)
+        self.add(BaseException, self.on_default)
+
+    def on_disk_error(self, exc):
+        target = self.scanner.cur_target
+        path = get_path_with_schema(target)
+
+        print("[%s]: error: %s: %s" % (path, exc.error_type, exc))
+
+    def on_default(self, exc):
+        traceback.print_exc()
+
 class ScannerReceiver(EventHandler):
     def __init__(self, scanner):
         EventHandler.__init__(self)
 
-        self.worker_receiver = WorkerReceiver()
+        self.worker_receiver = WorkerReceiver(scanner)
 
         self.add_emitter_callback(scanner, "started", self.on_started)
         self.add_emitter_callback(scanner, "finished", self.on_finished)
         self.add_emitter_callback(scanner, "next_target", self.on_next_target)
         self.add_emitter_callback(scanner, "worker_started", self.on_worker_started)
         self.add_emitter_callback(scanner, "error", self.on_error)
+
+        self.exc_manager = ScanExceptionManager(scanner)
 
     def on_started(self, event):
         print("Scanner: started")
@@ -105,7 +127,7 @@ class ScannerReceiver(EventHandler):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exception):
-        traceback.print_exc()
+        self.exc_manager.handle(exception)
 
 class TargetReceiver(EventHandler):
     def __init__(self, env):
@@ -130,11 +152,13 @@ class TargetReceiver(EventHandler):
         print("Found %d duplicates of %s" % (len(duplicates) - 1, duplicates[0].path))
 
 class WorkerReceiver(EventHandler):
-    def __init__(self):
+    def __init__(self, scanner):
         EventHandler.__init__(self)
 
         self.add_callback("next_node", self.on_next_node)
         self.add_callback("error", self.on_error)
+
+        self.exc_manager = ScanExceptionManager(scanner)
 
         self.last_print = 0
 
@@ -147,7 +171,7 @@ class WorkerReceiver(EventHandler):
         print(scannable.path)
 
     def on_error(self, event, exception):
-        traceback.print_exc()
+        self.exc_manager.handle(exception)
 
 def do_scan(env, paths):
     encsync, ret = common.make_encsync(env)
