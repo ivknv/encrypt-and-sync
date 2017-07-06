@@ -13,8 +13,8 @@ class ExceptionManager(object):
             if issubclass(exc_type, i[0]):
                 return i
 
-    def handle(self, exc):
+    def handle(self, exc, *args, **kwargs):
         handler = self.get(type(exc))
 
         if handler is not None:
-            return handler[1](exc, *handler[2], **handler[3])
+            return handler[1](exc, *handler[2], *args, **handler[3], **kwargs)

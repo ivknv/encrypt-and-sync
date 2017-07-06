@@ -16,6 +16,9 @@ from ..Event.EventHandler import EventHandler
 from ..DiffList import DiffList
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
+from ..ExceptionManager import ExceptionManager
+from ..Synchronizer.Exceptions import TooLongFilenameError
+from ..YandexDiskApi.Exceptions import YandexDiskError
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
@@ -141,10 +144,12 @@ class SynchronizerReceiver(EventHandler):
         EventHandler.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
-        self.scan_worker_receiver = ScanWorkerReceiver()
+        self.scan_worker_receiver = ScanWorkerReceiver(synchronizer)
         self.env = env
 
         self.synchronizer = synchronizer
+
+        self.exc_manager = ExceptionManager()
 
         self.add_emitter_callback(synchronizer, "started", self.on_started)
         self.add_emitter_callback(synchronizer, "finished", self.on_finished)
@@ -153,6 +158,9 @@ class SynchronizerReceiver(EventHandler):
         self.add_emitter_callback(synchronizer, "entered_stage", self.on_entered_stage)
         self.add_emitter_callback(synchronizer, "exited_stage", self.on_exited_stage)
         self.add_emitter_callback(synchronizer, "error", self.on_error)
+
+        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(BaseException, self.on_exception)
 
     def on_started(self, event):
         print("Synchronizer: started")
@@ -208,7 +216,15 @@ class SynchronizerReceiver(EventHandler):
 
         print("Synchronizer exited stage %r" % stage)
 
-    def on_error(self, event, exception):
+    def on_error(self, event, exc):
+        self.exc_manager.handle(exc)
+
+    def on_disk_error(self, exc):
+        target = self.synchronizer.cur_target
+        print("[%s -> %s]: error: %s: %s" % (target.local, target.remote,
+                                             exc.error_type, exc))
+
+    def on_exception(self, exception):
         traceback.print_exc()
 
 class TargetReceiver(EventHandler):
@@ -288,6 +304,12 @@ class WorkerReceiver(EventHandler):
         self.add_callback("next_task", self.on_next_task)
         self.add_callback("error", self.on_error)
 
+        self.exc_manager = ExceptionManager()
+
+        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(TooLongFilenameError, self.on_too_long_filename)
+        self.exc_manager.add(BaseException, self.on_exception)
+
     def on_next_task(self, event, task):
         msg = get_progress_str(task) + ": "
 
@@ -311,7 +333,18 @@ class WorkerReceiver(EventHandler):
 
         task.add_receiver(self.task_receiver)
 
-    def on_error(self, event, exception):
+    def on_error(self, event, exc):
+        self.exc_manager.handle(exc, event.emitter)
+
+    def on_disk_error(self, exc, worker):
+        progress_str = get_progress_str(worker.cur_task)
+        print("%s: error: %s: %s" % (progress_str, exc.error_type, exc))
+
+    def on_too_long_filename(self, exc, worker):
+        progress_str = get_progress_str(worker.cur_task)
+        print("%s: error: too long filename (>= 160)" % progress_str)
+
+    def on_exception(self, exception):
         traceback.print_exc()
 
 class TaskReceiver(EventHandler):
@@ -320,7 +353,6 @@ class TaskReceiver(EventHandler):
 
         self.add_callback("uploaded_changed", self.on_uploaded_changed)
         self.add_callback("status_changed", self.on_status_changed)
-        self.add_callback("filename_too_long", self.on_filename_too_long)
 
         self.last_uploaded_percents = {}
 
@@ -356,13 +388,6 @@ class TaskReceiver(EventHandler):
         progress_str = get_progress_str(task)
 
         print(progress_str + ": uploaded %6.2f%%" % uploaded_percent)
-
-    def on_filename_too_long(self, event):
-        task = event["emitter"]
-
-        progress_str = get_progress_str(task)
-
-        print(progress_str + ": filename is too long (>= 160)")
 
 def do_sync(env, paths):
     encsync, ret = common.make_encsync(env)
