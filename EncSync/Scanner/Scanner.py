@@ -3,14 +3,15 @@
 
 import threading
 
-from ..Worker import Worker
 from .Workers import LocalScanWorker, RemoteScanWorker
 from .Logging import logger
-from ..FileList import LocalFileList, RemoteFileList, DuplicateList
-from ..Scannable import LocalScannable, RemoteScannable
 from .Task import ScanTask
 from .Target import ScanTarget
+from ..Worker import Worker
+from ..FileList import LocalFileList, RemoteFileList, DuplicateList
+from ..Scannable import LocalScannable, RemoteScannable
 from ..YandexDiskApi.Exceptions import DiskNotFoundError
+from ..LogReceiver import LogReceiver
 from .. import PathMatch
 from .. import Paths
 
@@ -36,6 +37,8 @@ class Scanner(Worker):
 
         self.add_event("next_target")
         self.add_event("error")
+
+        self.add_receiver(LogReceiver(logger))
 
     def change_status(self, status):
         with self.targets_lock:

@@ -4,15 +4,16 @@
 import os
 import threading
 
-from ..Encryption import MIN_ENC_SIZE
-from ..FileList import RemoteFileList
-from .. import Paths
-from ..Worker import Worker
 from .Logging import logger
 from .Worker import DownloaderWorker
 from .DownloadTask import DownloadTask
 from .DownloadTarget import DownloadTarget
 from .Exceptions import NotFoundInDBError
+from ..Encryption import MIN_ENC_SIZE
+from ..FileList import RemoteFileList
+from ..Worker import Worker
+from ..LogReceiver import LogReceiver
+from .. import Paths
 
 class Downloader(Worker):
     def __init__(self, encsync, directory, n_workers=2):
@@ -31,6 +32,8 @@ class Downloader(Worker):
         self.add_event("next_target")
         self.add_event("next_task")
         self.add_event("error")
+
+        self.add_receiver(LogReceiver(logger))
 
     def change_status(self, status):
         for i in self.get_targets() + [self.cur_target]:

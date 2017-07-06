@@ -5,12 +5,13 @@ import os
 import tempfile
 import time
 
+from .Logging import logger
+from .Exceptions import FailedToObtainLinkError
 from ..Encryption import MIN_ENC_SIZE
 from ..Worker import Worker
-from .. import Paths
-from .Logging import logger
 from ..Scannable import LocalScannable
-from .Exceptions import FailedToObtainLinkError
+from ..LogReceiver import LogReceiver
+from .. import Paths
 
 def check_if_download(task):
     if not os.path.exists(task.local):
@@ -50,6 +51,8 @@ class DownloaderWorker(Worker):
         self.cur_task = None
 
         self.add_event("next_task")
+
+        self.add_receiver(LogReceiver(logger))
 
     def get_info(self):
         if self.cur_task is not None:

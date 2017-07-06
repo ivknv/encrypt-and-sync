@@ -3,9 +3,10 @@
 
 from functools import reduce
 
-from ..Worker import Waiter
 from .Logging import logger
+from ..Worker import Waiter
 from ..Scannable import scan_files
+from ..LogReceiver import LogReceiver
 from .. import Paths
 
 class ScanWorker(Waiter):
@@ -23,6 +24,8 @@ class ScanWorker(Waiter):
 
         self.add_event("next_node")
         self.add_event("error")
+
+        self.add_receiver(LogReceiver(logger))
 
     def do_scan(self, task):
         raise NotImplementedError

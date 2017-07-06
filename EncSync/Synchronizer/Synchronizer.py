@@ -5,24 +5,21 @@ import threading
 import os
 
 from .Workers import UploadWorker, MkdirWorker, RmWorker, RmDupWorker
+from .SyncTask import SyncTask, SyncTarget
+from .Logging import logger
 from ..Scanner.Workers import LocalScanWorker, RemoteScanWorker
 from ..Scanner.Task import ScanTask
 from ..Scanner.Target import ScanTarget
-
-from .SyncTask import SyncTask, SyncTarget
-
 from ..Worker import StagedWorker
-
-from .Logging import logger
-
+from ..LogReceiver import LogReceiver
 from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..DiffList import DiffList
 from ..Scannable import LocalScannable, RemoteScannable
 from ..Encryption import pad_size, MIN_ENC_SIZE
+from ..YandexDiskApi.Exceptions import DiskNotFoundError
 from .. import PathMatch
 from .. import Paths
 from .. import FileComparator
-from ..YandexDiskApi.Exceptions import DiskNotFoundError
 
 class Synchronizer(StagedWorker):
     def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2):
@@ -59,6 +56,8 @@ class Synchronizer(StagedWorker):
 
         self.add_event("next_target")
         self.add_event("error")
+
+        self.add_receiver(LogReceiver(logger))
 
     def change_status(self, status):
         for i in self.get_targets() + [self.cur_target]:

@@ -8,10 +8,11 @@ from .Logging import logger
 from .SyncFile import SyncFile, SyncFileInterrupt
 from .Exceptions import TooLongFilenameError
 from ..Encryption import pad_size
-from .. import Paths
 from ..YandexDiskApi.Exceptions import DiskNotFoundError
-
 from ..Worker import Worker
+from ..LogReceiver import LogReceiver
+from .. import Paths
+
 
 COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
@@ -34,6 +35,8 @@ class SynchronizerWorker(Worker):
 
         self.add_event("next_task")
         self.add_event("error")
+
+        self.add_receiver(LogReceiver(logger))
 
     def autocommit(self):
         if self.llist.time_since_last_commit() >= COMMIT_INTERVAL:
