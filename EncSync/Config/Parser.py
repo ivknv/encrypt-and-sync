@@ -1,43 +1,34 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import enum
+
 from .Tokenizer import Tokenizer, Token
 
 class AST(object):
-    UNDEFINED  = 0
-    CONFIG     = 1
-    COMMAND    = 2
-    BLOCK      = 3
-    SIMPLEWORD = 4
-    WORD       = 5
-    LCBR       = 6
-    RCBR       = 7
-    SEP        = 8
-    END        = 9
+    class Type(enum.Enum):
+        UNDEFINED  = 0
+        CONFIG     = 1
+        COMMAND    = 2
+        BLOCK      = 3
+        WORD       = 4
+        LCBR       = 5
+        RCBR       = 6
+        SEP        = 7
+        END        = 8
 
-    def __init__(self, node_type=None, token=None):
-        if node_type is None:
-            node_type = AST.UNDEFINED
-
+    def __init__(self, node_type=Type.UNDEFINED, token=None):
         self.type = node_type
         self.token = token
         self.children = []
 
+    def new_child(self, *args, **kwargs):
+        child = AST(*args, **kwargs)
+        self.children.append(child)
+        return child
+
     def __repr__(self):
-        types = {AST.UNDEFINED:  "UNDEFINED",
-                 AST.CONFIG:     "CONFIG",
-                 AST.COMMAND:    "COMMAND",
-                 AST.BLOCK:      "BLOCK",
-                 AST.WORD:       "WORD",
-                 AST.SIMPLEWORD: "SIMPLEWORD",
-                 AST.LCBR:       "LCBR",
-                 AST.RCBR:       "RCBR",
-                 AST.SEP:        "SEP",
-                 AST.END:        "END"}
-
-        typestr = types.get(self.type, self.type)
-
-        return "<AST type=%s children=%d>" % (typestr, len(self.children))
+        return "<AST type=%s children=%d>" % (self.type, len(self.children))
 
     def print(self, indent=0):
         print(" " * indent + repr(self))
@@ -66,26 +57,17 @@ class Parser(object):
         return output
 
     def parse_config(self, output):
-        output.type = AST.CONFIG
+        output.type = AST.Type.CONFIG
 
-        while not self.accept(Token.END):
-            self.expect(Token.SIMPLEWORD, Token.WORD, Token.SEP)
+        while not self.accept(Token.Type.END):
+            self.expect(Token.Type.WORD, Token.Type.SEP)
 
-            if self.accept(Token.WORD, Token.SEP):
-                child = AST()
-                output.children.append(child)
+            if self.accept(Token.Type.WORD):
+                self.parse_block_or_command(output.new_child())
+            elif self.accept(Token.Type.SEP):
+                self.parse_command(output.new_child())
 
-                self.parse_command(child)
-            elif self.accept(Token.SIMPLEWORD):
-                child = AST()
-                output.children.append(child)
-
-                self.parse_block(child)
-
-        child = AST()
-        output.children.append(child)
-
-        self.parse_end(child)
+        self.parse_end(output.new_child())
 
     def expect(self, *expected_types):
         if self.tokens[self.idx].type not in expected_types:
@@ -95,110 +77,80 @@ class Parser(object):
         return self.tokens[self.idx].type in expected_types
 
     def parse_command(self, output):
-        output.type = AST.COMMAND
+        output.type = AST.Type.COMMAND
 
         while True:
-            self.expect(Token.SIMPLEWORD, Token.WORD, Token.SEP, Token.END)
+            self.expect(Token.Type.WORD, Token.Type.SEP, Token.Type.END)
 
-            if self.accept(Token.END):
+            if self.accept(Token.Type.END):
                 break
 
-            child = AST()
-            output.children.append(child)
+            child = output.new_child()
 
-            if self.accept(Token.WORD):
+            if self.accept(Token.Type.WORD):
                 self.parse_word(child)
-            elif self.accept(Token.SIMPLEWORD):
-                self.parse_simpleword(child)
-            elif self.accept(Token.SEP):
+            elif self.accept(Token.Type.SEP):
                 self.parse_sep(child)
                 break
 
-    def parse_block(self, output):
-        output.type = AST.BLOCK
+    def parse_block_or_command(self, output):
+        output.type = AST.Type.BLOCK
 
-        self.expect(Token.SIMPLEWORD)
+        self.expect(Token.Type.WORD)
 
         while True:
             try:
-                self.expect(Token.WORD, Token.SIMPLEWORD, Token.LCBR)
+                self.expect(Token.Type.WORD, Token.Type.LCBR)
             except ValueError as e:
-                if not self.accept(Token.SEP, Token.END):
+                if not self.accept(Token.Type.SEP, Token.Type.END):
                     raise e
-                output.type = AST.COMMAND
+                output.type = AST.Type.COMMAND
                 self.parse_command(output)
                 return
 
-            child = AST()
-            output.children.append(child)
+            child = output.new_child()
 
-            if self.accept(Token.WORD):
+            if self.accept(Token.Type.WORD):
                 self.parse_word(child)
-            elif self.accept(Token.SIMPLEWORD):
-                self.parse_simpleword(child)
-            elif self.accept(Token.LCBR):
+            elif self.accept(Token.Type.LCBR):
                 self.parse_lcbr(child)
                 break
 
         while True:
-            self.expect(Token.WORD, Token.SIMPLEWORD, Token.SEP, Token.RCBR)
+            self.expect(Token.Type.WORD, Token.Type.SEP, Token.Type.RCBR)
 
-            child = AST()
-            output.children.append(child)
+            child = output.new_child()
 
-            if self.accept(Token.WORD, Token.SIMPLEWORD, Token.SEP):
+            if self.accept(Token.Type.WORD):
+                self.parse_block_or_command(child)
+            elif self.accept(Token.Type.SEP):
                 self.parse_command(child)
-            elif self.accept(Token.RCBR):
+            elif self.accept(Token.Type.RCBR):
                 self.parse_rcbr(child)
                 break
 
-    def parse_sep(self, output):
-        self.expect(Token.SEP)
+    def parse_token(self, token_type, ast_type, output):
+        self.expect(token_type)
 
-        output.type = AST.SEP
+        output.type = ast_type
         output.token = self.tokens[self.idx]
 
         self.idx += 1
+
+    def parse_sep(self, output):
+        self.parse_token(Token.Type.SEP, AST.Type.SEP, output)
 
     def parse_word(self, output):
-        self.expect(Token.WORD)
-
-        output.type = AST.WORD
-        output.token = self.tokens[self.idx]
-
-        self.idx += 1
-
-    def parse_simpleword(self, output):
-        self.expect(Token.SIMPLEWORD)
-
-        output.type = AST.SIMPLEWORD
-        output.token = self.tokens[self.idx]
-
-        self.idx += 1
+        self.parse_token(Token.Type.WORD, AST.Type.WORD, output)
 
     def parse_lcbr(self, output):
-        self.expect(Token.LCBR)
-
-        output.type = AST.LCBR
-        output.token = self.tokens[self.idx]
-
-        self.idx += 1
+        self.parse_token(Token.Type.LCBR, AST.Type.LCBR, output)
 
     def parse_rcbr(self, output):
-        self.expect(Token.RCBR)
-
-        output.type = AST.RCBR
-        output.token = self.tokens[self.idx]
-
-        self.idx += 1
+        self.parse_token(Token.Type.RCBR, AST.Type.RCBR, output)
 
     def parse_end(self, output):
-        self.expect(Token.END)
-
-        output.type = AST.END
-        output.token = self.tokens[self.idx]
-
-        self.idx += 1
+        self.parse_token(Token.Type.END, AST.Type.END, output)
 
 def parse(string, output=None):
     tokenizer = Tokenizer()

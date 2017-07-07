@@ -1,6 +1,5 @@
 Tokens:
     Undefined
-    SimpleWord [a-zA-Z0-9_-]+
     Word
     LCBr {
     RCBr }
@@ -9,5 +8,5 @@ Tokens:
 
 Grammar:
     Config -> (Command | Block)* End
-    Block -> SimpleWord (Word | SimpleWord)* LCBr Command* RCBr
-    Command -> (Word | SimpleWord)* Sep
+    Block -> Word+ LCBr (Command | Block)* RCBr
+    Command -> Word* Sep
