@@ -8,7 +8,7 @@ from ..Block import Block
 from ..Command import Command
 
 def prepare_path(path):
-    return Paths.from_sys(path)
+    return Paths.from_sys(os.path.expanduser(path))
 
 class AddExcludeCommand(Command):
     def evaluate(self, config, exclude_list):
@@ -56,11 +56,28 @@ class ExcludeBlock(Block):
 
         self.exclude_list = []
 
-    def begin(self, config):
-        if len(self.args) > 1:
-            raise ValueError("Expected no arguments")
+    def begin(self, config, target_name=None):
+        if len(self.args) > 2:
+            raise ValueError("Expected 0 or 1 argument")
 
-        config.allowed_paths.append(["e", self.exclude_list])
+        if len(self.args) == 2:
+            target_name = self.args[1]
+        else:
+            target_name = None
+
+        target = None
+
+        if target_name is not None:
+            for i in config.targets:
+                if i["name"] == target_name:
+                    target = i
+            if target is None:
+                raise ValueError("Unknown target")
+
+        if target is not None:
+            target["allowed_paths"].append(["e", self.exclude_list])
+        else:
+            config.allowed_paths.append(["e", self.exclude_list])
 
     def evaluate_body(self, config):
         Block.evaluate_body(self, config, self.exclude_list)
@@ -76,9 +93,29 @@ class IncludeBlock(Block):
         self.include_list = []
 
     def begin(self, config):
-        if len(self.args) > 1:
-            raise ValueError("Expected no arguments")
+        if len(self.args) > 2:
+            raise ValueError("Expected either 0 or 1 argument")
 
-        config.allowed_paths.append(["i", self.include_list])
+        if len(self.args) == 2:
+            target_name = self.args[1]
+        else:
+            target_name = None
+
+        target = None
+
+        if target_name is not None:
+            for i in config.targets:
+                if i["name"] == target_name:
+                    target = i
+            if target is None:
+                raise ValueError("Unknown target")
+
+        if target is not None:
+            target["allowed_paths"].append(["i", self.include_list])
+        else:
+            config.allowed_paths.append(["i", self.include_list])
+
+    def evaluate_body(self, config):
+        Block.evaluate_body(self, config, self.include_list)
 
     def end(self, config): pass

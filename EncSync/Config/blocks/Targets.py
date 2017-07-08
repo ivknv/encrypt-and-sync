@@ -28,9 +28,10 @@ class AddTargetCommand(Command):
         local  = prepare_local_path(local)
         remote = prepare_remote_path(remote)
 
-        config.targets.append({"name":   name,
-                               "local":  local,
-                               "remote": remote})
+        config.targets.append({"name":          name,
+                               "local":         local,
+                               "remote":        remote,
+                               "allowed_paths": []})
 
 class TargetsNamespace(dict):
     def __init__(self, parent=None):

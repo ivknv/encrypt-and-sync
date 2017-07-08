@@ -107,6 +107,9 @@ class EncSync(object):
         config.download_threads = self.download_threads
         config.allowed_paths    = self._allowed_paths
 
+        for i in config.targets:
+            i["allowed_paths"] = i["_allowed_paths"]
+
         return config
 
     def make_encrypted_data(self):
@@ -177,6 +180,8 @@ class EncSync(object):
 
         for target in self.targets:
             self.encrypted_dirs.add(Paths.dir_normalize(target["remote"]))
+            target["_allowed_paths"] = target["allowed_paths"]
+            target["allowed_paths"]  = PathMatch.compile_patterns(target["_allowed_paths"])
 
     def temp_encrypt(self, path):
         size = os.path.getsize(path)

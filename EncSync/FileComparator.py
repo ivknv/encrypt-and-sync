@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from . import Paths
+from . import PathMatch
 from .FileList import LocalFileList, RemoteFileList, DuplicateList
 from .EncPath import EncPath
 
@@ -15,8 +16,14 @@ class FileComparator(object):
     def __init__(self, encsync, prefix1, prefix2, directory=None):
         self.encsync = encsync
         self.prefix1 = Paths.from_sys(prefix1)
-        self.prefix2 = prefix2
+        self.prefix2 = Paths.dir_normalize(prefix2)
         self.directory = directory
+
+        self.target = None
+
+        for i in encsync.targets:
+            if Paths.dir_normalize(i["remote"]) == self.prefix2:
+                self.target = i
 
         llist, rlist = LocalFileList(directory), RemoteFileList(directory)
 
@@ -116,6 +123,11 @@ class FileComparator(object):
                 self.encpath2.local_prefix = self.prefix1
                 self.encpath2.remote_prefix = self.prefix2
                 self.encpath2.IVs = self.IVs
+
+            if self.path1 is not None and self.target is not None:
+                if not PathMatch.match(self.node1["path"], self.target["allowed_paths"]):
+                    self.node1 = try_next(self.it1)
+                    continue
 
             if self.is_removed():
                 if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
