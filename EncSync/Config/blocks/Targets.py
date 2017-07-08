@@ -5,8 +5,7 @@ import os
 
 from ... import Paths
 
-from ..Command import Command
-from ..Block import Block
+from ...EncScript import Block, Command
 
 def prepare_local_path(path):
     return Paths.sys_explicit(os.path.realpath(os.path.expanduser(path)))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ..Command import Command
+from ...EncScript import Command
 
 def is_positive_int(x):
     try:

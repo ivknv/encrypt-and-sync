@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .Tokenizer import Tokenizer
-from .Parser import Parser
-from .Namespace import Namespace
-from .Program import Program, ast2program
+from ..EncScript import Parser, Tokenizer, Namespace, Program, ast2program
 from .Exceptions import InvalidConfigError
 
 from . import commands, blocks

@@ -4,8 +4,7 @@
 import os
 from ... import Paths
 
-from ..Block import Block
-from ..Command import Command
+from ...EncScript import Block, Command
 
 def prepare_path(path):
     return Paths.from_sys(os.path.expanduser(path))

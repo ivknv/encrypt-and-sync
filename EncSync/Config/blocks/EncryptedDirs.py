@@ -3,8 +3,7 @@
 
 from ... import Paths
 
-from ..Block import Block
-from ..Command import Command
+from ...EncScript import Block, Command
 
 def prepare_remote_path(path):
     return Paths.dir_normalize(Paths.join_properly("/", path))
