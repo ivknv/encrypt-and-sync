@@ -192,9 +192,6 @@ class SynchronizerReceiver(EventHandler):
         target = synchronizer.cur_target
 
         if stage == "scan":
-            if not target.enable_scan:
-                return
-
             if target.status not in ("failed", "suspended"):
                 print_diffs(self.env, synchronizer.encsync, target)
 
