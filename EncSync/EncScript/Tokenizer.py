@@ -7,10 +7,12 @@ class Token(object):
     class Type(enum.Enum):
         UNDEFINED  = 0
         WORD       = 1
-        LCBR       = 2
-        RCBR       = 3
-        SEP        = 4
-        END        = 5
+        SYSCOMMAND = 2
+        AND        = 3
+        LCBR       = 4
+        RCBR       = 5
+        SEP        = 6
+        END        = 7
 
     def __init__(self, string, token_type=Type.UNDEFINED):
         self.string = string
@@ -97,6 +99,12 @@ class Char(object):
     def is_dollar(self):
         return not (self.escaped or self.in_quotes) and self.char == "$"
 
+    def is_excl(self):
+        return not (self.escaped or self.in_quotes) and self.char == "!"
+
+    def is_ampersand(self):
+        return not (self.escaped or self.in_quotes) and self.char == "&"
+
     def __repr__(self):
         if self.escaped:
             if self._char == "'":
@@ -106,12 +114,14 @@ class Char(object):
         return repr(self._char)
 
 class State(enum.Enum):
-    INITIAL = 0
-    WORD    = 1
-    COMMENT = 2
-    QUOTES  = 3
-    DOLLAR  = 4
-    FINAL   = 5
+    INITIAL    = 0
+    WORD       = 1
+    COMMENT    = 2
+    QUOTES     = 3
+    DOLLAR     = 4
+    SYSCOMMAND = 5
+    AND        = 6
+    FINAL      = 7
 
 class Tokenizer(object):
     def __init__(self):
@@ -122,12 +132,14 @@ class Tokenizer(object):
         self.c_quote = False
         self.quote_char = None
 
-        self._state_handlers = {State.INITIAL: self._handle_initial,
-                                State.WORD:    self._handle_word,
-                                State.COMMENT: self._handle_comment,
-                                State.QUOTES:  self._handle_quotes,
-                                State.DOLLAR:  self._handle_dollar,
-                                State.FINAL:   self._handle_final}
+        self._state_handlers = {State.INITIAL:    self._handle_initial,
+                                State.WORD:       self._handle_word,
+                                State.COMMENT:    self._handle_comment,
+                                State.QUOTES:     self._handle_quotes,
+                                State.DOLLAR:     self._handle_dollar,
+                                State.SYSCOMMAND: self._handle_syscommand,
+                                State.AND:        self._handle_and,
+                                State.FINAL:      self._handle_final}
 
     def _change_state(self, new_state):
         self.state = new_state
@@ -221,6 +233,11 @@ class Tokenizer(object):
             self.cur_token.string = char.char
 
             self._push_token(output)
+        elif char.is_excl():
+            self.cur_token.type = Token.Type.SYSCOMMAND
+            self._change_state(State.SYSCOMMAND)
+        elif char.is_ampersand():
+            raise ValueError("Unexpected character")
         else:
             self.cur_token.type = Token.Type.WORD
             self._change_state(State.WORD)
@@ -267,6 +284,13 @@ class Tokenizer(object):
 
             self._push_token(output)
             self._change_state(State.INITIAL)
+        elif char.is_ampersand():
+            self._push_token(output)
+
+            self.cur_token.type = Token.Type.AND
+            self.cur_token.string = char.char
+
+            self._change_state(State.AND)
         else:
             self.cur_token.type = Token.Type.WORD
             self.cur_token.string += char.char
@@ -289,6 +313,22 @@ class Tokenizer(object):
 
         self._enter_quotes(char.char)
         self._change_state(State.QUOTES)
+
+    def _handle_syscommand(self, char, output):
+        if char.is_newline():
+            self._push_token(output)
+            self._change_state(State.INITIAL)
+            return
+
+        self.cur_token.string += char.char
+
+    def _handle_and(self, char, output):
+        if not char.is_ampersand():
+            raise ValueError("Expected '&' character")
+
+        self.cur_token.string += char.char
+        self._push_token(output)
+        self._change_state(State.INITIAL)
 
     def _handle_final(self, char, output):
         assert(False)

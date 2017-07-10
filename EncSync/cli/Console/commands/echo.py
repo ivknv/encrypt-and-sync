@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-def cmd_echo(console, args):
-    print(" ".join(args[1:]))
+from ....EncScript import Command
 
-    return 0
+class EchoCommand(Command):
+    def evaluate(self, console):
+        print(" ".join(self.args[1:]))
+
+        return 0

@@ -1,34 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ..EncScript import Parser, Tokenizer, Namespace, Program, ast2program
+from ..EncScript import Parser, Tokenizer, ast2program
 from .Exceptions import InvalidConfigError
-
-from . import commands, blocks
-
-class ConfigNamespace(Namespace):
-    def __init__(self):
-        Namespace.__init__(self)
-
-        self["sync-threads"] = commands.SyncThreadsCommand
-        self["scan-threads"] = commands.ScanThreadsCommand
-        self["upload-limit"] = commands.UploadLimitCommand
-        self["download-limit"] = commands.DownloadLimitCommand
-        self["download-threads"] = commands.DownloadThreadsCommand
-
-        self["targets"] = blocks.TargetsBlock
-        self["include"] = blocks.IncludeBlock
-        self["exclude"] = blocks.ExcludeBlock
-        self["encrypted-dirs"] = blocks.EncryptedDirsBlock
-
-class ConfigProgram(Program):
-    def __init__(self, body):
-        Program.__init__(self, body)
-
-        self.namespace = ConfigNamespace()
-
-    def evaluate(self, config):
-        Program.evaluate(self, config)
+from .ConfigProgram import ConfigProgram
 
 class Config(object):
     def __init__(self):
@@ -63,7 +38,6 @@ class Config(object):
             ast = parser.parse()
 
             program = ConfigProgram([])
-            program.namespace = ConfigNamespace()
             ast2program(ast, program)
 
             program.evaluate(config)

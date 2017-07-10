@@ -3,21 +3,23 @@
 
 import argparse
 
+from ....EncScript import Command
 from .... import Paths
 
-def cmd_cd(console, args):
-    parser = argparse.ArgumentParser(description="Change directory", prog=args[0])
-    parser.add_argument("directory")
+class CdCommand(Command):
+    def evaluate(self, console):
+        parser = argparse.ArgumentParser(description="Change directory",
+                                         prog=self.args[0])
+        parser.add_argument("directory")
 
-    return _cmd_cd(console, parser.parse_args(args[1:]))
+        ns = parser.parse_args(self.args[1:])
 
-def _cmd_cd(console, ns): 
-    if ns.directory == "-":
-        console.cwd, console.pwd = console.pwd, console.cwd
+        if ns.directory == "-":
+            console.cwd, console.pwd = console.pwd, console.cwd
+            return 0
+
+        console.pwd = console.cwd
+
+        console.cwd = Paths.join_properly(console.cwd, ns.directory)
+
         return 0
-
-    console.pwd = console.cwd
-
-    console.cwd = Paths.join_properly(console.cwd, ns.directory)
-
-    return 0

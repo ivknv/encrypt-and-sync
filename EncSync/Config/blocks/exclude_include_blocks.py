@@ -4,7 +4,8 @@
 import os
 from ... import Paths
 
-from ...EncScript import Block, Command
+from ...EncScript import Command
+from ..ConfigBlock import ConfigBlock
 
 def prepare_path(path):
     return Paths.from_sys(os.path.expanduser(path))
@@ -47,9 +48,9 @@ class IncludeNamespace(dict):
     def get(self, key, default=None):
         return self[key]
 
-class ExcludeBlock(Block):
+class ExcludeBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
-        Block.__init__(self, args, body, parent_namespace)
+        ConfigBlock.__init__(self, args, body, parent_namespace)
 
         self.namespace = ExcludeNamespace(parent_namespace)
 
@@ -79,13 +80,13 @@ class ExcludeBlock(Block):
             config.allowed_paths.append(["e", self.exclude_list])
 
     def evaluate_body(self, config):
-        Block.evaluate_body(self, config, self.exclude_list)
+        ConfigBlock.evaluate_body(self, config, self.exclude_list)
 
     def end(self, config): pass
 
-class IncludeBlock(Block):
+class IncludeBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
-        Block.__init__(self, args, body, parent_namespace)
+        ConfigBlock.__init__(self, args, body, parent_namespace)
 
         self.namespace = IncludeNamespace(parent_namespace)
 
@@ -115,6 +116,6 @@ class IncludeBlock(Block):
             config.allowed_paths.append(["i", self.include_list])
 
     def evaluate_body(self, config):
-        Block.evaluate_body(self, config, self.include_list)
+        ConfigBlock.evaluate_body(self, config, self.include_list)
 
     def end(self, config): pass

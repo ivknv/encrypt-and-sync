@@ -20,4 +20,4 @@ class Namespace(dict):
         try:
             return self[key]
         except KeyError:
-           return default
+            return default

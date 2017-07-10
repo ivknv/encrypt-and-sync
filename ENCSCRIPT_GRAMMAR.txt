@@ -1,0 +1,16 @@
+Tokens:
+    Undefined
+    Word
+    SysCommand
+    And &&
+    LCBr {
+    RCBr }
+    Sep
+    End
+
+Grammar:
+    Config   -> Action* End
+    Block    -> Word+ LCBr Action* RCBr
+    Command  -> (Word+ | SysCommand) Operator Command | (Word* | SysCommand?) Sep
+    Action   -> Command | Block
+    Operator -> And

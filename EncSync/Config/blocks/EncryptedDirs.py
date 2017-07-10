@@ -3,7 +3,8 @@
 
 from ... import Paths
 
-from ...EncScript import Block, Command
+from ...EncScript import Command
+from ..ConfigBlock import ConfigBlock
 
 def prepare_remote_path(path):
     return Paths.dir_normalize(Paths.join_properly("/", path))
@@ -27,9 +28,9 @@ class EncryptedDirsNamespace(dict):
     def get(self, key, default=None):
         return self[key]
 
-class EncryptedDirsBlock(Block):
+class EncryptedDirsBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
-        Block.__init__(self, args, body, parent_namespace)
+        ConfigBlock.__init__(self, args, body, parent_namespace)
 
         self.namespace = EncryptedDirsNamespace(parent_namespace)
 

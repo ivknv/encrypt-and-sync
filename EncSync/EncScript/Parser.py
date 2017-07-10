@@ -8,14 +8,18 @@ from .Tokenizer import Tokenizer, Token
 class AST(object):
     class Type(enum.Enum):
         UNDEFINED  = 0
-        CONFIG     = 1
+        PROGRAM    = 1
         COMMAND    = 2
         BLOCK      = 3
-        WORD       = 4
-        LCBR       = 5
-        RCBR       = 6
-        SEP        = 7
-        END        = 8
+        ACTION     = 4
+        WORD       = 5
+        SYSCOMMAND = 6
+        OPERATOR   = 7
+        AND        = 8
+        LCBR       = 9
+        RCBR       = 10
+        SEP        = 11
+        END        = 12
 
     def __init__(self, node_type=Type.UNDEFINED, token=None):
         self.type = node_type
@@ -52,20 +56,15 @@ class Parser(object):
         if output is None:
             output = AST()
 
-        self.parse_config(output)
+        self.parse_program(output)
 
         return output
 
-    def parse_config(self, output):
-        output.type = AST.Type.CONFIG
+    def parse_program(self, output):
+        output.type = AST.Type.PROGRAM
 
         while not self.accept(Token.Type.END):
-            self.expect(Token.Type.WORD, Token.Type.SEP)
-
-            if self.accept(Token.Type.WORD):
-                self.parse_block_or_command(output.new_child())
-            elif self.accept(Token.Type.SEP):
-                self.parse_command(output.new_child())
+            self.parse_action(output.new_child())
 
         self.parse_end(output.new_child())
 
@@ -76,11 +75,18 @@ class Parser(object):
     def accept(self, *expected_types):
         return self.tokens[self.idx].type in expected_types
 
-    def parse_command(self, output):
+    def parse_command(self, output, after_block=False):
         output.type = AST.Type.COMMAND
 
+        expected = {Token.Type.WORD, Token.Type.SYSCOMMAND,
+                    Token.Type.SEP, Token.Type.END}
+
+        if after_block:
+            expected.add(Token.Type.AND)
+            expected.discard(Token.Type.SYSCOMMAND)
+
         while True:
-            self.expect(Token.Type.WORD, Token.Type.SEP, Token.Type.END)
+            self.expect(*expected)
 
             if self.accept(Token.Type.END):
                 break
@@ -88,7 +94,19 @@ class Parser(object):
             child = output.new_child()
 
             if self.accept(Token.Type.WORD):
+                expected.discard(Token.Type.SYSCOMMAND)
+                expected.add(Token.Type.AND)
                 self.parse_word(child)
+            elif self.accept(Token.Type.SYSCOMMAND):
+                expected.discard(Token.Type.SYSCOMMAND)
+                expected.discard(Token.Type.WORD)
+                expected.add(Token.Type.AND)
+                self.parse_syscommand(child)
+            elif self.accept(Token.Type.AND):
+                expected.discard(Token.Type.SEP)
+                self.parse_operator(child)
+                self.parse_command(output.new_child())
+                break
             elif self.accept(Token.Type.SEP):
                 self.parse_sep(child)
                 break
@@ -102,10 +120,10 @@ class Parser(object):
             try:
                 self.expect(Token.Type.WORD, Token.Type.LCBR)
             except ValueError as e:
-                if not self.accept(Token.Type.SEP, Token.Type.END):
+                if not self.accept(Token.Type.AND, Token.Type.SEP, Token.Type.END):
                     raise e
                 output.type = AST.Type.COMMAND
-                self.parse_command(output)
+                self.parse_command(output, after_block=True)
                 return
 
             child = output.new_child()
@@ -117,17 +135,30 @@ class Parser(object):
                 break
 
         while True:
-            self.expect(Token.Type.WORD, Token.Type.SEP, Token.Type.RCBR)
-
             child = output.new_child()
 
-            if self.accept(Token.Type.WORD):
-                self.parse_block_or_command(child)
-            elif self.accept(Token.Type.SEP):
-                self.parse_command(child)
-            elif self.accept(Token.Type.RCBR):
+            if self.accept(Token.Type.RCBR):
                 self.parse_rcbr(child)
                 break
+
+            self.parse_action(child)
+
+    def parse_action(self, output):
+        output.type = AST.Type.ACTION
+
+        self.expect(Token.Type.WORD, Token.Type.SEP, Token.Type.SYSCOMMAND)
+
+        child = output.new_child()
+
+        if self.accept(Token.Type.WORD):
+            self.parse_block_or_command(child)
+        elif self.accept(Token.Type.SYSCOMMAND, Token.Type.SEP):
+            self.parse_command(child)
+
+    def parse_operator(self, output):
+        output.type = AST.Type.OPERATOR
+
+        self.parse_and(output.new_child())
 
     def parse_token(self, token_type, ast_type, output):
         self.expect(token_type)
@@ -142,6 +173,12 @@ class Parser(object):
 
     def parse_word(self, output):
         self.parse_token(Token.Type.WORD, AST.Type.WORD, output)
+
+    def parse_syscommand(self, output):
+        self.parse_token(Token.Type.SYSCOMMAND, AST.Type.SYSCOMMAND, output)
+
+    def parse_and(self, output):
+        self.parse_token(Token.Type.AND, AST.Type.AND, output)
 
     def parse_lcbr(self, output):
         self.parse_token(Token.Type.LCBR, AST.Type.LCBR, output)

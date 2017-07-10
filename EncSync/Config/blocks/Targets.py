@@ -5,7 +5,8 @@ import os
 
 from ... import Paths
 
-from ...EncScript import Block, Command
+from ...EncScript import Command
+from ..ConfigBlock import ConfigBlock
 
 def prepare_local_path(path):
     return Paths.sys_explicit(os.path.realpath(os.path.expanduser(path)))
@@ -44,9 +45,9 @@ class TargetsNamespace(dict):
     def get(self, key, default=None):
         return self[key]
 
-class TargetsBlock(Block):
+class TargetsBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
-        Block.__init__(self, args, body, parent_namespace)
+        ConfigBlock.__init__(self, args, body, parent_namespace)
         self.namespace = TargetsNamespace(parent_namespace)
 
     def begin(self, *args, **kwargs):
