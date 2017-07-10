@@ -12,7 +12,7 @@ if sys.platform.startswith("win"):
     readline_pkg = "pyreadline"
 
 setup(name="EncSync",
-      version="0.1.6",
+      version="0.1.7",
       description="Yandex.Disk encrypted sync tool",
       author="Ivan Konovalov",
       packages=find_packages(),
