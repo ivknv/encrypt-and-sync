@@ -5,6 +5,7 @@ from .Program import Program
 from .Command import Command
 from .SysCommand import SysCommand
 from .Block import Block
+from .AndOperator import AndOperator
 from .Namespace import Namespace
 from .Parser import Parser, AST
 from .Tokenizer import Tokenizer, Token

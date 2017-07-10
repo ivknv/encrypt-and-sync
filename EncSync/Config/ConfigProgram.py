@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ..EncScript import Program, Block, SysCommand
+from ..EncScript import Program, Block, SysCommand, AndOperator
 from .ConfigNamespace import ConfigNamespace
 from .ConfigBlock import ConfigBlock
 
@@ -17,6 +17,8 @@ class ConfigProgram(Program):
                 raise ValueError("Can't execute system commands")
             elif isinstance(i, Block) and not isinstance(i, ConfigBlock):
                 raise ValueError("Can't execute this kind of block")
+            elif isinstance(i, AndOperator):
+                raise ValueError("'&&' operator is not available")
 
             i.evaluate(config)
 
