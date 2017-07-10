@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+use_readline = False
+
 try:
     import readline
+    use_readline = True
 except ImportError:
-    import pyreadline as readline
+    try:
+        import pyreadline as readline
+        use_readline = True
+    except ImportError:
+        pass
 
 import subprocess
 import shlex
@@ -102,7 +109,9 @@ def run_console(env):
     if encsync is None:
         return ret
 
-    readline.parse_and_bind("tab: complete")
+    if use_readline:
+        readline.parse_and_bind("tab: complete")
+
     console = Console(encsync)
     console.env.parent = env
 

@@ -6,8 +6,10 @@ import sys
 
 requirements = ["requests", "pycryptodome"]
 
+readline_pkg = "readline"
+
 if sys.platform.startswith("win"):
-    requirements.append("pyreadline")
+    readline_pkg = "pyreadline"
 
 setup(name="EncSync",
       version="0.1.6",
@@ -15,4 +17,5 @@ setup(name="EncSync",
       author="Ivan Konovalov",
       packages=find_packages(),
       install_requires=requirements,
+      extras_require={"readline": [readline_pkg]},
       entry_points={"console_scripts": ["encsync=EncSync.__main__:main"]})
