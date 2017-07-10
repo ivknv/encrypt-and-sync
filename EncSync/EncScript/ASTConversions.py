@@ -4,6 +4,8 @@
 from .Parser import AST
 from .SysCommand import SysCommand
 from .AndOperator import AndOperator
+from .Block import Block
+from .Command import Command
 
 def ast2program(ast, program):
     program.body.clear()
@@ -39,7 +41,16 @@ def ast2command(ast, namespace):
             return ast2syscommand(child)
         elif child.type == AST.Type.OPERATOR:
             operator = ast2operator(child)
-            operator.A = namespace[args[0]](args)
+
+            try:
+                command_type = namespace[args[0]]
+            except KeyError:
+                raise ValueError("Unknown command: %r" % args[0])
+
+            if not issubclass(operator.A, Command):
+                raise ValueError("%r is not a command" % args[0])
+
+            operator.A = command_type(args)
         elif child.type == AST.Type.COMMAND:
             operator.B = ast2command(child, namespace)
 
@@ -48,7 +59,15 @@ def ast2command(ast, namespace):
     if not args:
         return None
 
-    return namespace[args[0]](args)
+    try:
+        command_type = namespace[args[0]]
+    except KeyError:
+        raise ValueError("Unknown command: %r" % args[0])
+
+    if not issubclass(command_type, Command):
+        raise ValueError("%r is not a command" % args[0])
+
+    return command_type(args)
 
 def ast2syscommand(ast):
     return SysCommand(ast.token.string)
@@ -65,12 +84,29 @@ def ast2block(ast, namespace):
 
     for child in ast.children:
         if child.type == AST.Type.LCBR and block is None:
-            block = namespace[""](args, body, namespace)
+            try:
+                block_type = namespace[""]
+            except KeyError:
+                raise ValueError("Unknown block: ''")
+
+            if not issubclass(block_type, Block):
+                raise ValueError("'' is not a block")
+
+            block = block_type(args, body, namespace)
+
             args.append("")
 
         if child.type == AST.Type.WORD:
             if not args:
-                block = namespace[child.token.string](args, body, namespace)
+                try:
+                    block_type = namespace[child.token.string]
+                except KeyError:
+                    raise ValueError("Unknown block: %r" % child.token.string)
+
+                if not issubclass(block_type, Block):
+                    raise ValueError("%r is not a block" % child.token.string)
+
+                block = block_type(args, body, namespace)
 
             args.append(child.token.string)
         elif child.type == AST.Type.ACTION:

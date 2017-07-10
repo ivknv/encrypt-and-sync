@@ -33,7 +33,12 @@ class Console(object):
 
     def execute_commands(self, ast):
         program = ConsoleProgram([])
-        ast2program(ast, program)
+
+        try:
+            ast2program(ast, program)
+        except ValueError as e:
+            show_error("Error: %s" % e)
+            return 1
 
         try:
             ret = program.evaluate(self)
@@ -76,24 +81,31 @@ class Console(object):
 
                 line = input(msg)
 
-                for i in line:
-                    tokenizer.next_char(i, output)
+                try:
+                    for i in line:
+                        tokenizer.next_char(i, output)
 
-                if not tokenizer.in_quotes and not tokenizer.escape:
-                    tokenizer.end(output)
+                    if not tokenizer.in_quotes and not tokenizer.escape:
+                        tokenizer.end(output)
 
-                    parser.tokens = output
-                    ast = parser.parse()
+                        parser.tokens = output
+                        ast = parser.parse()
 
-                    self.exit_code = self.execute_commands(ast)
+                        self.exit_code = self.execute_commands(ast)
 
-                    output = []
+                        output = []
 
+                        tokenizer.reset()
+                        parser.reset()
+                    else:
+                        prompt_more = True
+                        tokenizer.next_char("\n", output)
+                except ValueError as e:
+                    show_error("Error: %s" % e)
+                    self.exit_code = 1
                     tokenizer.reset()
                     parser.reset()
-                else:
-                    prompt_more = True
-                    tokenizer.next_char("\n", output)
+                    output = []
             except KeyboardInterrupt:
                 output = []
                 parser.reset()
