@@ -17,6 +17,7 @@ class ScanCommand(Command):
         parser.add_argument("-a", "--all", action="store_true")
         parser.add_argument("--ask", action="store_true")
         parser.add_argument("--no-choice", action="store_true")
+        parser.add_argument("--no-journal", action="store_true")
         parser.add_argument("--n-workers", "-w", type=positive_int)
 
         group = parser.add_mutually_exclusive_group()
@@ -40,6 +41,7 @@ class ScanCommand(Command):
         env["all"] = ns.all
         env["ask"] = ns.ask
         env["no_choice"] = ns.no_choice
+        env["no_journal"] = ns.no_journal
         env["local_only"] = ns.local_only
         env["remote_only"] = ns.remote_only
 

@@ -421,6 +421,14 @@ def do_sync(env, paths):
     synchronizer = Synchronizer(encsync, env["config_dir"], n_sync_workers, n_scan_workers)
     synchronizer.set_speed_limit(encsync.upload_limit)
 
+    if env.get("no_journal"):
+        q = "PRAGMA journal_mode = OFF"
+        for i in (synchronizer.shared_llist,
+                  synchronizer.shared_rlist,
+                  synchronizer.shared_duplist,
+                  synchronizer.difflist):
+            i.conn.execute(q)
+
     with GenericSignalManager(synchronizer):
         synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
         synchronizer.add_receiver(synchronizer_receiver)

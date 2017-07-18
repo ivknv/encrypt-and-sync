@@ -42,6 +42,8 @@ class Synchronizer(StagedWorker):
         self.shared_rlist = RemoteFileList(directory)
         self.shared_duplist = DuplicateList(directory)
 
+        self.difflist = DiffList(self.encsync, self.directory)
+
         self.stage_order = ("scan", "duplicates", "rm", "dirs", "files", "check")
 
         self.scannables = []
@@ -125,40 +127,33 @@ class Synchronizer(StagedWorker):
     def build_diffs_table(self):
         assert(self.cur_target is not None)
 
-        difflist = DiffList(self.encsync, self.directory)
-
         diffs = FileComparator.compare_lists(self.encsync,
                                              self.cur_target.local,
                                              self.cur_target.remote,
                                              self.directory)
         try:
-            difflist.begin_transaction()
-            difflist.clear_differences(self.cur_target.local,
-                                       self.cur_target.remote)
-            difflist.insert_differences(diffs)
-            difflist.commit()
+            self.difflist.begin_transaction()
+            self.difflist.clear_differences(self.cur_target.local,
+                                            self.cur_target.remote)
+            self.difflist.insert_differences(diffs)
+            self.difflist.commit()
         except BaseException as e:
-            difflist.rollback()
+            self.difflist.rollback()
             raise e
 
         if self.cur_target.stage != "check":
-            diff_count = difflist.get_difference_count(self.cur_target.local,
-                                                       self.cur_target.remote)
+            diff_count = self.difflist.get_difference_count(self.cur_target.local,
+                                                            self.cur_target.remote)
             n_done = self.cur_target.get_n_done()
 
             self.cur_target.total_children = diff_count + n_done
 
     def work(self):
         try:
-            llist = LocalFileList(self.directory)
-            rlist = RemoteFileList(self.directory)
-
-            llist.create()
-            rlist.create()
+            self.shared_llist.create()
+            self.shared_rlist.create()
             self.shared_duplist.create()
-
-            difflist = DiffList(self.encsync, self.directory)
-            difflist.create()
+            self.difflist.create()
         except BaseException as e:
             self.emit_event("error", e)
             return
@@ -214,7 +209,7 @@ class Synchronizer(StagedWorker):
 
                 if target.status == "finished":
                     target.stage = None
-                    difflist.clear_differences(target.local, target.remote)
+                    self.difflist.clear_differences(target.local, target.remote)
 
                 self.cur_target = None
             except BaseException as e:
@@ -225,8 +220,7 @@ class Synchronizer(StagedWorker):
         assert(self.stage is None)
 
     def init_duplicates_stage(self):
-        d = DiffList(self.encsync, self.directory)
-        self.diffs = d.select_rmdup_differences(self.cur_target.remote)
+        self.diffs = self.difflist.select_rmdup_differences(self.cur_target.remote)
 
         self.shared_duplist.begin_transaction()
 
@@ -236,9 +230,8 @@ class Synchronizer(StagedWorker):
         self.shared_duplist.commit()
 
     def init_rm_stage(self):
-        d = DiffList(self.encsync, self.directory)
-        self.diffs = d.select_rm_differences(self.cur_target.local,
-                                             self.cur_target.remote)
+        self.diffs = self.difflist.select_rm_differences(self.cur_target.local,
+                                                         self.cur_target.remote)
 
         self.shared_llist.begin_transaction()
         self.shared_rlist.begin_transaction()
@@ -250,9 +243,8 @@ class Synchronizer(StagedWorker):
         self.shared_rlist.commit()
 
     def init_dirs_stage(self):
-        d = DiffList(self.encsync, self.directory)
-        self.diffs = d.select_dirs_differences(self.cur_target.local,
-                                               self.cur_target.remote)
+        self.diffs = self.difflist.select_dirs_differences(self.cur_target.local,
+                                                           self.cur_target.remote)
 
         self.shared_llist.begin_transaction()
         self.shared_rlist.begin_transaction()
@@ -264,9 +256,8 @@ class Synchronizer(StagedWorker):
         self.shared_rlist.commit()
 
     def init_files_stage(self):
-        d = DiffList(self.encsync, self.directory)
-        self.diffs = d.select_files_differences(self.cur_target.local,
-                                                self.cur_target.remote)
+        self.diffs = self.difflist.select_files_differences(self.cur_target.local,
+                                                            self.cur_target.remote)
 
         self.shared_llist.begin_transaction()
         self.shared_rlist.begin_transaction()
@@ -433,9 +424,7 @@ class Synchronizer(StagedWorker):
 
             self.build_diffs_table()
 
-            difflist = DiffList(self.encsync, self.directory)
-
-            if difflist.get_difference_count(self.cur_target.local, self.cur_target.remote):
+            if self.difflist.get_difference_count(self.cur_target.local, self.cur_target.remote):
                 self.cur_target.emit_event("integrity_check_failed")
                 self.cur_target.change_status("failed")
             else:

@@ -78,6 +78,7 @@ def main(args=None):
     env["no_check"] = not ns.integrity_check
     env["no_scan"] = ns.no_scan
     env["no_diffs"] = ns.no_diffs
+    env["no_journal"] = ns.no_journal
     env["all"] = ns.all
     env["local_only"] = ns.local_only
     env["remote_only"] = ns.remote_only
@@ -157,6 +158,7 @@ def parse_args(args):
     parser.add_argument("--no-choice", action="store_true")
     parser.add_argument("--no-diffs", action="store_true")
     parser.add_argument("--no-token-check", action="store_true")
+    parser.add_argument("--no-journal", action="store_true")
     parser.add_argument("--ask", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("-I", "--integrity-check", action="store_true")
