@@ -109,7 +109,7 @@ class LocalScannable(BaseScannable):
 
         try:
             self.modified = datetime.utcfromtimestamp(m).timestamp()
-        except OverflowError:
+        except (OverflowError, OSError):
             self.modified = 0
 
     def listdir(self, allowed_paths=None):

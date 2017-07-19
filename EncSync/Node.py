@@ -7,10 +7,16 @@ from . import Paths
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 def format_timestamp(timestamp):
-    return datetime.fromtimestamp(timestamp).strftime(DATE_FORMAT)
+    try:
+        return datetime.fromtimestamp(timestamp).strftime(DATE_FORMAT)
+    except OSError:
+        return datetime(1970, 1, 1).strftime(DATE_FORMAT)
 
 def parse_timestamp(s):
-    return datetime.strptime(s, DATE_FORMAT).timestamp()
+    try:
+        return datetime.strptime(s, DATE_FORMAT).timestamp()
+    except OSError:
+        return datetime(1970, 1, 1)
 
 def node_tuple_to_dict(t):
     if t is not None:
