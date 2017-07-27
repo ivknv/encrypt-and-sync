@@ -342,7 +342,7 @@ class WorkerReceiver(EventHandler):
         progress_str = get_progress_str(worker.cur_task)
         print("%s: error: too long filename (>= 160)" % progress_str)
 
-    def on_exception(self, exception):
+    def on_exception(self, exc, worker):
         traceback.print_exc()
 
 class TaskReceiver(EventHandler):
