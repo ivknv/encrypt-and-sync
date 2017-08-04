@@ -72,8 +72,8 @@ class YndApi(object):
 
     @staticmethod
     def prepare_error(error_dict):
-        error_type = error_dict["error"]
-        description = error_dict["description"]
+        error_type = error_dict.get("error", "<empty>")
+        description = error_dict.get("description", "<empty>")
 
         try:
             return Exceptions.exception_map[error_type](description)
@@ -86,7 +86,7 @@ class YndApi(object):
             success_codes = {200}
 
         ret = {"response": response,
-               "success": response.status_code in success_codes}
+               "success":  response.status_code in success_codes}
 
         try:
             ret["data"] = response.json()
