@@ -53,6 +53,7 @@ class DownloaderWorker(Worker):
         self.cur_task = None
 
         self.add_event("next_task")
+        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 
