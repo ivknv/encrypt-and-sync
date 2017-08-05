@@ -35,6 +35,8 @@ def recursive_mkdir(path, basedir="."):
             continue
         p = os.path.join(p, i)
 
+        if os.path.exists(p): continue
+
         try:
             os.mkdir(p)
         except FileExistsError:
