@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+import ctypes
+import sys
 import time
 from datetime import datetime
 from . import Paths
@@ -10,6 +12,15 @@ from .Node import normalize_node
 from .YandexDiskApi import parse_date
 from .YandexDiskApi.Exceptions import UnknownYandexDiskError
 from . import PathMatch
+
+if sys.platform.startswith("win"):
+    def is_reparse_point(path):
+        # https://stackoverflow.com/questions/15258506/os-path-islink-on-windows-with-python
+        FILE_ATTRIBUTE_REPARSE_POINT = 0x0400
+        return bool(os.path.isdir(path) and (ctypes.windll.kernel32.GetFileAttributesW(path) & FILE_ATTRIBUTE_REPARSE_POINT))
+else:
+    def is_reparse_point(path):
+        return False
 
 class BaseScannable(object):
     def __init__(self, path=None, type=None, modified=0, size=0):
@@ -91,6 +102,10 @@ class LocalScannable(BaseScannable):
     def identify(self):
         self.path = os.path.abspath(self.path)
         self.path = os.path.expanduser(self.path)
+
+        if is_reparse_point(self.path):
+            self.type = None
+            return
 
         if os.path.isfile(self.path):
             self.type = "f"
