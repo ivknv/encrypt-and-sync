@@ -9,10 +9,10 @@ from .SyncFile import SyncFile, SyncFileInterrupt
 from .Exceptions import TooLongFilenameError
 from ..Encryption import pad_size
 from ..YandexDiskApi.Exceptions import DiskNotFoundError
+from ..YandexDiskApi import DEFAULT_CONNECT_TIMEOUT, DEFAULT_UPLOAD_TIMEOUT
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
 from .. import Paths
-
 
 COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
@@ -146,9 +146,17 @@ class UploadWorker(SynchronizerWorker):
 
         temp_file = SyncFile(self.encsync.temp_encrypt(local_path), self, task)
 
+        if new_size >= 700 * 1024**2:
+            timeout = (DEFAULT_CONNECT_TIMEOUT, 300.0)
+        else:
+            timeout = DEFAULT_UPLOAD_TIMEOUT
+
         if task.status == "pending":
             try:
-                r = self.encsync.ynd.upload(temp_file, remote_path_enc, overwrite=True)
+                r = self.encsync.ynd.upload(temp_file,
+                                            remote_path_enc,
+                                            overwrite=True,
+                                            timeout=timeout)
             except SyncFileInterrupt:
                 return
 
