@@ -1,2 +1,3 @@
 requests
 pycryptodome
+s3m
