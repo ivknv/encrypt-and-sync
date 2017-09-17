@@ -39,12 +39,12 @@ def any_not_none(keys, container):
 
 def setup_logging(env):
     import logging
-    from . import Downloader, Synchronizer, Scanner, CentDB
+    from . import Downloader, Synchronizer, Scanner, CDB
 
     loggers = ((Downloader.Logging.logger, "downloader.log"),
                (Synchronizer.Logging.logger, "synchronizer.log"),
                (Scanner.Logging.logger, "scanner.log"),
-               (CentDB.Logging.logger, "centdb.log"))
+               (CDB.Logging.logger, "cdb.log"))
 
     for logger, filename in loggers:
         formatter = logging.Formatter("%(asctime)s - %(name)s-Thread-%(thread)d: %(message)s")

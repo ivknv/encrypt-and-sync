@@ -5,7 +5,7 @@ import os
 
 from .FileList import FileList
 from .. import Paths
-from .. import CentDB
+from .. import CDB
 from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
 
 def prepare_path(path):
@@ -25,7 +25,7 @@ class RemoteFileList(FileList):
         else:
             path = os.path.join(directory, "remote_filelist.db")
 
-        self.conn = CentDB.connect(path, *args, **kwargs)
+        self.conn = CDB.connect(path, *args, **kwargs)
 
     def time_since_last_commit(self):
         return self.conn.time_since_last_commit()

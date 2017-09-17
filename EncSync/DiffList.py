@@ -3,7 +3,7 @@
 
 import os
 
-from . import CentDB
+from . import CDB
 from .EncPath import EncPath
 from . import Paths
 
@@ -16,7 +16,7 @@ class DiffList(object):
 
         kwargs.setdefault("isolation_level", None)
 
-        self.conn = CentDB.connect(path, *args, **kwargs)
+        self.conn = CDB.connect(path, *args, **kwargs)
         self.encsync = encsync
 
     def __enter__(self):

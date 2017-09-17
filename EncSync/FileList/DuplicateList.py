@@ -4,7 +4,7 @@
 import os
 
 from .. import Paths
-from .. import CentDB
+from .. import CDB
 
 def prepare_path(path):
     return Paths.join_properly("/", path)
@@ -21,7 +21,7 @@ class DuplicateList(object):
         else:
             path = os.path.join(directory, "duplicates.db")
 
-        self.conn = CentDB.connect(path, *args, **kwargs)
+        self.conn = CDB.connect(path, *args, **kwargs)
 
     def __enter__(self):
         self.conn.__enter__()

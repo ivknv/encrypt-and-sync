@@ -2,4 +2,4 @@
 # -*- coding: utf-8 -*-
 
 # pylint: disable=wildcard-import
-from .CentDB import *
+from .CDB import *
