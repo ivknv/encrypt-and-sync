@@ -6,9 +6,8 @@ import os
 import hashlib
 import tempfile
 import io
+import yadisk
 
-from . import YandexDiskApi
-from .YandexDiskApi.Exceptions import UnauthorizedError 
 from . import Encryption
 from . import Paths
 from .Config import Config
@@ -29,8 +28,6 @@ def chunk(b, n):
 
 APP_ID = "59c915d2c2d546d3842f2c6fe3a9678e"
 APP_SECRET = "faca3ddd1d574e54a258aa5d8e521c8d"
-
-AUTH_URL = "https://oauth.yandex.ru/authorize?response_type=code&client_id=" + APP_ID
 
 CONFIG_TEST = b"TEST STRING\n"
 
@@ -54,7 +51,8 @@ class EncSync(object):
         self.ynd_id = APP_ID
         self.ynd_token = ""
         self.ynd_secret = APP_SECRET
-        self.ynd = YandexDiskApi.YndApi(self.ynd_id, "", self.ynd_secret)
+        self.ynd = yadisk.YaDisk(self.ynd_id, self.ynd_secret, "")
+
         self.upload_limit = float("inf")
         self.download_limit = float("inf")
         self.sync_threads = 1
@@ -73,7 +71,7 @@ class EncSync(object):
 
     def set_token(self, token):
         self.ynd_token = token
-        self.ynd = YandexDiskApi.YndApi(self.ynd_id, self.ynd_token, self.ynd_secret)
+        self.ynd = yadisk.YaDisk(self.ynd_id, self.ynd_secret, self.ynd_token)
 
     def set_key(self, key):
         self.plain_key = key
@@ -81,14 +79,6 @@ class EncSync(object):
 
     def set_master_key(self, master_key):
         self.master_key = hashlib.sha256(master_key.encode("utf8")).digest()
-
-    def check_token(self, max_retries=1):
-        try:
-            r = self.ynd.get_disk_data(max_retries=max_retries)
-        except UnauthorizedError:
-            return False
-
-        return True
 
     @staticmethod
     def check_master_key(master_key, enc_data_path):

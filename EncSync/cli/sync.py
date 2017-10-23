@@ -4,6 +4,8 @@
 import os
 import traceback
 
+from yadisk.exceptions import YaDiskError
+
 from . import common
 from .common import show_error, get_progress_str
 from .scan import WorkerReceiver as ScanWorkerReceiver
@@ -18,7 +20,6 @@ from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from ..ExceptionManager import ExceptionManager
 from ..Synchronizer.Exceptions import TooLongFilenameError
-from ..YandexDiskApi.Exceptions import YandexDiskError
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
@@ -157,7 +158,7 @@ class SynchronizerReceiver(EventHandler):
         self.add_emitter_callback(synchronizer, "exited_stage", self.on_exited_stage)
         self.add_emitter_callback(synchronizer, "error", self.on_error)
 
-        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(YaDiskError, self.on_disk_error)
         self.exc_manager.add(BaseException, self.on_exception)
 
     def on_started(self, event):
@@ -304,7 +305,7 @@ class WorkerReceiver(EventHandler):
 
         self.exc_manager = ExceptionManager()
 
-        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(YaDiskError, self.on_disk_error)
         self.exc_manager.add(TooLongFilenameError, self.on_too_long_filename)
         self.exc_manager.add(BaseException, self.on_exception)
 

@@ -3,6 +3,8 @@
 
 import threading
 
+from yadisk.exceptions import DiskNotFoundError
+
 from .Workers import LocalScanWorker, RemoteScanWorker
 from .Logging import logger
 from .Task import ScanTask
@@ -10,7 +12,6 @@ from .Target import ScanTarget
 from ..Worker import Worker
 from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..Scannable import LocalScannable, RemoteScannable
-from ..YandexDiskApi.Exceptions import DiskNotFoundError
 from ..LogReceiver import LogReceiver
 from .. import PathMatch
 from .. import Paths

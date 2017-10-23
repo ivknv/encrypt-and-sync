@@ -4,6 +4,8 @@
 import argparse
 import sys
 
+import yadisk.exceptions
+
 from .... import Paths
 from ....EncPath import EncPath
 from ....EncScript import Command
@@ -38,14 +40,14 @@ class LsCommand(Command):
 
             contents = []
 
-            for response in console.encsync.ynd.ls(path):
-                if response["success"]:
+            for response in console.encsync.ynd.listdir(path):
+                try:
                     if prefix is not None:
-                        contents.append(encsync.decrypt_path(response["data"]["name"])[0])
+                        contents.append(encsync.decrypt_path(response.name)[0])
                     else:
-                        contents.append(response["data"]["name"])
-                else:
-                    print("Error: failed to get list of files", file=sys.stderr)
+                        contents.append(response.name)
+                except yadisk.exceptions.YaDiskError as e:
+                    print("Error: %s" % (e,), file=sys.stderr)
                     return 1
 
             contents.sort()

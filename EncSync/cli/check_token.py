@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import yadisk
+
 from .common import make_encsync, show_error
-from ..EncSync import EncSync, AUTH_URL
-from ..YandexDiskApi.Exceptions import YandexDiskError
+from ..EncSync import EncSync
 
 def check_token(env):
     encsync, ret = make_encsync(env)
@@ -12,25 +13,25 @@ def check_token(env):
         return ret
 
     try:
-        if encsync.check_token():
+        if encsync.ynd.check_token():
             return 0
-    except YandexDiskError as e:
+    except yadisk.exceptions.YaDiskError as e:
         show_error("Yandex.Disk error: %s: %s" % (e.error_type, str(e)))
         return 1
 
     try:
         while True:
-            print("Go to the following URL: %s" % AUTH_URL)
+            print("Go to the following URL: %s" % encsync.ynd.get_code_url())
             code = input("Confirmation code: ")
 
             try:
                 response = encsync.ynd.get_token(code)
-            except YandexDiskError as e:
+            except yadisk.exceptions.YaDiskError as e:
                 show_error("Yandex.Disk error: %s: %s" % (e.error_type, str(e)))
                 show_error("Failed to get token. Try again")
                 continue
 
-            token = response["data"]["access_token"]
+            token = response.access_token
             break
 
         encsync.set_token(token)

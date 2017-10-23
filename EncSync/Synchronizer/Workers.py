@@ -4,12 +4,13 @@
 import time
 import os
 
+from yadisk.exceptions import DiskNotFoundError
+from yadisk.settings import DEFAULT_TIMEOUT, DEFAULT_UPLOAD_TIMEOUT
+
 from .Logging import logger
 from .SyncFile import SyncFile, SyncFileInterrupt
 from .Exceptions import TooLongFilenameError
 from ..Encryption import pad_size
-from ..YandexDiskApi.Exceptions import DiskNotFoundError
-from ..YandexDiskApi import DEFAULT_CONNECT_TIMEOUT, DEFAULT_UPLOAD_TIMEOUT
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
 from .. import Paths
@@ -147,7 +148,7 @@ class UploadWorker(SynchronizerWorker):
         temp_file = SyncFile(self.encsync.temp_encrypt(local_path), self, task)
 
         if new_size >= 700 * 1024**2:
-            timeout = (DEFAULT_CONNECT_TIMEOUT, 300.0)
+            timeout = (DEFAULT_TIMEOUT[0], 300.0)
         else:
             timeout = DEFAULT_UPLOAD_TIMEOUT
 
@@ -228,7 +229,7 @@ class RmWorker(SynchronizerWorker):
         task = self.cur_task
 
         try:
-            r = self.encsync.ynd.rm(remote_path_enc)
+            r = self.encsync.ynd.remove(remote_path_enc)
         except DiskNotFoundError:
             pass
 
@@ -256,7 +257,7 @@ class RmDupWorker(SynchronizerWorker):
         task = self.cur_task
 
         try:
-            r = self.encsync.ynd.rm(remote_path_enc)
+            r = self.encsync.ynd.remove(remote_path_enc)
         except DiskNotFoundError:
             pass
 

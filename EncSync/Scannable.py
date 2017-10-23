@@ -6,11 +6,11 @@ import ctypes
 import sys
 import time
 from datetime import datetime
+from yadisk.exceptions import UnknownYaDiskError
+
 from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
 from .Node import normalize_node
-from .YandexDiskApi import parse_date
-from .YandexDiskApi.Exceptions import UnknownYandexDiskError
 from . import PathMatch
 
 if sys.platform.startswith("win"):
@@ -102,6 +102,7 @@ class LocalScannable(BaseScannable):
     def identify(self):
         self.path = os.path.abspath(self.path)
         self.path = os.path.expanduser(self.path)
+        self.path = os.path.normcase(self.path)
 
         if is_reparse_point(self.path):
             self.type = None
@@ -151,25 +152,22 @@ class LocalScannable(BaseScannable):
         return node
 
 class RemoteScannable(BaseScannable):
-    def __init__(self, encsync, prefix, data=None):
-        if data is not None:
-            path = data["path"]
-            enc_path = data["enc_path"]
-            type = data["type"][0]
+    def __init__(self, encsync, prefix, enc_path=None, resource=None):
+        if resource is not None:
+            type = resource.type[0]
 
-            modified = data["modified"]
-            modified = time.mktime(parse_date(modified))
+            modified = resource.modified.timestamp()
 
-            size = max(data["size"] - MIN_ENC_SIZE, 0)
-
-            IVs = data["IVs"]
+            size = max((resource.size or 0) - MIN_ENC_SIZE, 0)
         else:
-            path = prefix
-            enc_path = prefix
+            if enc_path is None:
+                enc_path = prefix
+
             type = "d"
             modified = None
             size = 0
-            IVs = b""
+
+        path, IVs = encsync.decrypt_path(enc_path, prefix)
 
         BaseScannable.__init__(self, path, type, modified, size)
         self.enc_path = enc_path
@@ -180,50 +178,37 @@ class RemoteScannable(BaseScannable):
         self.ynd = encsync.ynd
 
     def identify(self):
-        response = self.ynd.get_meta(self.enc_path, max_retries=30)
+        resource = self.ynd.get_meta(self.enc_path, n_retries=30)
 
-        if not response["success"]:
-            raise Exception()
+        self.modified = resource.modified.timestamp()
 
-        data = response["data"]
-
-        modified = data["modified"]
-        modified = time.mktime(parse_date(modified))
-
-        self.modified = modified
-
-        self.size = data.get("size", 0)
-        self.type = data["type"][0]
+        self.size = resource.size or 0
+        self.type = resource.type[0]
 
     def listdir(self, allowed_paths=None):
         if allowed_paths is None:
             allowed_paths = []
 
-        dirs = []
+        scannables = []
+
         for j in range(10):
             try:
-                for i in self.ynd.ls(self.enc_path):
-                    data = i["data"]
-                    enc_path = Paths.join(self.enc_path, data["name"])
-                    path, IVs = self.encsync.decrypt_path(enc_path, self.prefix)
+                for resource in self.ynd.listdir(self.enc_path):
+                    enc_path = Paths.join(self.enc_path, resource.name)
 
-                    if not PathMatch.match(path, allowed_paths):
-                        continue
+                    scannable = RemoteScannable(self.encsync, self.prefix, enc_path, resource)
 
-                    dirs.append({"path": path,
-                                 "enc_path": enc_path,
-                                 "type": data["type"],
-                                 "modified": data["modified"],
-                                 "size": data.get("size", 0),
-                                 "IVs": IVs})
+                    # TODO normalize scannable.path if it's a directory
+                    if PathMatch.match(scannable.path, allowed_paths):
+                        scannables.append(scannable)
                 break
-            except UnknownYandexDiskError as e:
-                dirs.clear()
+            except UnknownYaDiskError as e:
+                scannables.clear()
                 if j == 9:
                     raise e
 
-        for i in dirs:
-            yield RemoteScannable(self.encsync, self.prefix, i)
+        for i in scannables:
+            yield i
 
     def to_node(self):
         node = {"type": self.type,

@@ -4,6 +4,8 @@
 import threading
 import os
 
+from yadisk.exceptions import DiskNotFoundError
+
 from .Workers import UploadWorker, MkdirWorker, RmWorker, RmDupWorker
 from .SyncTask import SyncTask, SyncTarget
 from .Logging import logger
@@ -16,7 +18,6 @@ from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..DiffList import DiffList
 from ..Scannable import LocalScannable, RemoteScannable
 from ..Encryption import pad_size, MIN_ENC_SIZE
-from ..YandexDiskApi.Exceptions import DiskNotFoundError
 from .. import PathMatch
 from .. import Paths
 from .. import FileComparator

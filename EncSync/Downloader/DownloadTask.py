@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from collections import Counter
-
 from ..Task import Task
 
 class DownloadTask(Task):
@@ -39,8 +37,7 @@ class DownloadTask(Task):
             self.parent.downloaded += value - old_value
 
     def obtain_link(self, ynd):
-        response = ynd.get_download_link(self.remote)
-        if not response["success"]:
-            return None
-
-        return response["data"]["href"]
+        try:
+            return ynd.get_download_link(self.remote)
+        except yadisk.exceptions.YaDiskError:
+            pass

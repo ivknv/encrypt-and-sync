@@ -5,6 +5,8 @@ import os
 import time
 import traceback
 
+from yadisk.exceptions import YaDiskError
+
 from ..Scanner import Scanner, ScanTarget
 from ..Event.EventHandler import EventHandler
 from ..FileList import LocalFileList, RemoteFileList, DuplicateList
@@ -12,7 +14,6 @@ from .. import Paths
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from ..ExceptionManager import ExceptionManager
-from ..YandexDiskApi.Exceptions import YandexDiskError
 
 from . import common
 
@@ -95,7 +96,7 @@ class ScannerReceiver(EventHandler):
 
         self.exc_manager = ExceptionManager()
 
-        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(YaDiskError, self.on_disk_error)
         self.exc_manager.add(BaseException, self.on_exception)
 
     def on_started(self, event):
@@ -154,7 +155,7 @@ class WorkerReceiver(EventHandler):
 
         self.exc_manager = ExceptionManager()
 
-        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(YaDiskError, self.on_disk_error)
         self.exc_manager.add(BaseException, self.on_exception)
 
         self.last_print = 0

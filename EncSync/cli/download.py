@@ -4,9 +4,10 @@
 import os
 import traceback
 
+from yadisk.exceptions import YaDiskError
+
 from ..Downloader import Downloader
 from ..Downloader.Exceptions import NotFoundInDBError, FailedToObtainLinkError
-from ..YandexDiskApi.Exceptions import YandexDiskError
 from ..Event.EventHandler import EventHandler
 
 from . import common
@@ -43,7 +44,7 @@ class DownloaderReceiver(EventHandler):
 
         self.exc_manager = ExceptionManager()
 
-        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(YaDiskError, self.on_disk_error)
         self.exc_manager.add(NotFoundInDBError, self.on_not_found_error)
         self.exc_manager.add(BaseException, self.on_exception)
 
@@ -102,7 +103,7 @@ class WorkerReceiver(EventHandler):
 
         self.exc_manager = ExceptionManager()
 
-        self.exc_manager.add(YandexDiskError, self.on_disk_error)
+        self.exc_manager.add(YaDiskError, self.on_disk_error)
         self.exc_manager.add(FailedToObtainLinkError, self.on_failed_to_obtain_link_error)
         self.exc_manager.add(BaseException, self.on_exception)
 
