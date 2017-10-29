@@ -130,8 +130,9 @@ class Scanner(Worker):
         if not PathMatch.match(path, self.encsync.allowed_paths):
             return
 
-        self.shared_llist.insert_node(scannable.to_node())
-        self.add_task(scannable)
+        if scannable.type is not None:
+            self.shared_llist.insert_node(scannable.to_node())
+            self.add_task(scannable)
 
     def work(self):
         try:
@@ -167,8 +168,10 @@ class Scanner(Worker):
                 self.shared_duplist.begin_transaction()
 
                 if target.type == "local":
-                    self.start_worker(LocalScanWorker, self, target)
                     self.begin_local_scan(target)
+
+                    if self.pool:
+                        self.start_worker(LocalScanWorker, self, target)
                 elif target.type == "remote":
                     self.shared_duplist.remove_children(target.path)
 

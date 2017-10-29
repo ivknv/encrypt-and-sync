@@ -106,6 +106,8 @@ class FileComparator(object):
                 self.encpath1.remote_prefix = self.prefix2
                 self.encpath1.IVs = b""
 
+                assert(self.type1 is not None)
+
             if self.node2 is None:
                 self.type2 = None
                 self.path2 = None

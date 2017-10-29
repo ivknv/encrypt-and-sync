@@ -86,7 +86,8 @@ class LocalScanWorker(ScanWorker):
                 task.emit_event("interrupt")
                 return False
 
-            self.llist.insert_node(n)
+            if n["type"] is not None:
+                self.llist.insert_node(n)
 
         task.change_status("finished")
 

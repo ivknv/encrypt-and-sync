@@ -47,6 +47,9 @@ class LocalFileList(FileList):
         node = dict(node)
         normalize_node(node, True)
 
+        if node["type"] is None:
+            raise ValueError("Node type must not be None")
+
         self.conn.execute("""INSERT INTO filelist VALUES
                              (?, ?, ?, ?)""",
                           (node["type"],

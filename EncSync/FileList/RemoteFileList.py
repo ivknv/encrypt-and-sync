@@ -51,6 +51,9 @@ class RemoteFileList(FileList):
         node = dict(node)
         normalize_node(node, False)
 
+        if node["type"] is None:
+            raise ValueError("Node type is None")
+
         self.conn.execute("""INSERT INTO filelist VALUES
                             (?, ?, ?, ?, ?)""",
                           (node["type"],
