@@ -8,6 +8,13 @@ from . import Encryption
 from .FileList import RemoteFileList
 
 class EncPath(object):
+    """
+        Encrypted path class.
+
+        :param encsync: `EncSync` object
+        :param path: path relative to the prefixes
+    """
+
     def __init__(self, encsync, path=None):
         self.encsync = encsync
         self._path = None
@@ -22,6 +29,12 @@ class EncPath(object):
         self.path = path
 
     def copy(self):
+        """
+            Makes an exact copy of the path.
+
+            :returns: `EncPath`
+        """
+
         copy = EncPath(self.encsync, self.path)
         copy._IVs = self._IVs
         copy._local_prefix = self._local_prefix
@@ -30,96 +43,87 @@ class EncPath(object):
         return copy
 
     def get_IVs_from_db(self, directory=None):
+        """
+            Get IVs from the remote filelist database.
+
+            :param directory: directory containing the database
+
+            :returns: `bytes`
+        """
+
         rlist = RemoteFileList(directory)
 
         node = rlist.find_node(self.remote)
 
         return node["IVs"]
 
-    def get_path(self):
-        if None not in {self._local_prefix, self._local}:
-            return Paths.from_sys_sep(Paths.cut_prefix(self._local, self._local_prefix, sep=os.path.sep)) or "/"
-        elif self._remote_prefix is not None:
-            if self._remote is not None:
-                return Paths.cut_prefix(self._remote, self._remote_prefix) or "/"
-            elif self._remote_enc is not None:
-                return Paths.cut_prefix(self._remote_enc, self._remote_prefix) or "/"
-
+    def _get_path(self):
         if self._path_enc is not None:
-            if self._IVs is None or self._IVs == b"":
-                path, self._IVs = self.encsync.decrypt_path(self._path_enc)
-            else:
-                path = self.encsync.decrypt_path(self._path_enc, IVs=self._IVs)
+            path, self._IVs = self.encsync.decrypt_path(self._path_enc)
 
-            return path or "/"
+            return path
 
-    def get_path_enc(self):
+    def _get_path_enc(self):
         if self.path is None:
             return
 
-        self.update_IVs()
+        self._update_IVs()
 
-        if self._IVs is None or self._IVs == b"":
-            path_enc, self._IVs = self.encsync.encrypt_path(self.path, IVs=b"")
-        else:
-            path_enc = self.encsync.encrypt_path(self.path, IVs=self._IVs)[0]
+        return self.encsync.encrypt_path(self.path, IVs=self._IVs)[0]
 
-        return path_enc
-
-    def get_local(self):
-        prefix = self.local_prefix
+    def _get_local(self):
+        prefix = self._local_prefix
         path = self.path
-        if None not in {prefix, path}:
+
+        if None not in (prefix, path):
             return Paths.join(prefix, path)
 
-    def get_remote(self):
-        prefix = self.remote_prefix
+    def _get_remote(self):
+        prefix = self._remote_prefix
         path = self.path
-        if None not in {prefix, path}:
+
+        if None not in (prefix, path):
             return Paths.join(prefix, path)
 
-    def get_local_prefix(self):
-        if None not in {self.path, self.local}:
-            return Paths.to_sys(Paths.cut_off(Paths.from_sys_sep(self.local), self.path))
+    def _get_remote_enc(self):
+        if None not in (self._remote_prefix, self.path_enc):
+            return Paths.join(self._remote_prefix, self.path_enc)
 
-    def get_remote_prefix(self):
-        if None not in {self.path, self.remote}:
-            return Paths.cut_off(self.remote, self.path)
-        elif None not in {self.path_enc, self.remote_enc}:
-            return Paths.cut_off(self.remote_enc, self.path_enc)
-
-    def get_remote_enc(self):
-        if None not in {self.remote_prefix, self.path_enc}:
-            return Paths.join(self.remote_prefix, self.path_enc)
-
-    def get_IVs(self):
+    def _get_IVs(self):
         if self.path_enc is None:
             return
 
         IVs = b""
 
-        for path in (i for i in self.path_enc.split("/") if i):
-            IVs += Encryption.get_filename_IV(path)
+        for name in (i for i in self.path_enc.split("/") if i):
+            IVs += Encryption.get_filename_IV(name)
 
         return IVs
 
     @property
     def path(self):
+        """Path relative to the prefixes (assumes "/" as a separator)."""
+
         if self._path is None:
-            self._path = self.get_path()
+            self._path = self._get_path()
+
         return self._path
 
-    def update_IVs(self):
-        if self._IVs is not None or self._IVs == b"":
-            if self._path is None:
-                n_dirs = 0
-            else:
-                n_dirs = sum(1 for i in self._path.split("/") if i)
-            n_IVs = len(self._IVs) // 16
-            while n_IVs < n_dirs:
-                self._IVs += Encryption.gen_IV()
-                n_IVs += 1
-            self._IVs = self._IVs[:16 * n_dirs]
+    def _update_IVs(self):
+        if self._IVs is None:
+            self._IVs = b""
+
+        if self._path is None:
+            return
+
+        n_names = sum(1 for i in self._path.split("/") if i)
+        n_IVs = len(self._IVs) // 16
+
+        while n_IVs < n_names:
+            self._IVs += Encryption.gen_IV()
+            n_IVs += 1
+
+        self._IVs = self._IVs[:16 * n_names]
 
     @path.setter
     def path(self, value):
@@ -136,8 +140,10 @@ class EncPath(object):
 
     @property
     def path_enc(self):
+        """Encrypted path relative to the prefixes."""
+
         if self._path_enc is None:
-            self._path_enc = self.get_path_enc()
+            self._path_enc = self._get_path_enc()
         return self._path_enc
 
     @path_enc.setter
@@ -151,24 +157,35 @@ class EncPath(object):
 
     @property
     def local(self):
+        """Local path (read only)."""
+
         if self._local is None:
-            self._local = self.get_local()
+            self._local = self._get_local()
+
         return self._local
 
     @property
     def remote(self):
+        """Remote path (read only)."""
+
         if self._remote is None:
-            self._remote = self.get_remote()
+            self._remote = self._get_remote()
+
         return self._remote
 
     @property
     def remote_enc(self):
+        """Encrypted remote path (read only)."""
+
         if self._remote_enc is None:
-            self._remote_enc = self.get_remote_enc()
+            self._remote_enc = self._get_remote_enc()
+
         return self._remote_enc
 
     @property
     def local_prefix(self):
+        """Local prefix."""
+
         return self._local_prefix
 
     @local_prefix.setter
@@ -178,6 +195,8 @@ class EncPath(object):
 
     @property
     def remote_prefix(self):
+        """Remote prefix."""
+
         return self._remote_prefix
 
     @remote_prefix.setter
@@ -188,8 +207,11 @@ class EncPath(object):
 
     @property
     def IVs(self):
+        """Initialization vectors (IVs) of the encrypted path."""
+
         if self._IVs is None:
-            self._IVs = self.get_IVs()
+            self._IVs = self._get_IVs()
+
         return self._IVs
 
     @IVs.setter
