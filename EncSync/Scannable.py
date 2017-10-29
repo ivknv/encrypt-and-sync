@@ -102,7 +102,6 @@ class LocalScannable(BaseScannable):
     def identify(self):
         self.path = os.path.abspath(self.path)
         self.path = os.path.expanduser(self.path)
-        self.path = os.path.normcase(self.path)
 
         if is_reparse_point(self.path):
             self.type = None
