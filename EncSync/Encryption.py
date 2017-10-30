@@ -23,14 +23,34 @@ class DecryptionError(BaseException):
     pass
 
 def pad_size(size):
+    """
+        Pad `size` to be a multiple of 16.
+
+        :param size: `int`, size to be padded
+
+        :returns: `int`
+    """
+
     if size % 16 == 0:
         return size
 
     return size + 16 - (size % 16)
 
-def encrypt_file(in_file, out_file, key, filesize=None):
+def encrypt_file(in_file, out_file, key, filesize=None, iv=None):
+    """
+        Encrypt a file with a given key.
+
+        :param in_file: path to the input file (`str`) or a file-like object
+        :param out_file: path to the output file (`str`) or a file-like object
+        :param key: `bytes`, key to encrypt with
+        :param filesize: `int`, size of the input file, can be given to avoid its computation
+        :param iv: `bytes` or `None`, initialization vector (IV) to use, will be generated if `None`
+    """
+
     ivlen = 16
-    iv = Random.get_random_bytes(ivlen)
+
+    if iv is None:
+        iv = Random.get_random_bytes(ivlen)
 
     try:
         encryptor = AES.new(key, AES.MODE_CBC, iv)
@@ -39,7 +59,7 @@ def encrypt_file(in_file, out_file, key, filesize=None):
 
     close_in, close_out = False, False
 
-    if isinstance(in_file, str):
+    if isinstance(in_file, (str, bytes)):
         filesize = os.path.getsize(in_file)
         in_file = open(in_file, "rb")
         close_in = True
@@ -49,7 +69,7 @@ def encrypt_file(in_file, out_file, key, filesize=None):
         filesize = in_file.tell()
         in_file.seek(fpos, 0)
 
-    if isinstance(out_file, str):
+    if isinstance(out_file, (str, bytes)):
         out_file = open(out_file, "wb")
         close_out = True
 
@@ -78,13 +98,24 @@ def encrypt_file(in_file, out_file, key, filesize=None):
             if close_out:
                 out_file.close()
 
-def encrypt_data(in_data, key):
+def encrypt_data(in_data, key, iv=None):
+    """
+        Encrypts data with a given key.
+
+        :param in_data: `bytes`, input data
+        :param key: `bytes`, key to encrypt with
+        :param iv: `bytes` or `None`, initialization vector (IV) to use, will be generated if `None`
+
+        :returns: `bytes`
+    """
+
     ivlen = 16
 
     if not isinstance(in_data, bytes):
         raise EncryptionError("Input data must be bytes")
 
-    iv = Random.get_random_bytes(ivlen)
+    if iv is None:
+        iv = Random.get_random_bytes(ivlen)
 
     try:
         encryptor = AES.new(key, AES.MODE_CBC, iv)
@@ -114,10 +145,19 @@ def encrypt_data(in_data, key):
     return out_data
 
 def decrypt_data(in_data, key):
+    """
+        Decrypt previously encrypted data.
+
+        :param in_data: `bytes`, input data to be decrypted
+        :param key: `bytes`, key to use
+
+        :returns: `bytes`
+    """
+
     ivlen = 16
 
     if not isinstance(in_data, bytes):
-        raise EncryptionError("Input data must be bytes")
+        raise DecryptionError("Input data must be bytes")
 
     llsize = struct.calcsize("Q")
 
@@ -147,15 +187,23 @@ def decrypt_data(in_data, key):
     return out_data[:size]
 
 def decrypt_file(in_file, out_file, key):
+    """
+        Decrypt previously encrypted file.
+
+        :param in_file: path to the input file (`str`) or file-like object to be decrypted
+        :param out_file: path to the output file (`str`) or file-like object
+        :param key: `bytes`, key to use
+    """
+
     ivlen = 16
 
     close_in, close_out = False, False
 
-    if isinstance(in_file, str):
+    if isinstance(in_file, (str, bytes)):
         in_file = open(in_file, "rb")
         close_in = True
 
-    if isinstance(out_file, str):
+    if isinstance(out_file, (str, bytes)):
         out_file = open(out_file, "wb")
         close_out = True
 
@@ -194,6 +242,16 @@ def b64d(s):
     return base64.urlsafe_b64decode(bytearray([ord(c) for c in s]))
 
 def encrypt_filename(filename, key, iv=b""):
+    """
+        Encrypt filename with a given key.
+
+        :param filename: `str` or `bytes`, filename to encrypt
+        :param key: `bytes`, key to encrypt with
+        :param iv: `bytes` or `None`, initialization vector (IV) to use, will be generated if empty or `None`
+
+        :returns: `tuple` of 2 elements: encrypted filename (`str`), IV that was used (`bytes`)
+    """
+
     chunksize = 16
     ivlen = 16
     padding = b" "
@@ -207,7 +265,7 @@ def encrypt_filename(filename, key, iv=b""):
     if filename in (b".", b".."):
         return filename.decode("utf8"), DUMMY_IV
 
-    if len(iv) == 0:
+    if not iv:
         iv = Random.get_random_bytes(ivlen)
 
     try:
@@ -242,14 +300,38 @@ def encrypt_filename(filename, key, iv=b""):
 
     return b64e(encrypted), iv
 
-def get_filename_IV(encrypted):
+def get_filename_IV(encrypted_filename):
+    """
+        Extract initialization vector (IV) from an encrypted filename.
+
+        :param encrypted_filename: `str`, encrypted filename to extract IV from
+
+        :returns: `bytes`
+    """
+
     s = struct.calcsize("B")
-    return b64d(encrypted)[s:s + 16]
+    return b64d(encrypted_filename)[s:s + 16]
 
 def gen_IV():
+    """
+        Generate a new initialization vector (IV).
+
+        :returns: `bytes`
+    """
+
     return Random.get_random_bytes(16)
 
 def decrypt_filename(encrypted, key):
+    """
+        Decrypt a previously encrypted filename.
+
+        :param encrypted: `str`, previously encrypted filename
+        :param key: `bytes`, key to use
+
+        :returns: `tuple` of 2 elements: decrypted filename (`str` or `bytes` in case of UnicodeDecodeError)
+                  and IV that was used (`bytes`)
+    """
+
     chunksize = 16
     ivlen = 16
 
