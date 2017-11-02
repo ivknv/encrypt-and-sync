@@ -3,11 +3,14 @@
 
 from Crypto.Cipher import AES
 from Crypto import Random
+
 import os
 import struct
 import math
 import base64
 import binascii
+
+from . import Paths
 
 chunksize = 4096
 
@@ -341,6 +344,9 @@ def decrypt_filename(encrypted, key):
     if not isinstance(encrypted, str):
         raise DecryptionError("Filename must be str or bytes")
 
+    if not encrypted:
+        return "", b""
+
     if encrypted in (".", ".."):
         return encrypted, DUMMY_IV
 
@@ -382,3 +388,77 @@ def decrypt_filename(encrypted, key):
         return decrypted[:filename_len].decode("utf8"), iv
     except UnicodeDecodeError:
         return decrypted[:filename_len], iv
+
+
+def encrypt_path(path, key, prefix=None, ivs=b"", sep="/"):
+    """
+        Encrypt path with a given key.
+
+        :param path: path to be encrypted
+        :param key: `bytes`, key to encrypt with
+        :param prefix: path prefix to leave unencrypted
+        :param ivs: `bytes`, initialization vectors (IVs) to encrypt with
+        :param sep: path separator
+
+        :returns: `str`
+    """
+
+    if not path:
+        return path, b""
+
+    prefix = prefix or sep
+
+    orig_path = path
+    path = Paths.cut_prefix(path, prefix, sep)
+
+    func = lambda x, iv: encrypt_filename(x, key, iv) if x else ("", b"")
+    out_ivs = b""
+    path_names = []
+
+    if ivs:
+        for name, iv in zip(path.split(sep), (ivs[x:x + 16] for x in range(0, len(ivs), 16))):
+            enc_name, iv = func(name, iv)
+            path_names.append(enc_name)
+            out_ivs += iv
+    else:
+        for name in path.split(sep):
+            enc_name, iv = func(name, b"")
+            path_names.append(enc_name)
+            out_ivs += iv
+
+    prefix = prefix or sep
+
+    if orig_path.startswith(Paths.dir_normalize(prefix, sep)):
+        return Paths.join(prefix, sep.join(path_names), sep), out_ivs
+
+    return sep.join(path_names), out_ivs
+
+def decrypt_path(path, key, prefix=None, sep="/"):
+    """
+        Decrypt an encrypted path.
+
+        :param path: encrypted path to be decrypted
+        :param key: `bytes`, key to decrypt with
+        :param prefix: path prefix that was left unencrypted
+        :param sep: path separator
+
+        :returns: `str`
+    """
+
+    if prefix is not None:
+        dec_path, ivs = decrypt_path(Paths.cut_prefix(path, prefix, sep), key, None, sep)
+
+        if path.startswith(Paths.dir_normalize(prefix, sep)):
+            return Paths.join(prefix, dec_path, sep), ivs
+
+        return dec_path, ivs
+
+    ivs = b""
+    path_names = []
+
+    for name in path.split(sep):
+        dec_name, iv = decrypt_filename(name, key) if name else ("", b"")
+        path_names.append(dec_name)
+        ivs += iv
+
+    return sep.join(path_names), ivs

@@ -197,45 +197,7 @@ class EncSync(object):
         Encryption.decrypt_file(in_path, out_path, self.key)
 
     def encrypt_path(self, path, prefix=None, IVs=b""):
-        if prefix is not None:
-            enc_path, IVs = self.encrypt_path(Paths.cut_prefix(path, prefix), IVs=IVs)
-            if path.startswith(Paths.dir_normalize(prefix)):
-                return Paths.join(prefix, enc_path), IVs
-            return enc_path, IVs
-        elif path == "":
-            return "", b""
-
-        f = lambda x, IV: Encryption.encrypt_filename(x, self.key, IV) if x else ("", b"")
-        out_IVs = b""
-        path_fragments = []
-
-        if len(IVs):
-            for fragment, IV in zip(path.split("/"), chunk(IVs, 16)):
-                enc_fragment = f(fragment, IV)[0]
-                path_fragments.append(enc_fragment)
-                out_IVs += IV
-        else:
-            for fragment in path.split("/"):
-                enc_fragment, IV = f(fragment, b"")
-                path_fragments.append(enc_fragment)
-                out_IVs += IV
-
-        return "/".join(path_fragments), out_IVs
+        return Encryption.encrypt_path(path, self.key, prefix, ivs=IVs)
 
     def decrypt_path(self, path, prefix=None):
-        if prefix is not None:
-            dec_path, IVs = self.decrypt_path(Paths.cut_prefix(path, prefix))
-            if path.startswith(Paths.dir_normalize(prefix)):
-                return Paths.join(prefix, dec_path), IVs
-            return dec_path, IVs
-
-        f = lambda x: Encryption.decrypt_filename(x, self.key) if x else ("", b"")
-        IVs = b""
-        path_fragments = []
-
-        for fragment in path.split("/"):
-            dec_fragment, IV = f(fragment)
-            path_fragments.append(dec_fragment)
-            IVs += IV
-
-        return "/".join(path_fragments), IVs
+        return Encryption.decrypt_path(path, self.key, prefix)    

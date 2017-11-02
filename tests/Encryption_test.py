@@ -62,3 +62,33 @@ class EncryptionTestCase(unittest.TestCase):
         self.assertEqual(
             Encryption.decrypt_filename(Encryption.encrypt_filename("0123456789ABCDEF", key, iv)[0], key),
             ("0123456789ABCDEF", iv))
+
+    def test_encrypt_path(self):
+        key = b"1234" * 4
+        iv = b"78" * 8
+
+        self.assertEqual(Encryption.encrypt_path("/a/b/c", key, ivs=iv * 3),
+                         ("/Dzc4Nzg3ODc4Nzg3ODc4Nzhco8ML30VzCM4DK8QelkAJ/Dzc4Nzg3ODc4Nzg3ODc4NzgOJL8M76jvKJ-GjEVaLhpH/Dzc4Nzg3ODc4Nzg3ODc4NzhjHZ_s6PoucOINQPyEvBWx",
+                          iv * 3))
+        self.assertEqual(Encryption.encrypt_path("/prefix/a/b", key, "/prefix", ivs=iv * 2),
+                         ("/prefix/Dzc4Nzg3ODc4Nzg3ODc4Nzhco8ML30VzCM4DK8QelkAJ/Dzc4Nzg3ODc4Nzg3ODc4NzgOJL8M76jvKJ-GjEVaLhpH",
+                          iv * 2))
+
+        self.assertEqual(Encryption.encrypt_path("/", key), ("/", b""))
+        self.assertEqual(Encryption.encrypt_path("", key), ("", b""))
+
+    def test_decrypt_path(self):
+        key = b"1234" * 4
+        iv = b"78" * 8
+
+        self.assertEqual(Encryption.decrypt_path(Encryption.encrypt_path("/a/b/c", key, ivs=iv * 3)[0], key),
+                         ("/a/b/c", iv * 3))
+        self.assertEqual(
+            Encryption.decrypt_path(Encryption.encrypt_path("/prefix/a/b/c", key, "/prefix", ivs=iv * 3)[0],
+                                    key, "/prefix"),
+            ("/prefix/a/b/c", iv * 3))
+
+        self.assertEqual(Encryption.decrypt_path(Encryption.encrypt_path("/", key)[0], key),
+                         ("/", b""))
+        self.assertEqual(Encryption.decrypt_path(Encryption.encrypt_path("", key)[0], key),
+                         ("", b""))
