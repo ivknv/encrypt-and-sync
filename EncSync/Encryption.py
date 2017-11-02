@@ -429,7 +429,7 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep="/"):
     prefix = prefix or sep
 
     if orig_path.startswith(Paths.dir_normalize(prefix, sep)):
-        return Paths.join(prefix, sep.join(path_names), sep), out_ivs
+        return Paths.join(prefix, sep.join(path_names), sep=sep), out_ivs
 
     return sep.join(path_names), out_ivs
 
@@ -449,7 +449,7 @@ def decrypt_path(path, key, prefix=None, sep="/"):
         dec_path, ivs = decrypt_path(Paths.cut_prefix(path, prefix, sep), key, None, sep)
 
         if path.startswith(Paths.dir_normalize(prefix, sep)):
-            return Paths.join(prefix, dec_path, sep), ivs
+            return Paths.join(prefix, dec_path, sep=sep), ivs
 
         return dec_path, ivs
 

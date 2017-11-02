@@ -406,7 +406,7 @@ def do_sync(env, paths):
             local, remote = target["local"], target["remote"]
 
             paths.append(local)
-            paths.append(Paths.join("disk://", remote))
+            paths.append("disk://" + remote)
 
     if len(paths) == 0:
         show_error("Error: no paths given")

@@ -40,7 +40,7 @@ def ask_target_choice(targets):
 
 def get_path_with_schema(target):
     if target.type == "remote":
-        return Paths.join("disk://", target.path)
+        return "disk://" + target.path
 
     return target.path
 
@@ -199,7 +199,7 @@ def do_scan(env, paths):
                 paths.append(local)
 
             if not env.get("local_only", False):
-                paths.append(Paths.join("disk://", remote))
+                paths.append("disk://" + remote)
 
     if len(paths) == 0:
         common.show_error("Error: no paths given")
