@@ -40,3 +40,7 @@ def normalize_node(node, local=True):
         node["path"] = Paths.from_sys_sep(node["path"])
     if node["type"] == "d":
         node["path"] = Paths.dir_normalize(node["path"])
+
+
+def escape_glob(s):
+    return "".join("[" + i + "]" if i in "*?[]" else i for i in s)

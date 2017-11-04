@@ -7,12 +7,10 @@ from .FileList import FileList
 from .. import Paths
 from .. import CDB
 from ..common import normalize_node, node_tuple_to_dict, format_timestamp
+from ..common import escape_glob
 
 def prepare_path(path):
     return Paths.join_properly("/", path)
-
-def escape_glob(s):
-    return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
 
 class RemoteFileList(FileList):
     def __init__(self, directory=None, *args, **kwargs):

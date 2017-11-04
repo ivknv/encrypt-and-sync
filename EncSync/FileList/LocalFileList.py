@@ -7,9 +7,7 @@ from .FileList import FileList
 from .. import Paths
 from .. import CDB
 from ..common import normalize_node, node_tuple_to_dict, format_timestamp
-
-def escape_glob(s):
-    return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
+from ..common import escape_glob
 
 class LocalFileList(FileList):
     def __init__(self, directory=None, *args, **kwargs):
