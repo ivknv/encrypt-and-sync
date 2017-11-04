@@ -10,7 +10,13 @@ import math
 import base64
 import binascii
 
-from . import Paths
+from .Exceptions import *
+from .. import Paths
+
+__all__ = ["MIN_ENC_SIZE", "pad_size", "encrypt_file", "decrypt_file",
+           "encrypt_data", "decrypt_data", "encrypt_filename",
+           "decrypt_filename", "get_filename_IV", "gen_IV",
+           "encrypt_path", "decrypt_path"]
 
 chunksize = 4096
 
@@ -18,12 +24,6 @@ chunksize = 4096
 MIN_ENC_SIZE = struct.calcsize("Q") + 16
 
 DUMMY_IV = b"0" * 16
-
-class EncryptionError(BaseException):
-    pass
-
-class DecryptionError(BaseException):
-    pass
 
 def pad_size(size):
     """
