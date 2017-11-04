@@ -4,13 +4,12 @@
 import os
 import ctypes
 import sys
-import time
 from datetime import datetime
 from yadisk.exceptions import UnknownYaDiskError
 
 from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
-from .Node import normalize_node
+from .common import normalize_node
 from . import PathMatch
 
 if sys.platform.startswith("win"):

@@ -6,7 +6,7 @@ import os
 from .FileList import FileList
 from .. import Paths
 from .. import CDB
-from ..Node import normalize_node, node_tuple_to_dict, format_timestamp
+from ..common import normalize_node, node_tuple_to_dict, format_timestamp
 
 def escape_glob(s):
     return "".join("[" + i + "]" if i in "*?[]" else i for i in s)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-
 from . import Paths
 from . import Encryption
 from .FileList import RemoteFileList
+
+__all__ = ["EncPath"]
 
 class EncPath(object):
     """

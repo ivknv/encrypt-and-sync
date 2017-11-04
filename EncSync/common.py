@@ -4,6 +4,9 @@
 from datetime import datetime
 from . import Paths
 
+__all__ = ["format_timestamp", "parse_timestamp",
+           "node_tuple_to_dict", "normalize_node"]
+
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 def format_timestamp(timestamp):
@@ -25,6 +28,7 @@ def node_tuple_to_dict(t):
                 "padded_size": t[2],
                 "path": t[3],
                 "IVs": t[4] if len(t) >= 5 else b""}
+
     return {"type": None,
             "modified": None,
             "padded_size": None,
