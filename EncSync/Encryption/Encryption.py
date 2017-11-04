@@ -43,8 +43,8 @@ def encrypt_file(in_file, out_file, key, filesize=None, iv=None):
     """
         Encrypt a file with a given key.
 
-        :param in_file: path to the input file (`str`) or a file-like object
-        :param out_file: path to the output file (`str`) or a file-like object
+        :param in_file: path to the input file (`str` or `bytes`) or a file-like object
+        :param out_file: path to the output file (`str` or `bytes`) or a file-like object
         :param key: `bytes`, key to encrypt with
         :param filesize: `int`, size of the input file, can be given to avoid its computation
         :param iv: `bytes` or `None`, initialization vector (IV) to use, will be generated if `None`
@@ -193,8 +193,8 @@ def decrypt_file(in_file, out_file, key):
     """
         Decrypt previously encrypted file.
 
-        :param in_file: path to the input file (`str`) or file-like object to be decrypted
-        :param out_file: path to the output file (`str`) or file-like object
+        :param in_file: path to the input file (`str` or `bytes`) or file-like object to be decrypted
+        :param out_file: path to the output file (`str` or `bytes`) or file-like object
         :param key: `bytes`, key to use
     """
 
@@ -239,10 +239,10 @@ def decrypt_file(in_file, out_file, key):
                 out_file.close()
 
 def b64e(b):
-    return base64.urlsafe_b64encode(b).decode()
+    return base64.urlsafe_b64encode(b)
 
-def b64d(s):
-    return base64.urlsafe_b64decode(bytearray([ord(c) for c in s]))
+def b64d(b):
+    return base64.urlsafe_b64decode(b)
 
 def encrypt_filename(filename, key, iv=b""):
     """
@@ -252,12 +252,14 @@ def encrypt_filename(filename, key, iv=b""):
         :param key: `bytes`, key to encrypt with
         :param iv: `bytes` or `None`, initialization vector (IV) to use, will be generated if empty or `None`
 
-        :returns: `tuple` of 2 elements: encrypted filename (`str`), IV that was used (`bytes`)
+        :returns: `tuple` of 2 elements: encrypted filename (`str` or `bytes`), IV that was used (`bytes`)
     """
 
     chunksize = 16
     ivlen = 16
     padding = b" "
+
+    preferred_type = type(filename)
 
     if isinstance(filename, str):
         filename = filename.encode("utf8")
@@ -266,6 +268,9 @@ def encrypt_filename(filename, key, iv=b""):
         raise EncryptionError("Filename must be str or bytes")
 
     if filename in (b".", b".."):
+        if issubclass(preferred_type, bytes):
+            return filename, DUMMY_IV
+
         return filename.decode("utf8"), DUMMY_IV
 
     if not iv:
@@ -301,16 +306,27 @@ def encrypt_filename(filename, key, iv=b""):
 
         encrypted.extend(encryptor.encrypt(chunk))
 
-    return b64e(encrypted), iv
+    encrypted = b64e(encrypted)
+
+    try:
+        if issubclass(preferred_type, str):
+            return encrypted.decode("utf8"), iv
+    except UnicodeEncodeError:
+        pass
+
+    return encrypted, iv
 
 def get_filename_IV(encrypted_filename):
     """
         Extract initialization vector (IV) from an encrypted filename.
 
-        :param encrypted_filename: `str`, encrypted filename to extract IV from
+        :param encrypted_filename: `str` or `bytes`, encrypted filename to extract IV from
 
         :returns: `bytes`
     """
+
+    if isinstance(encrypted_filename, str):
+        encrypted_filename = encrypted_filename.encode("utf8")
 
     s = struct.calcsize("B")
     return b64d(encrypted_filename)[s:s + 16]
@@ -331,23 +347,25 @@ def decrypt_filename(encrypted, key):
         :param encrypted: `str`, previously encrypted filename
         :param key: `bytes`, key to use
 
-        :returns: `tuple` of 2 elements: decrypted filename (`str` or `bytes` in case of UnicodeDecodeError)
+        :returns: `tuple` of 2 elements: decrypted filename (`str` or `bytes`)
                   and IV that was used (`bytes`)
     """
 
     chunksize = 16
     ivlen = 16
 
-    if isinstance(encrypted, bytes):
-        encrypted = encrypted.decode()
+    preferred_type = type(encrypted)
 
-    if not isinstance(encrypted, str):
+    if isinstance(encrypted, str):
+        encrypted = encrypted.encode("utf8")
+
+    if not isinstance(encrypted, bytes):
         raise DecryptionError("Filename must be str or bytes")
 
     if not encrypted:
-        return "", b""
+        return preferred_type(), b""
 
-    if encrypted in (".", ".."):
+    if encrypted in (b".", b".."):
         return encrypted, DUMMY_IV
 
     try:
@@ -376,7 +394,7 @@ def decrypt_filename(encrypted, key):
 
     filename_len = encrypted_len - length_diff
 
-    decrypted = "".encode("utf8")
+    decrypted = b""
 
     for i in range(encrypted_len // 16):
         idx = llsize + ivlen + i * 16
@@ -384,13 +402,18 @@ def decrypt_filename(encrypted, key):
 
         decrypted += encryptor.decrypt(chunk)
 
+    decrypted = decrypted[:filename_len]
+
     try:
-        return decrypted[:filename_len].decode("utf8"), iv
+        if issubclass(preferred_type, str):
+            return decrypted.decode("utf8"), iv
     except UnicodeDecodeError:
-        return decrypted[:filename_len], iv
+        pass
+
+    return decrypted, iv
 
 
-def encrypt_path(path, key, prefix=None, ivs=b"", sep="/"):
+def encrypt_path(path, key, prefix=None, ivs=b"", sep=None):
     """
         Encrypt path with a given key.
 
@@ -400,8 +423,16 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep="/"):
         :param ivs: `bytes`, initialization vectors (IVs) to encrypt with
         :param sep: path separator
 
-        :returns: `str`
+        :returns: `tuple` of 2 elements: encrypted path (`str` or `bytes`) and IVs (`bytes`)
     """
+
+    preferred_type = Paths.get_preferred_type([path, prefix, sep])
+
+    if path is None:
+        path = preferred_type()
+
+    if sep is None:
+        sep = Paths.get_default_sep(preferred_type)
 
     if not path:
         return path, b""
@@ -411,7 +442,7 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep="/"):
     orig_path = path
     path = Paths.cut_prefix(path, prefix, sep)
 
-    func = lambda x, iv: encrypt_filename(x, key, iv) if x else ("", b"")
+    func = lambda x, iv: encrypt_filename(x, key, iv) if x else (preferred_type(), b"")
     out_ivs = b""
     path_names = []
 
@@ -426,14 +457,12 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep="/"):
             path_names.append(enc_name)
             out_ivs += iv
 
-    prefix = prefix or sep
-
     if orig_path.startswith(Paths.dir_normalize(prefix, sep)):
         return Paths.join(prefix, sep.join(path_names), sep=sep), out_ivs
 
     return sep.join(path_names), out_ivs
 
-def decrypt_path(path, key, prefix=None, sep="/"):
+def decrypt_path(path, key, prefix=None, sep=None):
     """
         Decrypt an encrypted path.
 
@@ -442,8 +471,16 @@ def decrypt_path(path, key, prefix=None, sep="/"):
         :param prefix: path prefix that was left unencrypted
         :param sep: path separator
 
-        :returns: `str`
+        :returns: `tuple` of 2 elements: decrypted path (`str` or `bytes`) and IVs (`bytes`)
     """
+
+    preferred_type = Paths.get_preferred_type([path, prefix, sep])
+
+    if sep is None:
+        sep = Paths.get_default_sep(preferred_type)
+
+    if path is None:
+        path = preferred_type()
 
     if prefix is not None:
         dec_path, ivs = decrypt_path(Paths.cut_prefix(path, prefix, sep), key, None, sep)
@@ -457,7 +494,7 @@ def decrypt_path(path, key, prefix=None, sep="/"):
     path_names = []
 
     for name in path.split(sep):
-        dec_name, iv = decrypt_filename(name, key) if name else ("", b"")
+        dec_name, iv = decrypt_filename(name, key) if name else (preferred_type(), b"")
         path_names.append(dec_name)
         ivs += iv
 
