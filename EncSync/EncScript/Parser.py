@@ -4,6 +4,9 @@
 import enum
 
 from .Tokenizer import Tokenizer, Token
+from .Exceptions import UnexpectedTokenError
+
+__all__ = ["AST", "Parser"]
 
 class AST(object):
     class Type(enum.Enum):
@@ -46,11 +49,16 @@ class Parser(object):
             tokens = []
 
         self.tokens = tokens
+        self.path = None
         self.idx = 0
 
-    def reset(self):
+    def reset_state(self):
         self.idx = 0
         self.tokens = []
+
+    def reset(self):
+        self.reset_state()
+        self.path = None
 
     def parse(self, output=None):
         if output is None:
@@ -69,8 +77,11 @@ class Parser(object):
         self.parse_end(output.new_child())
 
     def expect(self, *expected_types):
-        if self.tokens[self.idx].type not in expected_types:
-            raise ValueError("Unexpected token: %r" % self.tokens[self.idx])
+        token = self.tokens[self.idx]
+
+        if token.type not in expected_types:
+            raise UnexpectedTokenError(self.path, token.line_num, token.char_num,
+                                       "unexpected token: %r" % token)
 
     def accept(self, *expected_types):
         return self.tokens[self.idx].type in expected_types
@@ -119,7 +130,7 @@ class Parser(object):
         while True:
             try:
                 self.expect(Token.Type.WORD, Token.Type.LCBR)
-            except ValueError as e:
+            except UnexpectedTokenError as e:
                 if not self.accept(Token.Type.AND, Token.Type.SEP, Token.Type.END):
                     raise e
                 output.type = AST.Type.COMMAND

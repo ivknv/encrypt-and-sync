@@ -3,6 +3,10 @@
 
 import enum
 
+from .Exceptions import UnexpectedCharacterError
+
+__all__ = ["Tokenizer", "Token"]
+
 class Token(object):
     class Type(enum.Enum):
         UNDEFINED  = 0
@@ -14,9 +18,11 @@ class Token(object):
         SEP        = 6
         END        = 7
 
-    def __init__(self, string, token_type=Type.UNDEFINED):
+    def __init__(self, string, token_type=Type.UNDEFINED, line_num=0, char_num=0):
         self.string = string
         self.type = token_type
+        self.line_num = line_num
+        self.char_num = char_num
 
     def __repr__(self):
         if self.string:
@@ -43,6 +49,10 @@ class Char(object):
         self.in_quotes = False
         self.c_quote = False
         self.quote_char = None
+
+    @property
+    def raw_char(self):
+        return self._char
 
     @property
     def char(self):
@@ -132,6 +142,10 @@ class Tokenizer(object):
         self.c_quote = False
         self.quote_char = None
 
+        self.char_num = 1
+        self.line_num = 1
+        self.path = None
+
         self._state_handlers = {State.INITIAL:    self._handle_initial,
                                 State.WORD:       self._handle_word,
                                 State.COMMENT:    self._handle_comment,
@@ -155,7 +169,7 @@ class Tokenizer(object):
     def _push_token(self, output):
         if self.cur_token.type != Token.Type.UNDEFINED:
             output.append(self.cur_token)
-        self.cur_token = Token("")
+        self.cur_token = Token("", Token.Type.UNDEFINED, self.line_num, self.char_num)
 
     def end(self, output):
         self._push_token(output)
@@ -165,11 +179,18 @@ class Tokenizer(object):
 
         self._change_state(State.FINAL)
 
-    def reset(self):
+    def reset_state(self):
         self.escape = False
         self._exit_quotes()
         self._change_state(State.INITIAL)
         self.cur_token = Token("")
+
+    def reset(self):
+        self.reset_state()
+
+        self.line_num = 0
+        self.char_num = 0
+        self.path = None
 
     def parse_string(self, string, output=None):
         if output is None:
@@ -199,6 +220,12 @@ class Tokenizer(object):
             return
 
         self._state_handlers[self.state](char, output)
+
+        if char.raw_char == "\n":
+            self.char_num = 1
+            self.line_num += 1
+        else:
+            self.char_num += 1
 
     def _handle_initial(self, char, output):
         if char.is_whitespace():
@@ -237,7 +264,8 @@ class Tokenizer(object):
             self.cur_token.type = Token.Type.SYSCOMMAND
             self._change_state(State.SYSCOMMAND)
         elif char.is_ampersand():
-            raise ValueError("Unexpected character")
+            raise UnexpectedCharacterError(self.path, self.line_num, self.char_num,
+                                           "unexpected '&' character")
         else:
             self.cur_token.type = Token.Type.WORD
             self._change_state(State.WORD)
@@ -309,7 +337,8 @@ class Tokenizer(object):
 
     def _handle_dollar(self, char, output):
         if not char.is_quotes():
-            raise ValueError("Expected quotes")
+            raise UnexpectedCharacterError(self.path, self.line_num, self.char_num,
+                                           "expected quotes, got %r instead" % (char.raw_char,))
 
         self._enter_quotes(char.char)
         self._change_state(State.QUOTES)
@@ -324,7 +353,8 @@ class Tokenizer(object):
 
     def _handle_and(self, char, output):
         if not char.is_ampersand():
-            raise ValueError("Expected '&' character")
+            msg = "expected '&', got %r instead" % (char.raw_char,)
+            raise UnexpectedCharacterError(self.path, self.line_num, self.char_num, msg)
 
         self.cur_token.string += char.char
         self._push_token(output)

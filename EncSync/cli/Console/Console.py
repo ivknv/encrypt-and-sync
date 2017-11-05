@@ -17,6 +17,7 @@ import subprocess
 import shlex
 
 from ...EncScript import Parser, Tokenizer, ast2program
+from ...EncScript.Exceptions import EncScriptError
 from .. import common
 from ..common import show_error
 from ..Environment import Environment
@@ -95,15 +96,16 @@ class Console(object):
 
                         output = []
 
-                        tokenizer.reset()
+                        tokenizer.reset_state()
                         parser.reset()
                     else:
                         prompt_more = True
                         tokenizer.next_char("\n", output)
-                except ValueError as e:
+                except EncScriptError as e:
                     show_error("Error: %s" % e)
                     self.exit_code = 1
-                    tokenizer.reset()
+
+                    tokenizer.reset_state()
                     parser.reset()
                     output = []
             except KeyboardInterrupt:
