@@ -87,6 +87,7 @@ class Console(object):
                         tokenizer.next_char(i, output)
 
                     if not tokenizer.in_quotes and not tokenizer.escape:
+                        tokenizer.next_char("\n", output)
                         tokenizer.end(output)
 
                         parser.tokens = output
@@ -97,20 +98,23 @@ class Console(object):
                         output = []
 
                         tokenizer.reset_state()
-                        parser.reset()
+                        parser.reset_state()
                     else:
                         prompt_more = True
+
                         tokenizer.next_char("\n", output)
                 except EncScriptError as e:
                     show_error("Error: %s" % e)
                     self.exit_code = 1
 
+                    tokenizer.line_num += 1
+
                     tokenizer.reset_state()
-                    parser.reset()
+                    parser.reset_state()
                     output = []
             except KeyboardInterrupt:
                 output = []
-                parser.reset()
+                parser.reset_state()
                 print("")
             except EOFError:
                 break

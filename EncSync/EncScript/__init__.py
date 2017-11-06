@@ -9,4 +9,5 @@ from .AndOperator import AndOperator
 from .Namespace import Namespace
 from .Parser import Parser, AST
 from .Tokenizer import Tokenizer, Token
+from .Unescaper import Unescaper, unescape_word
 from .ASTConversions import ast2program

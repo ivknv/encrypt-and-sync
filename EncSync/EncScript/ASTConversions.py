@@ -47,10 +47,12 @@ def ast2command(ast, namespace):
             except KeyError:
                 raise ValueError("Unknown command: %r" % args[0])
 
-            if not issubclass(operator.A, Command):
+            command = command_type(args)
+
+            if not isinstance(command, Command):
                 raise ValueError("%r is not a command" % args[0])
 
-            operator.A = command_type(args)
+            operator.A = command
         elif child.type == AST.Type.COMMAND:
             operator.B = ast2command(child, namespace)
 
