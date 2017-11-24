@@ -39,7 +39,7 @@ def recursive_mkdir(path, basedir="."):
 
         try:
             os.mkdir(p)
-        except FileExistsError:
+        except (FileExistsError, PermissionError):
             pass
 
 class DownloaderWorker(Worker):
