@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import yadisk.exceptions
+
 from ..Task import Task
 
 class DownloadTask(Task):
