@@ -13,13 +13,13 @@ def format_timestamp(timestamp):
     try:
         return datetime.fromtimestamp(timestamp).strftime(DATE_FORMAT)
     except OSError:
-        return datetime(1970, 1, 1).strftime(DATE_FORMAT)
+        return datetime.fromtimestamp(86400).strftime(DATE_FORMAT)
 
 def parse_timestamp(s):
     try:
         return datetime.strptime(s, DATE_FORMAT).timestamp()
     except OSError:
-        return datetime(1970, 1, 1)
+        return 86400
 
 def node_tuple_to_dict(t):
     if t is not None:
