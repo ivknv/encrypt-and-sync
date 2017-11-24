@@ -425,9 +425,10 @@ def do_sync(env, paths):
     if env.get("no_journal"):
         q = "PRAGMA journal_mode = OFF"
         for i in (synchronizer.shared_llist,
-                  synchronizer.shared_rlist,
-                  synchronizer.shared_duplist,
-                  synchronizer.difflist):
+                  synchronizer.shared_rlist):
+            i.connection.execute(q)
+
+        for i in (synchronizer.shared_duplist, synchronizer.difflist):
             i.conn.execute(q)
 
     with GenericSignalManager(synchronizer):
