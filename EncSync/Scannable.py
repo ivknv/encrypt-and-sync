@@ -198,8 +198,12 @@ class RemoteScannable(BaseScannable):
 
                     scannable = RemoteScannable(self.encsync, self.prefix, enc_path, resource)
 
-                    # TODO normalize scannable.path if it's a directory
-                    if PathMatch.match(scannable.path, allowed_paths):
+                    path = scannable.path
+
+                    if scannable.type == "d":
+                        path = Paths.dir_normalize(path)
+
+                    if PathMatch.match(path, allowed_paths):
                         scannables.append(scannable)
                 break
             except (UnknownYaDiskError, requests.exceptions.RequestException) as e:
