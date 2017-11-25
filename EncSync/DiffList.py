@@ -16,42 +16,42 @@ class DiffList(object):
 
         kwargs.setdefault("isolation_level", None)
 
-        self.conn = CDB.connect(path, *args, **kwargs)
+        self.connection = CDB.connect(path, *args, **kwargs)
         self.encsync = encsync
 
     def __enter__(self):
-        self.conn.__enter__()
+        self.connection.__enter__()
 
     def __exit__(self, *args, **kwargs):
-        self.conn.__exit__()
+        self.connection.__exit__()
 
     def create(self):
-        with self.conn:
-            self.conn.execute("""CREATE TABLE IF NOT EXISTS differences
-                                 (diff_type TEXT, type TEXT, path TEXT,
-                                  local_prefix TEXT, remote_prefix TEXT, IVs TEXT)""")
-            self.conn.execute("""CREATE INDEX IF NOT EXISTS differences_path_index
-                                 ON differences(path ASC)""")
+        with self.connection:
+            self.connection.execute("""CREATE TABLE IF NOT EXISTS differences
+                                       (diff_type TEXT, type TEXT, path TEXT,
+                                        local_prefix TEXT, remote_prefix TEXT, IVs TEXT)""")
+            self.connection.execute("""CREATE INDEX IF NOT EXISTS differences_path_index
+                                       ON differences(path ASC)""")
 
     def insert_difference(self, diff):
         p = diff[2] # EncPath object
         local_prefix = Paths.dir_normalize(p.local_prefix)
         remote_prefix = Paths.dir_normalize(p.remote_prefix)
 
-        self.conn.execute("""INSERT INTO differences VALUES
-                            (?, ?, ?, ?, ?, ?)""",
-                          (diff[0], diff[1], p.path, local_prefix, remote_prefix, p.IVs))
+        self.connection.execute("""INSERT INTO differences VALUES
+                                   (?, ?, ?, ?, ?, ?)""",
+                                (diff[0], diff[1], p.path, local_prefix, remote_prefix, p.IVs))
 
     def clear_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        self.conn.execute("""DELETE FROM differences
-                             WHERE (local_prefix=? OR local_prefix=?) AND
-                                   (remote_prefix=? OR remote_prefix=?)""",
-                          (local_prefix, Paths.dir_normalize(local_prefix),
-                           remote_prefix, Paths.dir_normalize(remote_prefix)))
+        self.connection.execute("""DELETE FROM differences
+                                   WHERE (local_prefix=? OR local_prefix=?) AND
+                                         (remote_prefix=? OR remote_prefix=?)""",
+                                (local_prefix, Paths.dir_normalize(local_prefix),
+                                 remote_prefix, Paths.dir_normalize(remote_prefix)))
 
     def fetch_differences(self):
-        for i in self.conn.genfetch():
+        for i in self.connection.genfetch():
             encpath = EncPath(self.encsync, i[2])
             encpath.IVs = i[5]
             encpath.local_prefix = i[3]
@@ -60,112 +60,112 @@ class DiffList(object):
 
     def select_rm_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        with self.conn:
-            self.conn.execute("""SELECT * FROM differences
-                                 WHERE diff_type='rm' AND
-                                 (local_prefix=? OR local_prefix=?) AND
-                                 (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
+        with self.connection:
+            self.connection.execute("""SELECT * FROM differences
+                                       WHERE diff_type='rm' AND
+                                      (local_prefix=? OR local_prefix=?) AND
+                                      (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
+                                    (local_prefix, Paths.dir_normalize(local_prefix),
+                                     remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.fetch_differences()
 
     def select_rmdup_differences(self, remote_prefix):
-        with self.conn:
-            self.conn.execute("""SELECT * FROM differences
-                                 WHERE diff_type='rmdup' AND
-                                 (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
-                              (remote_prefix, Paths.dir_normalize(remote_prefix)))
+        with self.connection:
+            self.connection.execute("""SELECT * FROM differences
+                                      WHERE diff_type='rmdup' AND
+                                     (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
+                                    (remote_prefix, Paths.dir_normalize(remote_prefix)))
             return self.fetch_differences()
 
     def select_dirs_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        with self.conn:
-            self.conn.execute("""SELECT * FROM differences
-                                 WHERE diff_type='new' AND type='d' AND
-                                 (local_prefix=? OR local_prefix=?) AND
-                                 (remote_prefix=? OR remote_prefix=?) ORDER BY remote_prefix + path ASC""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
+        with self.connection:
+            self.connection.execute("""SELECT * FROM differences
+                                       WHERE diff_type='new' AND type='d' AND
+                                       (local_prefix=? OR local_prefix=?) AND
+                                       (remote_prefix=? OR remote_prefix=?) ORDER BY remote_prefix + path ASC""",
+                                    (local_prefix, Paths.dir_normalize(local_prefix),
+                                     remote_prefix, Paths.dir_normalize(remote_prefix)))
 
             return self.fetch_differences()
 
     def count_dirs_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        with self.conn:
-            self.conn.execute("""SELECT COUNT(*) FROM differences
-                                 WHERE diff_type='new' AND type='d' AND
-                                 (local_prefix=? OR local_prefix=?) AND
-                                 (remote_prefix=? OR remote_prefix=?)""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
-            return self.conn.fetchone()[0]
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM differences
+                                       WHERE diff_type='new' AND type='d' AND
+                                       (local_prefix=? OR local_prefix=?) AND
+                                       (remote_prefix=? OR remote_prefix=?)""",
+                                    (local_prefix, Paths.dir_normalize(local_prefix),
+                                     remote_prefix, Paths.dir_normalize(remote_prefix)))
+            return self.connection.fetchone()[0]
 
     def count_files_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        with self.conn:
-            self.conn.execute("""SELECT COUNT(*) FROM differences
-                                 WHERE diff_type='new' AND type='f' AND
-                                 (local_prefix=? OR local_prefix=?) AND
-                                 (remote_prefix=? OR remote_prefix=?)""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
-            return self.conn.fetchone()[0]
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM differences
+                                       WHERE diff_type='new' AND type='f' AND
+                                       (local_prefix=? OR local_prefix=?) AND
+                                       (remote_prefix=? OR remote_prefix=?)""",
+                                    (local_prefix, Paths.dir_normalize(local_prefix),
+                                     remote_prefix, Paths.dir_normalize(remote_prefix)))
+            return self.connection.fetchone()[0]
 
     def count_rm_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        with self.conn:
-            self.conn.execute("""SELECT COUNT(*) FROM differences
-                                 WHERE diff_type='rm' AND
-                                 (local_prefix=? OR local_prefix=?) AND
-                                 (remote_prefix=? OR remote_prefix=?)""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
-            return self.conn.fetchone()[0]
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM differences
+                                       WHERE diff_type='rm' AND
+                                       (local_prefix=? OR local_prefix=?) AND
+                                       (remote_prefix=? OR remote_prefix=?)""",
+                                    (local_prefix, Paths.dir_normalize(local_prefix),
+                                     remote_prefix, Paths.dir_normalize(remote_prefix)))
+            return self.connection.fetchone()[0]
 
     def count_rmdup_differences(self, remote_prefix):
-        with self.conn:
-            self.conn.execute("""SELECT COUNT(*) FROM differences
-                                 WHERE diff_type='rmdup' AND
-                                 (remote_prefix=? OR remote_prefix=?)""",
-                              (remote_prefix, Paths.dir_normalize(remote_prefix)))
-            return self.conn.fetchone()[0]
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM differences
+                                       WHERE diff_type='rmdup' AND
+                                       (remote_prefix=? OR remote_prefix=?)""",
+                                    (remote_prefix, Paths.dir_normalize(remote_prefix)))
+            return self.connection.fetchone()[0]
 
     def select_files_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        with self.conn:
-            self.conn.execute("""SELECT * FROM differences
-                                 WHERE diff_type='new' AND type='f' AND
-                                 (local_prefix=? OR local_prefix=?) AND
-                                 (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
+        with self.connection:
+            self.connection.execute("""SELECT * FROM differences
+                                       WHERE diff_type='new' AND type='f' AND
+                                       (local_prefix=? OR local_prefix=?) AND
+                                       (remote_prefix=? OR remote_prefix=?) ORDER BY path ASC""",
+                                    (local_prefix, Paths.dir_normalize(local_prefix),
+                                     remote_prefix, Paths.dir_normalize(remote_prefix)))
 
             return self.fetch_differences()
 
     def insert_differences(self, diffs):
-        with self.conn:
+        with self.connection:
             for i in diffs:
                 self.insert_difference(i)
 
     def get_difference_count(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
-        with self.conn:
-            self.conn.execute("""SELECT COUNT(*) FROM differences
-                                 WHERE (local_prefix=? OR local_prefix=?) AND
-                                       (remote_prefix=? OR remote_prefix=?)""",
-                              (local_prefix, Paths.dir_normalize(local_prefix),
-                               remote_prefix, Paths.dir_normalize(remote_prefix)))
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM differences
+                                       WHERE (local_prefix=? OR local_prefix=?) AND
+                                             (remote_prefix=? OR remote_prefix=?)""",
+                                    (local_prefix, Paths.dir_normalize(local_prefix),
+                                     remote_prefix, Paths.dir_normalize(remote_prefix)))
 
-            return self.conn.fetchone()[0]
+            return self.connection.fetchone()[0]
 
     def begin_transaction(self, *args, **kwargs):
-        self.conn.begin_transaction(*args, **kwargs)
+        self.connection.begin_transaction(*args, **kwargs)
 
     def rollback(self):
-        self.conn.rollback()
+        self.connection.rollback()
 
     def commit(self):
-        self.conn.commit()
+        self.connection.commit()
 
     def close(self):
-        self.conn.close()
+        self.connection.close()

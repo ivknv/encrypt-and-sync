@@ -209,10 +209,8 @@ def do_scan(env, paths):
 
     if env.get("no_journal"):
         q = "PRAGMA journal_mode = OFF"
-        for i in (scanner.shared_llist, scanner.shared_rlist):
+        for i in (scanner.shared_llist, scanner.shared_rlist, scanner.shared_duplist):
             i.connection.execute(q)
-
-        scanner.shared_duplist.conn.execute(q)
 
     with GenericSignalManager(scanner):
         targets = []
