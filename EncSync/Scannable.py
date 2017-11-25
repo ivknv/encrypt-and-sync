@@ -180,7 +180,7 @@ class RemoteScannable(BaseScannable):
     def identify(self):
         resource = self.ynd.get_meta(self.enc_path, n_retries=30)
 
-        self.modified = resource.modified.timestamp()
+        self.modified = resource.modified.timestamp() - resource.modified.utcoffset().seconds
 
         self.size = resource.size or 0
         self.type = resource.type[0]
