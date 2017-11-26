@@ -6,6 +6,7 @@ import os
 from ... import Paths
 
 from ...EncScript import Command
+from ...EncScript.Exceptions import EvaluationError
 from ..ConfigBlock import ConfigBlock
 
 def prepare_local_path(path):
@@ -16,14 +17,10 @@ def prepare_remote_path(path):
 
 class AddTargetCommand(Command):
     def evaluate(self, config):
-        if len(self.args) not in (2, 3):
-            raise ValueError("Expected 2 or 3 arguments")
+        if len(self.args) != 3:
+            raise EvaluationError(self, "Expected 3 arguments")
 
-        if len(self.args) == 2:
-            local, remote = self.args
-            name = None
-        else:
-            name, local, remote = self.args
+        name, local, remote = self.args
 
         local  = prepare_local_path(local)
         remote = prepare_remote_path(remote)
@@ -52,6 +49,6 @@ class TargetsBlock(ConfigBlock):
 
     def begin(self, *args, **kwargs):
         if len(self.args) > 1:
-            raise ValueError("Expected no arguments")
+            raise EvaluationError(self, "Expected no arguments")
 
     def end(self, *args, **kwargs): pass

@@ -103,7 +103,9 @@ class Console(object):
                         prompt_more = True
 
                         tokenizer.next_char("\n", output)
-                except EncScriptError as e:
+                except (KeyboardInterrupt, EOFError) as e:
+                    raise e
+                except BaseException as e:
                     show_error("Error: %s" % e)
                     self.exit_code = 1
 

@@ -28,6 +28,20 @@ class AST(object):
         self.type = node_type
         self.token = token
         self.children = []
+        self.line_num = 0
+        self.char_num = 0
+
+    def set_nums(self):
+        if self.token is not None:
+            self.line_num = self.token.line_num
+            self.char_num = self.token.char_num
+        else:
+            try:
+                self.line_num = self.children[0].line_num
+                self.char_num = self.children[0].char_num
+            except IndexError:
+                self.line_num = 1
+                self.char_num = 1
 
     def new_child(self, *args, **kwargs):
         child = AST(*args, **kwargs)
@@ -76,6 +90,8 @@ class Parser(object):
 
         self.parse_end(output.new_child())
 
+        output.set_nums()
+
     def expect(self, *expected_types):
         token = self.tokens[self.idx]
 
@@ -122,6 +138,8 @@ class Parser(object):
                 self.parse_sep(child)
                 break
 
+        output.set_nums()
+
     def parse_block_or_command(self, output):
         output.type = AST.Type.BLOCK
 
@@ -154,6 +172,8 @@ class Parser(object):
 
             self.parse_action(child)
 
+        output.set_nums()
+
     def parse_action(self, output):
         output.type = AST.Type.ACTION
 
@@ -166,6 +186,8 @@ class Parser(object):
         elif self.accept(Token.Type.SYSCOMMAND, Token.Type.SEP):
             self.parse_command(child)
 
+        output.set_nums()
+
     def parse_operator(self, output):
         output.type = AST.Type.OPERATOR
 
@@ -176,6 +198,7 @@ class Parser(object):
 
         output.type = ast_type
         output.token = self.tokens[self.idx]
+        output.set_nums()
 
         self.idx += 1
 

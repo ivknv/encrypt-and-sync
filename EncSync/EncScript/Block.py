@@ -8,6 +8,8 @@ class Block(object):
         self.args = args
         self.body = body
         self.retcode = 0
+        self.line_num = 0
+        self.char_num = 0
 
         self.namespace = Namespace(parent_namespace)
 

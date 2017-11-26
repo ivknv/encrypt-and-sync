@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from ...EncScript import Command
+from ...EncScript.Exceptions import EvaluationError
 
 def is_positive_int(x):
     try:
@@ -17,7 +18,7 @@ class SyncThreadsCommand(Command):
         arg = self.args[1]
 
         if not is_positive_int(arg):
-            raise ValueError("Expected a positive integer")
+            raise EvaluationError(self, "Expected a positive integer")
 
         config.sync_threads = int(arg)
 
@@ -26,7 +27,7 @@ class ScanThreadsCommand(Command):
         arg = self.args[1]
 
         if not is_positive_int(arg):
-            raise ValueError("Expected a positive integer")
+            raise EvaluationError(self, "Expected a positive integer")
 
         config.scan_threads = int(arg)
 
@@ -35,6 +36,6 @@ class DownloadThreadsCommand(Command):
         arg = self.args[1]
 
         if not is_positive_int(arg):
-            raise ValueError("Expected a positive integer")
+            raise EvaluationError(self, "Expected a positive integer")
 
         config.download_threads = int(arg)

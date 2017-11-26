@@ -4,6 +4,7 @@
 from ... import Paths
 
 from ...EncScript import Command
+from ...EncScript.Exceptions import EvaluationError
 from ..ConfigBlock import ConfigBlock
 
 def prepare_remote_path(path):
@@ -12,7 +13,7 @@ def prepare_remote_path(path):
 class AddEncryptedDirCommand(Command):
     def evaluate(self, config):
         if len(self.args) != 1:
-            raise ValueError("Expected only 1 path")
+            raise EvaluationError(self, "Expected only 1 path")
 
         config.encrypted_dirs.add(prepare_remote_path(self.args[0]))
 
@@ -36,7 +37,7 @@ class EncryptedDirsBlock(ConfigBlock):
 
     def begin(self, config):
         if len(self.args) > 1:
-            raise ValueError("Expected no arguments")
+            raise EvaluationError(self, "Expected no arguments")
 
         config.encrypted_dirs.clear()
 

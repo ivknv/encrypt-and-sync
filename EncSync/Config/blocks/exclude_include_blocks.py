@@ -5,6 +5,7 @@ import os
 from ... import Paths
 
 from ...EncScript import Command
+from ...EncScript.Exceptions import EvaluationError
 from ..ConfigBlock import ConfigBlock
 
 def prepare_path(path):
@@ -13,14 +14,14 @@ def prepare_path(path):
 class AddExcludeCommand(Command):
     def evaluate(self, config, exclude_list):
         if len(self.args) != 1:
-            raise ValueError("Expected only 1 pattern")
+            raise EvaluationError(self, "Expected only 1 pattern")
 
         exclude_list.append(prepare_path(self.args[0]))
 
 class AddIncludeCommand(Command):
     def evaluate(self, config, include_list):
         if len(self.args) != 1:
-            raise ValueError("Expected only 1 pattern")
+            raise EvaluationError(self, "Expected only 1 pattern")
 
         include_list.append(prepare_path(self.args[0]))
 
@@ -58,7 +59,7 @@ class ExcludeBlock(ConfigBlock):
 
     def begin(self, config, target_name=None):
         if len(self.args) > 2:
-            raise ValueError("Expected 0 or 1 argument")
+            raise EvaluationError(self, "Expected 0 or 1 argument")
 
         if len(self.args) == 2:
             target_name = self.args[1]
@@ -72,7 +73,7 @@ class ExcludeBlock(ConfigBlock):
                 if i["name"] == target_name:
                     target = i
             if target is None:
-                raise ValueError("Unknown target")
+                raise EvaluationError(self, "Unknown target")
 
         if target is not None:
             target["allowed_paths"].append(["e", self.exclude_list])
@@ -94,7 +95,7 @@ class IncludeBlock(ConfigBlock):
 
     def begin(self, config):
         if len(self.args) > 2:
-            raise ValueError("Expected either 0 or 1 argument")
+            raise EvaluationError(self, "Expected either 0 or 1 argument")
 
         if len(self.args) == 2:
             target_name = self.args[1]
@@ -108,7 +109,7 @@ class IncludeBlock(ConfigBlock):
                 if i["name"] == target_name:
                     target = i
             if target is None:
-                raise ValueError("Unknown target")
+                raise EvaluationError(self, "Unknown target")
 
         if target is not None:
             target["allowed_paths"].append(["i", self.include_list])

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from .Exceptions import ASTConversionError
 from .Parser import AST
 from .SysCommand import SysCommand
 from .AndOperator import AndOperator
@@ -9,6 +10,9 @@ from .Command import Command
 
 def ast2program(ast, program):
     program.body.clear()
+
+    program.line_num = ast.line_num
+    program.char_num = ast.char_num
 
     for child in ast.children:
         if child.type == AST.Type.END:
@@ -45,12 +49,14 @@ def ast2command(ast, namespace):
             try:
                 command_type = namespace[args[0]]
             except KeyError:
-                raise ValueError("Unknown command: %r" % args[0])
+                raise ASTConversionError(ast, "Unknown command: %r" % args[0])
 
             command = command_type(args)
+            command.line_num = ast.line_num
+            command.char_num = ast.char_num
 
             if not isinstance(command, Command):
-                raise ValueError("%r is not a command" % args[0])
+                raise ASTConversionError(ast, "%r is not a command" % args[0])
 
             operator.A = command
         elif child.type == AST.Type.COMMAND:
@@ -64,19 +70,31 @@ def ast2command(ast, namespace):
     try:
         command_type = namespace[args[0]]
     except KeyError:
-        raise ValueError("Unknown command: %r" % args[0])
+        raise ASTConversionError(ast, "Unknown command: %r" % args[0])
 
     if not issubclass(command_type, Command):
-        raise ValueError("%r is not a command" % args[0])
+        raise ASTConversionError(ast, "%r is not a command" % args[0])
 
-    return command_type(args)
+    command = command_type(args)
+    command.line_num = ast.line_num
+    command.char_num = ast.char_num
+
+    return command
 
 def ast2syscommand(ast):
-    return SysCommand(ast.token.string)
+    sys_command = SysCommand(ast.token.string)
+    sys_command.line_num = ast.line_num
+    sys_command.char_num = ast.char_num
+
+    return sys_command
 
 def ast2operator(ast):
     if ast.children[0].type == AST.Type.AND:
-        return AndOperator(None, None)
+        op = AndOperator(None, None)
+        op.line_num = ast.line_num
+        op.char_num = ast.char_num
+
+        return op
 
 def ast2block(ast, namespace):
     args = []
@@ -89,26 +107,29 @@ def ast2block(ast, namespace):
             try:
                 block_type = namespace[""]
             except KeyError:
-                raise ValueError("Unknown block: ''")
+                raise ASTConversionError(ast, "Unknown block: ''")
 
             if not issubclass(block_type, Block):
-                raise ValueError("'' is not a block")
-
-            block = block_type(args, body, namespace)
+                raise ASTConversionError(ast, "'' is not a block")
 
             args.append("")
 
-        if child.type == AST.Type.WORD:
+            block = block_type(args, body, namespace)
+            block.line_num = ast.line_num
+            block.char_num = ast.char_num
+        elif child.type == AST.Type.WORD:
             if not args:
                 try:
                     block_type = namespace[child.token.string]
                 except KeyError:
-                    raise ValueError("Unknown block: %r" % child.token.string)
+                    raise ASTConversionError(ast, "Unknown block: %r" % child.token.string)
 
                 if not issubclass(block_type, Block):
-                    raise ValueError("%r is not a block" % child.token.string)
+                    raise ASTConversionError(ast, "%r is not a block" % child.token.string)
 
                 block = block_type(args, body, namespace)
+                block.line_num = ast.line_num
+                block.char_num = ast.char_num
 
             args.append(child.token.string)
         elif child.type == AST.Type.ACTION:

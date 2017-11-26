@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__all__ = ["EncScriptError", "TokenizerError", "ParserError",
-           "UnexpectedCharacterError"]
+__all__ = ["EncScriptError", "TokenizerError", "ParserError", "UnexpectedCharacterError",
+           "ASTConversionError", "EvaluationError"]
 
 class EncScriptError(BaseException):
     pass
@@ -39,3 +39,13 @@ class UnexpectedTokenError(ParserError):
 
         self.path = path
         self.line_num, self.char_num = line_num, char_num
+
+class ASTConversionError(EncScriptError):
+    def __init__(self, ast, msg=""):
+        EncScriptError.__init__(self, msg)
+        self.ast = ast
+
+class EvaluationError(EncScriptError):
+    def __init__(self, node, msg=""):
+        EncScriptError.__init__(self, msg)
+        self.node = node
