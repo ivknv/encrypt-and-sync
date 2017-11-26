@@ -1,3 +1,4 @@
+Split filelist databases into many (target names for database filenames)
 Add support for multiple clouds / sources
 Add support for multiple operations (mirroring, 2-way sync, etc.)
 Add more file difference types
