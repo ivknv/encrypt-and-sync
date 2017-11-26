@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import threading
 import sys
 import time
 
@@ -19,12 +18,6 @@ class WorkerBase(EventHandler):
         self.parent = parent
         self.stopped = False
 
-        # Synchronization lock
-        if parent is not None:
-            self.sync_lock = parent.get_sync_lock()
-        else:
-            self.sync_lock = threading.Lock()
-
         self.add_event("started")
         self.add_event("stopping")
         self.add_event("finished")
@@ -35,9 +28,6 @@ class WorkerBase(EventHandler):
 
     def get_info(self):
         return {}
-
-    def get_sync_lock(self):
-        return self.sync_lock
 
     def stop(self):
         self.stopped = True

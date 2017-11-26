@@ -36,6 +36,8 @@ class Synchronizer(StagedWorker):
 
         self.speed_limit = float("inf") # Bytes per second
 
+        self.task_lock = threading.Lock()
+
         self.cur_target = None
         self.diffs = None
 
@@ -100,7 +102,7 @@ class Synchronizer(StagedWorker):
         if self.stage["name"] in ("scan", "check"):
             return self.get_next_scannable()
 
-        with self.get_sync_lock():
+        with self.task_lock:
             if not self.available:
                 return
 
