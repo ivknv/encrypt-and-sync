@@ -237,6 +237,7 @@ class Tokenizer(object):
             self._change_state(State.COMMENT)
         elif char.is_quotes():
             self.cur_token.string += char.char
+            self.cur_token.type = Token.Type.WORD
 
             self._enter_quotes(char.char)
             self._change_state(State.QUOTES)
