@@ -314,7 +314,7 @@ class Tokenizer(object):
 
     def _handle_and(self, char, output):
         if not char.is_ampersand():
-            msg = "expected '&', got %r instead" % (char.raw_char,)
+            msg = "expected '&', got %r instead" % (char.char,)
             raise UnexpectedCharacterError(self.path, self.line_num, self.char_num, msg)
 
         self.cur_token.string += char.char
