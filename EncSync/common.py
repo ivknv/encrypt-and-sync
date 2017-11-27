@@ -44,3 +44,6 @@ def normalize_node(node, local=True):
 
 def escape_glob(s):
     return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
+
+def validate_target_name(name):
+    return all(c.isalnum() or c in "_-+." for c in name)

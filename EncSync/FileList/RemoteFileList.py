@@ -1,17 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import base64
+
 from .FileList import FileList
 from .. import Paths
 from ..common import normalize_node, node_tuple_to_dict, format_timestamp
-from ..common import escape_glob
+from ..common import escape_glob, validate_target_name
 
 def prepare_path(path):
     return Paths.join_properly("/", path)
 
 class RemoteFileList(FileList):
-    def __init__(self, directory=None, *args, **kwargs):
-        FileList.__init__(self, "remote_filelist.db", directory, *args, **kwargs)
+    def __init__(self, name, directory=None, *args, **kwargs):
+        if not validate_target_name(name):
+            raise ValueError("Invalid target name: %r" % (name,))
+
+        FileList.__init__(self, "%s-remote.db" % (name,), directory, *args, **kwargs)
 
     def create(self):
         with self.connection:

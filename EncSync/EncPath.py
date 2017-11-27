@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sqlite3
+
 from . import Paths
 from . import Encryption
 from .FileList import RemoteFileList
@@ -42,18 +44,31 @@ class EncPath(object):
 
         return copy
 
-    def get_IVs_from_db(self, directory=None):
+    def get_IVs_from_db(self, name=None, directory=None):
         """
             Get IVs from the remote filelist database.
 
+            :param name: `str` or `None`, target name
             :param directory: directory containing the database
 
             :returns: `bytes`
         """
 
-        rlist = RemoteFileList(directory)
+        if name is None:
+            for target in self.encsync.targets:
+                if self.local_prefix == target["local"] or self.remote_prefix == target["remote"]:
+                    name = target["name"]
+                    break
 
-        node = rlist.find_node(self.remote)
+        if name is None:
+            return None
+
+        rlist = RemoteFileList(name, directory)
+
+        try:
+            node = rlist.find_node(self.remote)
+        except sqlite3.OperationalError:
+            return None
 
         return node["IVs"]
 

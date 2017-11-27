@@ -38,6 +38,16 @@ class FileList(object):
 
         raise NotImplementedError
 
+    def disable_journal(self):
+        """Disables journaling."""
+
+        self.connection.execute("PRAGMA journal_mode = OFF")
+
+    def enable_journal(self):
+        """Enables journaling."""
+
+        self.connection.execute("PRAGMA journal_mode = DELETE")
+
     def insert_node(self, node):
         """
             Insert the node into the database.

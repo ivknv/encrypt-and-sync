@@ -158,6 +158,12 @@ class DiffList(object):
 
             return self.connection.fetchone()[0]
 
+    def disable_journal(self):
+        self.connection.execute("PRAGMA journal_mode = OFF")
+
+    def enable_journal(self):
+        self.connection.execute("PRAGMA journal_mode = DELETE")
+
     def begin_transaction(self, *args, **kwargs):
         self.connection.begin_transaction(*args, **kwargs)
 

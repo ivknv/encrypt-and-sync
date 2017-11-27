@@ -44,8 +44,8 @@ class Downloader(Worker):
         with self.targets_lock:
             return list(self.targets)
 
-    def add_download(self, remote_prefix, remote, local):
-        target = DownloadTarget()
+    def add_download(self, name, remote_prefix, remote, local):
+        target = DownloadTarget(name)
         target.local = Paths.to_sys(local)
         target.remote = remote
         target.prefix = remote_prefix
@@ -109,7 +109,7 @@ class Downloader(Worker):
                            DownloaderWorker, self, self.cur_target)
 
     def scan(self, target):
-        rlist = RemoteFileList(self.directory)
+        rlist = RemoteFileList(target.name, self.directory)
 
         rlist.create()
 

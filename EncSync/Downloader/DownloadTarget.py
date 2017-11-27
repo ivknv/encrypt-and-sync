@@ -5,10 +5,11 @@ import threading
 from ..Task import Task
 
 class DownloadTarget(Task):
-    def __init__(self):
+    def __init__(self, name):
         Task.__init__(self)
 
         self.type = None
+        self.name = name
         self.prefix = "/" # Remote prefix
         self.remote = "" # Must be unencrypted
         self.local = ""

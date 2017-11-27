@@ -205,15 +205,41 @@ def make_encsync(env, enc_data_path=None, config_path=None, master_password=None
 def show_error(msg):
     print(msg, file=sys.stderr)
 
-def create_config_dir(env):
-    path = env["config_dir"]
+def create_encsync_dirs(env):
+    paths = (env["config_dir"], env["db_dir"])
 
-    try:
-        os.mkdir(path, mode=0o755)
-    except FileExistsError:
-        return 0
-    except FileNotFoundError:
-        show_error("Error: no such file or directory: %r" % path)
-        return 1
+    for path in paths:
+        try:
+            os.mkdir(path, mode=0o755)
+        except FileExistsError:
+            pass
+        except FileNotFoundError:
+            show_error("Error: no such file or directory: %r" % (path,))
+            return 1
 
     return 0
+
+def cleanup_filelists(env):
+    encsync = env["encsync"]
+    files = os.listdir(env["db_dir"])
+
+    target_names = {i["name"] for i in encsync.targets}
+
+    for filename in files:
+        suffix = None
+
+        for s in ("-local.db", "-remote.db"):
+            if filename.endswith(s):
+                suffix = s
+                break
+
+        if suffix is None:
+            continue
+
+        name = filename.rsplit(suffix, 1)[0]
+
+        if name not in target_names:
+            try:
+                os.remove(os.path.join(env["db_dir"], filename))
+            except (FileNotFoundError, IsADirectoryError, PermissionError):
+                pass

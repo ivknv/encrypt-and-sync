@@ -5,7 +5,7 @@ from . import common
 from ..FileList import DuplicateList
 
 def show_duplicates(env, paths):
-    duplist = DuplicateList(env["config_dir"])
+    duplist = DuplicateList(env["db_dir"])
     duplist.create()
     
     for path in paths:

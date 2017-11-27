@@ -26,7 +26,7 @@ from .cli.password_prompt import password_prompt
 
 def cleanup(env):
     try:
-        os.remove(os.path.join(env["config_dir"], "encsync_diffs.db"))
+        os.remove(os.path.join(env["db_dir"], "encsync_diffs.db"))
     except (FileNotFoundError, IsADirectoryError):
         pass
 
@@ -91,10 +91,11 @@ def main(args=None):
             ns.config_dir = "~/.encsync"
 
         env["config_dir"] = os.path.realpath(os.path.expanduser(ns.config_dir))
+        env["db_dir"] = os.path.join(env["config_dir"], "databases")
         env["config_path"] = os.path.join(env["config_dir"], "encsync.conf")
         env["enc_data_path"] = os.path.join(env["config_dir"], "encrypted_data.json")
 
-    common.create_config_dir(env)
+    common.create_encsync_dirs(env)
     if not os.path.exists(env["config_path"]):
         make_config(env, env["config_path"])
 

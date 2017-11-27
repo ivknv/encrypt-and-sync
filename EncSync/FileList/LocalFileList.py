@@ -4,11 +4,14 @@
 from .FileList import FileList
 from .. import Paths
 from ..common import normalize_node, node_tuple_to_dict, format_timestamp
-from ..common import escape_glob
+from ..common import escape_glob, validate_target_name
 
 class LocalFileList(FileList):
-    def __init__(self, directory=None, *args, **kwargs):
-        FileList.__init__(self, "local_filelist.db", directory, *args, **kwargs)
+    def __init__(self, name, directory=None, *args, **kwargs):
+        if not validate_target_name(name):
+            raise ValueError("Invalid target name: %r" % (name,))
+
+        FileList.__init__(self, "%s-local.db" % (name,), directory, *args, **kwargs)
 
     def create(self):
         with self.connection:

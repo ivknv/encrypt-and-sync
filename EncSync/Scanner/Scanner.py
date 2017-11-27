@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import threading
 
 from yadisk.exceptions import DiskNotFoundError
@@ -17,21 +18,25 @@ from .. import PathMatch
 from .. import Paths
 
 class Scanner(Worker):
-    def __init__(self, encsync, directory, n_workers=2):
+    def __init__(self, encsync, directory, n_workers=2, enable_journal=True):
         Worker.__init__(self)
 
         self.encsync = encsync
         self.n_workers = n_workers
         self.directory = directory
+        self.enable_journal = enable_journal
 
         self.targets = []
         self.targets_lock = threading.Lock()
 
-        self.cur_target = None
-
-        self.shared_llist = LocalFileList(directory)
-        self.shared_rlist = RemoteFileList(directory)
+        self.shared_llist = None
+        self.shared_rlist = None
         self.shared_duplist = DuplicateList(directory)
+
+        if not self.enable_journal:
+            self.shared_duplist.disable_journal()
+
+        self.cur_target = None
 
         self.pool = []
         self.pool_lock = threading.Lock()
@@ -47,8 +52,19 @@ class Scanner(Worker):
                 if i is not None:
                     i.change_status(status)
 
-    def add_dir(self, scan_type, path):
-        target = ScanTarget(scan_type, path)
+    def add_dir(self, scan_type, name):
+        path = None
+        for i in self.encsync.targets:
+            if i.name == name:
+                path = i[scan_type]
+                break
+
+        if scan_type == "local":
+            path = os.path.realpath(os.path.expanduser(path))
+        elif scan_type == "remote":
+            path = Paths.join_properly("/", path)
+
+        target = ScanTarget(scan_type, name, path)
 
         self.add_target(target)
 
@@ -62,11 +78,11 @@ class Scanner(Worker):
         with self.targets_lock:
             return list(self.targets)
 
-    def add_local_dir(self, path):
-        return self.add_dir("local", path)
+    def add_local_dir(self, name):
+        return self.add_dir("local", name)
 
-    def add_remote_dir(self, path):
-        return self.add_dir("remote", path)
+    def add_remote_dir(self, name):
+        return self.add_dir("remote", name)
 
     def stop_condition(self):
         return self.stopped
@@ -138,12 +154,12 @@ class Scanner(Worker):
         try:
             assert(self.n_workers >= 1)
 
-            self.shared_llist.create()
-            self.shared_rlist.create()
             self.shared_duplist.create()
         except BaseException as e:
             self.emit_event("error", e)
             return
+
+        target = None
 
         while not self.stop_condition():
             try:
@@ -156,12 +172,32 @@ class Scanner(Worker):
 
                 assert(target.type in ("local", "remote"))
 
-                filelist = {"local":  self.shared_llist,
-                            "remote": self.shared_rlist}[target.type]
-
                 if target.status == "suspended":
                     continue
 
+                self.shared_llist = LocalFileList(target.name, self.directory)
+                self.shared_rlist = RemoteFileList(target.name, self.directory)
+
+                if not self.enable_journal:
+                    self.shared_llist.disable_journal()
+                    self.shared_rlist.disable_journal()
+
+                self.shared_llist.create()
+                self.shared_rlist.create()
+
+                filelist = {"local":  self.shared_llist,
+                            "remote": self.shared_rlist}[target.type]
+            except BaseException as e:
+                try:
+                    self.emit_event("error", e)
+                    if target is not None:
+                        target.change_status("failed")
+                finally:
+                    self.cur_target = None
+
+                continue
+
+            try:
                 target.change_status("pending")
 
                 filelist.begin_transaction()

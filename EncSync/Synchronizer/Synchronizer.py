@@ -23,13 +23,14 @@ from .. import Paths
 from .. import FileComparator
 
 class Synchronizer(StagedWorker):
-    def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2):
+    def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2, enable_journal=True):
         StagedWorker.__init__(self)
 
         self.encsync = encsync
         self.n_workers = n_workers
         self.n_scan_workers = n_scan_workers
         self.directory = directory
+        self.enable_journal = enable_journal
 
         self.targets = []
         self.targets_lock = threading.Lock()
@@ -41,11 +42,14 @@ class Synchronizer(StagedWorker):
         self.cur_target = None
         self.diffs = None
 
-        self.shared_llist = LocalFileList(directory)
-        self.shared_rlist = RemoteFileList(directory)
+        self.shared_llist = None
+        self.shared_rlist = None
         self.shared_duplist = DuplicateList(directory)
-
         self.difflist = DiffList(self.encsync, self.directory)
+
+        if not self.enable_journal:
+            self.shared_duplist.disable_journal()
+            self.difflist.disable_journal()
 
         self.stage_order = ("scan", "duplicates", "rm", "dirs", "files", "check")
 
@@ -75,8 +79,8 @@ class Synchronizer(StagedWorker):
 
         return target
 
-    def add_new_target(self, enable_scan, local, remote, status="pending"):
-        target = SyncTarget(self, local, remote)
+    def add_new_target(self, name, enable_scan, local, remote, status="pending"):
+        target = SyncTarget(self, name, local, remote)
         target.enable_scan = enable_scan
 
         target.change_status(status)
@@ -131,6 +135,7 @@ class Synchronizer(StagedWorker):
         assert(self.cur_target is not None)
 
         diffs = FileComparator.compare_lists(self.encsync,
+                                             self.cur_target.name,
                                              self.cur_target.local,
                                              self.cur_target.remote,
                                              self.directory)
@@ -153,8 +158,6 @@ class Synchronizer(StagedWorker):
 
     def work(self):
         try:
-            self.shared_llist.create()
-            self.shared_rlist.create()
             self.shared_duplist.create()
             self.difflist.create()
         except BaseException as e:
@@ -179,6 +182,21 @@ class Synchronizer(StagedWorker):
                 target.change_status("pending")
 
                 assert(self.stage is None)
+
+                self.shared_llist = LocalFileList(target.name, self.directory)
+                self.shared_rlist = RemoteFileList(target.name, self.directory)
+
+                try:
+                    if not self.enable_journal:
+                        self.shared_llist.disable_journal()
+                        self.shared_rlist.disable_journal()
+
+                    self.shared_llist.create()
+                    self.shared_rlist.create()
+                except BaseException as e:
+                    self.emit_event("error", e)
+                    target.change_state("failed")
+                    continue
 
                 self.available = True
 
@@ -300,10 +318,10 @@ class Synchronizer(StagedWorker):
         assert(scan_type in ("local", "remote"))
 
         if scan_type == "local":
-            target = ScanTarget(scan_type, self.cur_target.local)
+            target = ScanTarget(scan_type, self.cur_target.name, self.cur_target.local)
             scannable = LocalScannable(target.path)
         elif scan_type == "remote":
-            target = ScanTarget(scan_type, self.cur_target.remote)
+            target = ScanTarget(scan_type, self.cur_target.name, self.cur_target.remote)
             scannable = RemoteScannable(self.encsync, target.path)
 
         self.cur_target.emit_event("%s_scan" % scan_type, target)

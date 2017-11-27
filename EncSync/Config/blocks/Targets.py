@@ -8,6 +8,7 @@ from ... import Paths
 from ...EncScript import Command
 from ...EncScript.Exceptions import EvaluationError
 from ..ConfigBlock import ConfigBlock
+from ...common import validate_target_name
 
 def prepare_local_path(path):
     return Paths.sys_explicit(os.path.realpath(os.path.expanduser(path)))
@@ -21,6 +22,9 @@ class AddTargetCommand(Command):
             raise EvaluationError(self, "Expected 3 arguments")
 
         name, local, remote = self.args
+
+        if not validate_target_name(name):
+            raise EvaluationError(self, "Invalid target name: %r" % (name,))
 
         local  = prepare_local_path(local)
         remote = prepare_remote_path(remote)

@@ -151,9 +151,8 @@ class DownloaderWorker(Worker):
                 if task.type == "d":
                     recursive_mkdir(task.local)
                     task.change_status("finished")
-                    continue
-
-                self.download_file(task)
+                else:
+                    self.download_file(task)
 
                 self.cur_task = None
             except BaseException as e:

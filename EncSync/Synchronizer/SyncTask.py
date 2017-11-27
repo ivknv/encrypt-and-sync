@@ -29,12 +29,13 @@ class SyncTask(Task):
             self.emit_event("uploaded_changed")
 
 class SyncTarget(Task):
-    def __init__(self, synchronizer, local=None, remote=None):
+    def __init__(self, synchronizer, name, local=None, remote=None):
         Task.__init__(self)
         self._stage = None
         self.local, self.remote = local, remote
         self.skip_integrity_check = False
         self.total_children = 0
+        self.name = name
         self.enable_scan = True
 
         self.add_event("stage_changed")

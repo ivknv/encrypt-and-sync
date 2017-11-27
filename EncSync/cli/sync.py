@@ -41,7 +41,7 @@ def ask_target_choice(targets):
             print("Error: %s" % str(e))
 
 def print_diffs(env, encsync, target):
-    difflist = DiffList(encsync, env["config_dir"])
+    difflist = DiffList(encsync, env["db_dir"])
 
     local, remote = target.local, target.remote
 
@@ -90,7 +90,7 @@ def view_diffs(env, encsync, target):
 def view_rmdup_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
-    difflist = DiffList(encsync, env["config_dir"])
+    difflist = DiffList(encsync, env["db_dir"])
 
     diffs = difflist.select_rmdup_differences(remote)
 
@@ -101,7 +101,7 @@ def view_rmdup_diffs(env, encsync, target):
 def view_rm_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
-    difflist = DiffList(encsync, env["config_dir"])
+    difflist = DiffList(encsync, env["db_dir"])
 
     diffs = difflist.select_rm_differences(local, remote)
 
@@ -112,7 +112,7 @@ def view_rm_diffs(env, encsync, target):
 def view_dirs_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
-    difflist = DiffList(encsync, env["config_dir"])
+    difflist = DiffList(encsync, env["db_dir"])
 
     diffs = difflist.select_dirs_differences(local, remote)
 
@@ -123,7 +123,7 @@ def view_dirs_diffs(env, encsync, target):
 def view_files_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
-    difflist = DiffList(encsync, env["config_dir"])
+    difflist = DiffList(encsync, env["db_dir"])
 
     diffs = difflist.select_files_differences(local, remote)
 
@@ -388,47 +388,40 @@ class TaskReceiver(EventHandler):
 
         print(progress_str + ": uploaded %6.2f%%" % uploaded_percent)
 
-def do_sync(env, paths):
+def do_sync(env, names):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
+
+    common.cleanup_filelists(env)
 
     no_scan = env.get("no_scan", False)
     no_check = env.get("no_check", False)
     no_choice = env.get("no_choice", False)
     ask = env.get("ask", False)
 
-    paths = list(paths)
+    names = list(names)
 
     if env.get("all", False):
         for target in encsync.targets:
-            local, remote = target["local"], target["remote"]
+            names.append(target["name"])
 
-            paths.append(local)
-            paths.append("disk://" + remote)
-
-    if len(paths) == 0:
-        show_error("Error: no paths given")
-        return 1
-
-    if len(paths) % 2 != 0:
-        show_error("Error: expected pairs of paths")
+    if len(names) == 0:
+        show_error("Error: no targets given")
         return 1
 
     n_sync_workers = env.get("n_workers", encsync.sync_threads)
     n_scan_workers = env.get("n_workers", encsync.scan_threads)
+    no_journal = env.get("no_journal", False)
 
-    synchronizer = Synchronizer(encsync, env["config_dir"], n_sync_workers, n_scan_workers)
+    synchronizer = Synchronizer(encsync,
+                                env["db_dir"],
+                                n_sync_workers,
+                                n_scan_workers,
+                                enable_journal=not no_journal)
+
     synchronizer.set_speed_limit(encsync.upload_limit)
-
-    if env.get("no_journal"):
-        q = "PRAGMA journal_mode = OFF"
-        for i in (synchronizer.shared_llist,
-                  synchronizer.shared_rlist,
-                  synchronizer.shared_duplist,
-                  synchronizer.difflist):
-            i.connection.execute(q)
 
     with GenericSignalManager(synchronizer):
         synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
@@ -438,23 +431,20 @@ def do_sync(env, paths):
 
         targets = []
 
-        for path1, path2 in zip(paths[::2], paths[1::2]):
-            path1, path1_type = common.recognize_path(path1)
-            path2, path2_type = common.recognize_path(path2)
+        for name in names:
+            local_path = None
+            remote_path = None
+            for i in encsync.targets:
+                if i["name"] == name:
+                    local_path = os.path.abspath(os.path.expanduser(i["local"]))
+                    remote_path = common.prepare_remote_path(i["remote"])
+                    break
 
-            if path1_type == path2_type:
-                show_error("Error: expected a pair of both local and remote paths")
+            if local_path is None and remote_path is None:
+                show_error("Error: unknown target %r" % (name,))
                 return 1
 
-            if path1_type == "local":
-                local, remote = path1, path2
-            else:
-                local, remote = path2, path1
-
-            local = os.path.realpath(os.path.expanduser(local))
-            remote = common.prepare_remote_path(remote)
-
-            target = SyncTarget(synchronizer, local, remote)
+            target = SyncTarget(synchronizer, name, local_path, remote_path)
             target.enable_scan = not no_scan
             target.skip_integrity_check = no_check
             targets.append(target)

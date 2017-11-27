@@ -180,7 +180,7 @@ def download(env, paths):
 
     n_workers = env.get("n_workers", encsync.download_threads)
 
-    downloader = Downloader(encsync, env["config_dir"], n_workers)
+    downloader = Downloader(encsync, env["db_dir"], n_workers)
     downloader.set_speed_limit(encsync.download_limit)
 
     with GenericSignalManager(downloader):
@@ -204,10 +204,21 @@ def download(env, paths):
             prefix = encsync.find_encrypted_dir(path)
 
             if prefix is None:
-                show_error("%r does not appear to be encrypted" % path)
+                show_error("%r does not appear to be encrypted" % (path,))
                 return 1
 
-            target = downloader.add_download(prefix, path, local)
+            name = None
+
+            for target in encsync.targets:
+                if target["remote"] == prefix:
+                    name = target["name"]
+                    break
+
+            if name is None:
+                show_error("%r is not a target" % (path,))
+                return 1
+
+            target = downloader.add_download(name, prefix, path, local)
             target.add_receiver(target_receiver)
             targets.append(target)
 

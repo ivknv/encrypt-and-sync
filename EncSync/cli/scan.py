@@ -16,6 +16,7 @@ from .parse_choice import interpret_choice
 from ..ExceptionManager import ExceptionManager
 
 from . import common
+from .common import show_error
 
 PRINT_RATE_LIMIT = 1.0
 
@@ -50,10 +51,10 @@ def print_target_totals(env, target):
     assert(target.type in ("local", "remote"))
 
     if target.type == "local":
-        filelist = LocalFileList(env["config_dir"])
+        filelist = LocalFileList(target.name, env["db_dir"])
         children = filelist.find_node_children(Paths.from_sys(target.path))
     elif target.type == "remote":
-        filelist = RemoteFileList(env["config_dir"])
+        filelist = RemoteFileList(target.name, env["db_dir"])
         children = filelist.find_node_children(target.path)
 
     for i in children:
@@ -72,7 +73,7 @@ def print_target_totals(env, target):
     if target.type != "remote":
         return
 
-    duplist = DuplicateList(env["config_dir"])
+    duplist = DuplicateList(env["db_dir"])
     duplist.create()
 
     children = duplist.find_children(target.path)
@@ -180,52 +181,74 @@ class WorkerReceiver(EventHandler):
     def on_exception(self, exc, scanner):
         traceback.print_exc()
 
-def do_scan(env, paths):
+def do_scan(env, names):
     encsync, ret = common.make_encsync(env)
+
     if encsync is None:
         return ret
+
+    common.cleanup_filelists(env)
 
     n_workers = env.get("n_workers", encsync.scan_threads)
     ask = env.get("ask", False)
     no_choice = env.get("no_choice", False)
 
-    paths = list(paths)
+    names = list(names)
 
     if env.get("all", False):
         for target in encsync.targets:
-            local, remote = target["local"], target["remote"]
-
             if not env.get("remote_only", False):
-                paths.append(local)
+                names.append("local:" + target["name"])
 
             if not env.get("local_only", False):
-                paths.append("disk://" + remote)
+                names.append("remote:" + target["name"])
 
-    if len(paths) == 0:
-        common.show_error("Error: no paths given")
+    if len(names) == 0:
+        show_error("Error: no targets given")
         return 1
 
-    scanner = Scanner(env["encsync"], env["config_dir"], n_workers)
+    no_journal = env.get("no_journal", False)
 
-    if env.get("no_journal"):
-        q = "PRAGMA journal_mode = OFF"
-        for i in (scanner.shared_llist, scanner.shared_rlist, scanner.shared_duplist):
-            i.connection.execute(q)
+    scanner = Scanner(env["encsync"], env["db_dir"], n_workers, enable_journal=not no_journal)
 
     with GenericSignalManager(scanner):
         targets = []
 
         target_receiver = TargetReceiver(env)
 
-        for path in paths:
-            path, scan_type = common.recognize_path(path)
-            if scan_type == "local":
-                path = os.path.realpath(os.path.expanduser(path))
+        for name in names:
+            if name.endswith(":local"):
+                scan_type = "local"
+                name = name[:-6]
+            elif name.endswith(":remote"):
+                scan_type = "remote"
+                name = name[:-7]
             else:
-                path = common.prepare_remote_path(path)
+                scan_type = None
 
-            target = ScanTarget(scan_type, path)
-            targets.append(target)
+            local_path = None
+            remote_path = None
+
+            for target in encsync.targets:
+                if target["name"] == name:
+                    if scan_type != "remote":
+                        local_path = target["local"]
+                        local_path = os.path.abspath(os.path.expanduser(local_path))
+
+                    if scan_type != "local":
+                        remote_path = target["remote"]
+                        remote_path = common.prepare_remote_path(remote_path)
+
+                    break
+
+            if local_path is not None:
+                targets.append(ScanTarget("local", name, local_path))
+            if remote_path is not None:
+                targets.append(ScanTarget("remote", name, remote_path))
+
+            if local_path is None and remote_path is None:
+                show_error("Error: unknown target %r" % (name,))
+                return 1
 
         if ask and not no_choice:
             targets = ask_target_choice(targets)
