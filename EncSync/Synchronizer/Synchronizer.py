@@ -136,8 +136,6 @@ class Synchronizer(StagedWorker):
 
         diffs = FileComparator.compare_lists(self.encsync,
                                              self.cur_target.name,
-                                             self.cur_target.local,
-                                             self.cur_target.remote,
                                              self.directory)
         try:
             self.difflist.begin_transaction()

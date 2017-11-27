@@ -23,6 +23,17 @@ class LocalFileList(FileList):
             self.connection.execute("""CREATE INDEX IF NOT EXISTS path_index
                                        ON filelist(path ASC)""")
 
+    def get_root(self):
+        """
+            Get the root node which is also the target prefix.
+
+            :returns: `dict`
+        """
+
+        with self.connection:
+            self.connection.execute("SELECT * FROM filelist ORDER BY path ASC LIMIT 1")
+            return node_tuple_to_dict(self.connection.fetchone())
+
     def insert_node(self, node):
         node = dict(node)
         normalize_node(node, True)

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from . import Paths
 from . import PathMatch
 from .FileList import LocalFileList, RemoteFileList, DuplicateList
@@ -13,23 +15,26 @@ def try_next(it, default=None):
         return default
 
 class FileComparator(object):
-    def __init__(self, encsync, name, prefix1, prefix2, directory=None):
+    def __init__(self, encsync, name, directory=None):
         self.encsync = encsync
-        self.prefix1 = Paths.from_sys(prefix1)
-        self.prefix2 = Paths.dir_normalize(prefix2)
-        self.directory = directory
 
         self.target = None
+        self.directory = directory
 
-        for i in encsync.targets:
-            if Paths.dir_normalize(i["remote"]) == self.prefix2:
-                self.target = i
+        for target in encsync.targets:
+            if target["name"] == name:
+                self.target = target
+                break
 
         llist = LocalFileList(name, directory)
         rlist = RemoteFileList(name, directory)
 
-        self.nodes1 = llist.find_node_children(self.prefix1)
-        self.nodes2 = rlist.find_node_children(self.prefix2)
+        self.prefix1 = Paths.from_sys(os.path.abspath(os.path.expanduser(target["local"])))
+        self.prefix1 = Paths.dir_normalize(self.prefix1)
+        self.prefix2 = Paths.dir_normalize(Paths.join_properly("/", target["remote"]))
+
+        self.nodes1 = llist.select_all_nodes()
+        self.nodes2 = rlist.select_all_nodes()
         self.duplicates = None
 
         self.it1 = iter(self.nodes1)
@@ -188,8 +193,8 @@ class FileComparator(object):
     def is_transitioned(self):
         return self.node1 and self.node2 and self.type1 != self.type2
 
-def compare_lists(encsync, name, prefix1, prefix2, directory=None):
-    comparator = FileComparator(encsync, name, prefix1, prefix2, directory)
+def compare_lists(encsync, name, directory=None):
+    comparator = FileComparator(encsync, name, directory)
 
     for i in comparator:
         for j in i:

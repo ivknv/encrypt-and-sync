@@ -108,7 +108,7 @@ def main(args=None):
 
     actions = (("scan", lambda: do_scan(env, ns.scan)),
                ("sync", lambda: do_sync(env, ns.sync)),
-               ("show_diffs", lambda: show_diffs(env, *ns.show_diffs[:2])),
+               ("show_diffs", lambda: show_diffs(env, ns.show_diffs[0])),
                ("download", lambda: download(env, ns.download)),
                ("encrypt", lambda: encrypt(env, ns.encrypt)),
                ("encrypt_filename", lambda: encrypt_filename(env,
@@ -174,7 +174,7 @@ def parse_args(args):
 
     actions_group = parser.add_mutually_exclusive_group()
     actions_group.add_argument("-s", "--scan", nargs="*")
-    actions_group.add_argument("-d", "--show-diffs", nargs=2)
+    actions_group.add_argument("-d", "--show-diffs", nargs=1)
     actions_group.add_argument("-S", "--sync", nargs="*")
     actions_group.add_argument("-D", "--download", nargs="+")
     actions_group.add_argument("--encrypt", nargs="+")
