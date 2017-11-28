@@ -134,9 +134,12 @@ class Synchronizer(StagedWorker):
     def build_diffs_table(self):
         assert(self.cur_target is not None)
 
+        self.cur_target.emit_event("diffs_started")
+
         diffs = FileComparator.compare_lists(self.encsync,
                                              self.cur_target.name,
                                              self.directory)
+        
         try:
             self.difflist.begin_transaction()
             self.difflist.clear_differences(self.cur_target.local,
@@ -145,14 +148,21 @@ class Synchronizer(StagedWorker):
             self.difflist.commit()
         except BaseException as e:
             self.difflist.rollback()
+            self.cur_target.emit_event("diffs_failed")
             raise e
 
-        if self.cur_target.stage != "check":
-            diff_count = self.difflist.get_difference_count(self.cur_target.local,
-                                                            self.cur_target.remote)
-            n_done = self.cur_target.get_n_done()
+        try:
+            if self.cur_target.stage != "check":
+                diff_count = self.difflist.get_difference_count(self.cur_target.local,
+                                                                self.cur_target.remote)
+                n_done = self.cur_target.get_n_done()
 
-            self.cur_target.total_children = diff_count + n_done
+                self.cur_target.total_children = diff_count + n_done
+        except BaseException as e:
+            self.cur_target.emit_event("diffs_failed")
+            raise e
+
+        self.cur_target.emit_event("diffs_finished")
 
     def work(self):
         try:

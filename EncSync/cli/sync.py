@@ -242,6 +242,9 @@ class TargetReceiver(EventHandler):
         self.add_callback("integrity_check", self.on_integrity_check)
         self.add_callback("integrity_check_finished", self.on_integrity_check_finished)
         self.add_callback("integrity_check_failed", self.on_integrity_check_failed)
+        self.add_callback("diffs_started", self.on_diffs_started)
+        self.add_callback("diffs_failed", self.on_diffs_failed)
+        self.add_callback("diffs_finished", self.on_diffs_finished)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -293,6 +296,21 @@ class TargetReceiver(EventHandler):
     def on_integrity_check_failed(self, event):
         target = event["emitter"]
         print("[%s -> %s]: integrity check: failed" % (target.local, target.remote))
+
+    def on_diffs_started(self, event):
+        target = event.emitter
+
+        print("[%s -> %s]: building the difference table" % (target.local, target.remote))
+
+    def on_diffs_failed(self, event):
+        target = event.emitter
+
+        print("[%s -> %s]: failed to build the difference table" % (target.local, target.remote))
+
+    def on_diffs_finished(self, event):
+        target = event.emitter
+
+        print("[%s -> %s]: finished building the difference table" % (target.local, target.remote))
 
 class WorkerReceiver(EventHandler):
     def __init__(self):

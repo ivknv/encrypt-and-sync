@@ -48,6 +48,9 @@ class SyncTarget(Task):
         self.add_event("integrity_check")
         self.add_event("integrity_check_finished")
         self.add_event("integrity_check_failed")
+        self.add_event("diffs_started")
+        self.add_event("diffs_failed")
+        self.add_event("diffs_finished")
 
     @property
     def stage(self):
