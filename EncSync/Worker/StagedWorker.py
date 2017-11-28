@@ -10,8 +10,6 @@ class StagedWorker(Worker):
         Worker.__init__(self, parent, daemon)
 
         self.stage = None
-        self.available = True
-
         self.stages = {}
 
         self.add_event("entered_stage")
@@ -44,8 +42,6 @@ class StagedWorker(Worker):
         except KeyError:
             raise UnknownStageError(name)
 
-        self.available = True
-
         self.emit_event("entered_stage", name)
 
         enter_callback = self.stage["enter"]
@@ -55,8 +51,6 @@ class StagedWorker(Worker):
 
     def exit_stage(self):
         assert(self.stage is not None)
-
-        self.available = False
 
         self.stop_workers()
 

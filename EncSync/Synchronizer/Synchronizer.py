@@ -100,16 +100,10 @@ class Synchronizer(StagedWorker):
             worker.speed_limit = self.speed_limit
 
     def get_next_task(self):
-        if not self.available:
-            return
-
         if self.stage["name"] in ("scan", "check"):
             return self.get_next_scannable()
 
         with self.task_lock:
-            if not self.available:
-                return
-
             try:
                 diff = next(self.diffs)
             except StopIteration:
@@ -205,8 +199,6 @@ class Synchronizer(StagedWorker):
                     self.emit_event("error", e)
                     target.change_state("failed")
                     continue
-
-                self.available = True
 
                 stages = self.stage_order
 
