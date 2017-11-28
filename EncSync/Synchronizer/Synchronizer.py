@@ -115,7 +115,7 @@ class Synchronizer(StagedWorker):
             task.task_type, task.type, task.path = diff[:3]
 
             try:
-                if task.task_type == "new" and task.type == "f":
+                if task.task_type in ("new", "update") and task.type == "f":
                     size = os.path.getsize(Paths.to_sys(diff[2].local))
                     task.size = pad_size(size) + MIN_ENC_SIZE
             except FileNotFoundError:

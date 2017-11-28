@@ -48,12 +48,14 @@ def print_diffs(env, encsync, target):
     n_rmdup = difflist.count_rmdup_differences(remote)
     n_rm = difflist.count_rm_differences(local, remote)
     n_dirs = difflist.count_dirs_differences(local, remote)
-    n_files = difflist.count_files_differences(local, remote)
+    n_new_files = difflist.count_new_file_differences(local, remote)
+    n_update = difflist.count_update_differences(local, remote)
 
     print("[%s -> %s]: %d duplicate removals" % (local, remote, n_rmdup))
     print("[%s -> %s]: %d removals" % (local, remote, n_rm))
     print("[%s -> %s]: %d new directories" % (local, remote, n_dirs))
-    print("[%s -> %s]: %d files to upload" % (local, remote, n_files))
+    print("[%s -> %s]: %d new files to upload" % (local, remote, n_new_files))
+    print("[%s -> %s]: %d files to update" % (local, remote, n_update))
 
 def ask_continue(synchronizer):
     answer = None
@@ -77,10 +79,13 @@ def ask_continue(synchronizer):
 
 def view_diffs(env, encsync, target):
     funcs = {"du": view_rmdup_diffs, "r": view_rm_diffs,
-             "d": view_dirs_diffs,   "f": view_files_diffs}
+             "d":  view_dirs_diffs,  "f": view_new_file_diffs,
+             "u":  view_update_diffs}
+
+    s = "What differences? [(du)plicates/(r)m/(d)irs/new (f)iles/(u)pdates/(s)top]: "
 
     while True:
-        answer = input("What differences? [(du)plicates/(r)m/(d)irs/(f)iles/(s)top]: ").lower()
+        answer = input(s).lower()
 
         if answer in funcs.keys():
             funcs[answer](env, encsync, target)
@@ -120,16 +125,27 @@ def view_dirs_diffs(env, encsync, target):
     for diff in diffs:
         print("  %s" % (diff[2].remote))
 
-def view_files_diffs(env, encsync, target):
+def view_new_file_diffs(env, encsync, target):
     local, remote = target.local, target.remote
 
     difflist = DiffList(encsync, env["db_dir"])
 
-    diffs = difflist.select_files_differences(local, remote)
+    diffs = difflist.select_new_file_differences(local, remote)
 
-    print("Files to upload:")
+    print("New files to upload:")
     for diff in diffs:
         print("  %s" % (diff[2].local))
+
+def view_update_diffs(env, encsync, target):
+    local, remote = target.local, target.remote
+
+    difflist = DiffList(encsync, env["db_dir"])
+
+    diffs = difflist.select_update_differences(local, remote)
+
+    print("Files to update:")
+    for diff in diffs:
+        print("  %s" % (diff[2].remote))
 
 def print_target_totals(target):
     n_finished = target.progress["finished"]

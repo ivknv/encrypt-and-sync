@@ -74,7 +74,7 @@ class FileComparator(object):
     def diff_update(self):
         self.node1 = try_next(self.it1)
         self.node2 = try_next(self.it2)
-        return [("path is newer", "new", self.type2, self.encpath2)[1:]]
+        return [("path is newer", "update", self.type2, self.encpath2)[1:]]
 
     def diff_transition(self):
         self.node1 = try_next(self.it1)

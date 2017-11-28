@@ -7,7 +7,7 @@ class SyncTask(Task):
     def __init__(self):
         Task.__init__(self)
 
-        self.task_type = None # "new", "rm" or "rmdup"
+        self.task_type = None # "new", "update", "rm" or "rmdup"
         self.type = None # "f" or "d"
         self.path = None
         self._uploaded = 0
