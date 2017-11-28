@@ -35,16 +35,27 @@ class SynchronizerWorker(Worker):
         self.duplist = dispatcher.shared_duplist
 
         self.add_event("next_task")
+        self.add_event("autocommit")
+        self.add_event("autocommit_failed")
+        self.add_event("autocommit_finished")
         self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 
     def autocommit(self):
-        if self.llist.time_since_last_commit() >= COMMIT_INTERVAL:
-            self.llist.seamless_commit()
+        self.emit_event("autocommit")
 
-        if self.rlist.time_since_last_commit() >= COMMIT_INTERVAL:
-            self.rlist.seamless_commit()
+        try:
+            if self.llist.time_since_last_commit() >= COMMIT_INTERVAL:
+                self.llist.seamless_commit()
+
+            if self.rlist.time_since_last_commit() >= COMMIT_INTERVAL:
+                self.rlist.seamless_commit()
+        except BaseException as e:
+            self.emit_event("autocommit_failed")
+            raise e
+
+        self.emit_event("autocommit_finished")
 
     def work_func(self):
         raise NotImplementedError
