@@ -18,10 +18,9 @@ upload-limit inf
 download-limit inf
 
 # List of targets to sync
+# Target name can contain digits, characters of english alphabet, '+', '-', '_' and '.'
 targets {
     # preferred-target-name /path/to/local/dir /path/to/remote/dir
-    # OR
-    # /path/to/local/dir /path/to/remote/dir
 }
 
 # List of remote directories that are known to be encrypted but not listed in targets
