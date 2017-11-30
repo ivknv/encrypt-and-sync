@@ -30,6 +30,9 @@ class Connection(s3m.Connection):
 
     def seamless_commit(self):
         with self:
+            if not self.in_transaction:
+                return
+
             self.commit()
             self.begin_transaction("immediate")
 

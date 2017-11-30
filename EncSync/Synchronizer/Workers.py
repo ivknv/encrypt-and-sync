@@ -51,6 +51,9 @@ class SynchronizerWorker(Worker):
 
             if self.rlist.time_since_last_commit() >= COMMIT_INTERVAL:
                 self.rlist.seamless_commit()
+
+            if self.duplist.time_since_last_commit() >= COMMIT_INTERVAL:
+                self.duplist.seamless_commit()
         except BaseException as e:
             self.emit_event("autocommit_failed")
             raise e
