@@ -29,9 +29,9 @@ class FileComparator(object):
         llist = LocalFileList(name, directory)
         rlist = RemoteFileList(name, directory)
 
-        self.prefix1 = Paths.from_sys(os.path.abspath(os.path.expanduser(target["local"])))
+        self.prefix1 = Paths.from_sys(os.path.abspath(os.path.expanduser(self.target["local"])))
         self.prefix1 = Paths.dir_normalize(self.prefix1)
-        self.prefix2 = Paths.dir_normalize(Paths.join_properly("/", target["remote"]))
+        self.prefix2 = Paths.dir_normalize(Paths.join_properly("/", self.target["remote"]))
 
         self.nodes1 = llist.select_all_nodes()
         self.nodes2 = rlist.select_all_nodes()
