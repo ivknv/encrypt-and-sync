@@ -103,7 +103,7 @@ class UploadReadTimeoutCommand(Command):
         if read_timeout == float("inf"):
             read_timeout = None
 
-        if not isinstance(yadisk.settings.UPLOAD_DEFAULT_TIMEOUT, (tuple, list)):
+        if not isinstance(yadisk.settings.DEFAULT_UPLOAD_TIMEOUT, (tuple, list)):
             connect_timeout = yadisk.settings.DEFAULT_UPLOAD_TIMEOUT
         else:
             connect_timeout = yadisk.settings.DEFAULT_UPLOAD_TIMEOUT[0]

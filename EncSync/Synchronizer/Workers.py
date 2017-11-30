@@ -5,7 +5,7 @@ import time
 import os
 
 from yadisk.exceptions import DiskNotFoundError
-from yadisk.settings import DEFAULT_TIMEOUT, DEFAULT_UPLOAD_TIMEOUT
+from yadisk.settings import DEFAULT_UPLOAD_TIMEOUT
 
 from .Logging import logger
 from .SyncFile import SyncFile, SyncFileInterrupt
@@ -158,10 +158,18 @@ class UploadWorker(SynchronizerWorker):
 
         temp_file = SyncFile(self.encsync.temp_encrypt(local_path), self, task)
 
+        timeout = DEFAULT_UPLOAD_TIMEOUT
+
         if new_size >= 700 * 1024**2:
-            timeout = (DEFAULT_TIMEOUT[0], 300.0)
-        else:
-            timeout = DEFAULT_UPLOAD_TIMEOUT
+            if not isinstance(timeout, (tuple, list)):
+                connect_timeout = read_timeout = timeout
+            else:
+                connect_timeout, read_timeout = timeout
+
+            new_read_timeout = 300.0
+
+            if read_timeout < new_read_timeout:
+                timeout = (connect_timeout, new_read_timeout)
 
         if task.status == "pending":
             try:
