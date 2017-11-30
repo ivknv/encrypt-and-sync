@@ -13,6 +13,11 @@ class ConfigNamespace(Namespace):
         self["upload-limit"] = commands.UploadLimitCommand
         self["download-limit"] = commands.DownloadLimitCommand
         self["download-threads"] = commands.DownloadThreadsCommand
+        self["connect-timeout"] = commands.ConnectTimeoutCommand
+        self["read-timeout"] = commands.ReadTimeoutCommand
+        self["upload-connect-timeout"] = commands.UploadConnectTimeoutCommand
+        self["upload-read-timeout"] = commands.UploadReadTimeoutCommand
+        self["n-retries"] = commands.NRetriesCommand
 
         self["targets"] = blocks.TargetsBlock
         self["include"] = blocks.IncludeBlock

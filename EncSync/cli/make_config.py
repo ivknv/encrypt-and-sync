@@ -17,6 +17,17 @@ download-threads 2
 upload-limit inf
 download-limit inf
 
+# Request timeouts, inf to disable
+connect-timeout 10
+read-timeout 15
+
+# Number of request retries
+n-retries 10
+
+# Upload timeouts, inf to disable
+upload-connect-timeout 10
+upload-read-timeout 60
+
 # List of targets to sync
 # Target name can contain digits, characters of english alphabet, '+', '-', '_' and '.'
 targets {
