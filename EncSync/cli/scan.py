@@ -198,10 +198,10 @@ def do_scan(env, names):
     if env.get("all", False):
         for target in encsync.targets:
             if not env.get("remote_only", False):
-                names.append("local:" + target["name"])
+                names.append(target["name"] + ":local")
 
             if not env.get("local_only", False):
-                names.append("remote:" + target["name"])
+                names.append(target["name"] + ":remote")
 
     if len(names) == 0:
         show_error("Error: no targets given")
