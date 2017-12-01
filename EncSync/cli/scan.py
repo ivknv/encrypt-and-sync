@@ -191,7 +191,7 @@ def do_scan(env, names):
 
     n_workers = env.get("n_workers", encsync.scan_threads)
     ask = env.get("ask", False)
-    no_choice = env.get("no_choice", False)
+    choose_targets = env.get("choose_targets", False)
 
     names = list(names)
 
@@ -256,7 +256,7 @@ def do_scan(env, names):
                 show_error("Error: unknown target %r" % (name,))
                 return 1
 
-        if ask and not no_choice:
+        if (ask and env.get("all", False)) or choose_targets:
             targets = ask_target_choice(targets)
 
         for target in targets:

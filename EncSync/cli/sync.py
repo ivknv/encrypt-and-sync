@@ -431,7 +431,7 @@ def do_sync(env, names):
 
     no_scan = env.get("no_scan", False)
     no_check = env.get("no_check", False)
-    no_choice = env.get("no_choice", False)
+    choose_targets = env.get("choose_targets", False)
     ask = env.get("ask", False)
 
     names = list(names)
@@ -482,7 +482,7 @@ def do_sync(env, names):
             target.skip_integrity_check = no_check
             targets.append(target)
 
-        if ask and not no_choice:
+        if (ask and env.get("all", False)) or choose_targets:
             targets = ask_target_choice(targets)
 
         for target in targets:

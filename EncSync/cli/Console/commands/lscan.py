@@ -14,7 +14,7 @@ class LScanCommand(Command):
         parser.add_argument("names", nargs="*")
         parser.add_argument("--ask", action="store_true")
         parser.add_argument("-a", "--all", action="store_true")
-        parser.add_argument("--no-choice", action="store_true")
+        parser.add_argument("--choose-targets", action="store_true")
         parser.add_argument("--no-journal", action="store_true")
 
         ns = parser.parse_args(self.args[1:])
@@ -22,7 +22,7 @@ class LScanCommand(Command):
         env = Environment(console.env)
         env["ask"] = ns.ask
         env["all"] = ns.all
-        env["no_choice"] = ns.no_choice
+        env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
         env["remote_only"] = False
         env["local_only"] = True

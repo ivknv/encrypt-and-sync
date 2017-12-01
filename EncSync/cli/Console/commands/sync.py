@@ -17,8 +17,8 @@ class SyncCommand(Command):
         parser.add_argument("-a", "--all", action="store_true")
         parser.add_argument("--n-workers", "-w", type=positive_int)
         parser.add_argument("--ask", action="store_true")
+        parser.add_argument("--choose-targets", action="store_true")
         parser.add_argument("--no-scan", action="store_true")
-        parser.add_argument("--no-choice", action="store_true")
         parser.add_argument("--no-diffs", action="store_true")
         parser.add_argument("--no-journal", action="store_true")
         parser.add_argument("-I", "--integrity-check", action="store_true")
@@ -41,7 +41,7 @@ class SyncCommand(Command):
         env["no_check"] = not ns.integrity_check
         env["no_scan"] = ns.no_scan
         env["no_diffs"] = ns.no_diffs
-        env["no_choice"] = ns.no_choice
+        env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
 
         if ns.n_workers is not None:
