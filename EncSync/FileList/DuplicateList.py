@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-
 from .. import Paths
-from .. import CDB
 from ..common import escape_glob
 
 from .FileList import FileList

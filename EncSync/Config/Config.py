@@ -3,7 +3,7 @@
 
 import os
 
-from ..EncScript import Parser, Block, Tokenizer, ast2program
+from ..EncScript import Parser, Tokenizer, ast2program
 from ..EncScript.Exceptions import EncScriptError, ASTConversionError, EvaluationError
 from .Exceptions import InvalidConfigError
 from .ConfigProgram import ConfigProgram

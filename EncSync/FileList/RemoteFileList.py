@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import base64
-
 from .FileList import FileList
 from .. import Paths
 from ..common import normalize_node, node_tuple_to_dict, format_timestamp

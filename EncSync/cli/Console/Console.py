@@ -13,11 +13,7 @@ except ImportError:
     except ImportError:
         pass
 
-import subprocess
-import shlex
-
 from ...EncScript import Parser, Tokenizer, ast2program
-from ...EncScript.Exceptions import EncScriptError
 from .. import common
 from ..common import show_error
 from ..Environment import Environment

@@ -11,7 +11,6 @@ from .common import show_error, get_progress_str
 from .scan import WorkerReceiver as ScanWorkerReceiver
 from .scan import TargetReceiver as ScanTargetReceiver
 
-from .. import Paths
 from ..Synchronizer import Synchronizer, SyncTarget
 from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler

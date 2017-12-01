@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashlib
 import os
 
 from .common import show_error
 from . import common
-from ..EncSync import EncSync
 
 READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 
