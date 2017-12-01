@@ -6,7 +6,6 @@ import ctypes
 import sys
 from datetime import datetime
 
-import requests.exceptions
 from yadisk.exceptions import UnknownYaDiskError
 
 from . import Paths
@@ -206,7 +205,7 @@ class RemoteScannable(BaseScannable):
                     if PathMatch.match(path, allowed_paths):
                         scannables.append(scannable)
                 break
-            except (UnknownYaDiskError, requests.exceptions.RequestException) as e:
+            except UnknownYaDiskError as e:
                 scannables.clear()
                 if j == 9:
                     raise e
