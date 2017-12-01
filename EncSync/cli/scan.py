@@ -229,6 +229,12 @@ def do_scan(env, names):
             local_path = None
             remote_path = None
 
+            if scan_type is None:
+                if env["local_only"]:
+                    scan_type = "local"
+                elif env["remote_only"]:
+                    scan_type = "remote"
+
             for target in encsync.targets:
                 if target["name"] == name:
                     if scan_type != "remote":

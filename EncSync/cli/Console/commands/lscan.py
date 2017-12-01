@@ -11,7 +11,7 @@ class LScanCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Scan local directories",
                                          prog=self.args[0])
-        parser.add_argument("dirs", nargs="*")
+        parser.add_argument("names", nargs="*")
         parser.add_argument("--ask", action="store_true")
         parser.add_argument("-a", "--all", action="store_true")
         parser.add_argument("--no-choice", action="store_true")
@@ -27,4 +27,4 @@ class LScanCommand(Command):
         env["remote_only"] = False
         env["local_only"] = True
 
-        return do_scan(env, ["local://" + i for i in ns.dirs])
+        return do_scan(env, ns.names)
