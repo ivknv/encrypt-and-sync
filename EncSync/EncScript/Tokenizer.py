@@ -187,6 +187,9 @@ class Tokenizer(object):
         self.cur_token = Token("", Token.Type.UNDEFINED, self.line_num, self.char_num)
 
     def _handle_initial(self, char, output):
+        self.cur_token.char_num = self.char_num
+        self.cur_token.line_num = self.line_num
+
         if char.is_whitespace():
             return
 
