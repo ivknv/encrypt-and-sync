@@ -13,4 +13,4 @@ class ConfigBlock(Block):
             elif isinstance(i, AndOperator):
                 raise ValueError("'&&' operator is not available")
 
-            i.evaluate(*args, **kwargs)
+            self.retcode = i.evaluate(*args, **kwargs)

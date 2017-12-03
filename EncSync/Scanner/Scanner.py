@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import threading
 
 from yadisk.exceptions import DiskNotFoundError
@@ -52,21 +51,21 @@ class Scanner(Worker):
                 if i is not None:
                     i.change_status(status)
 
-    def add_dir(self, scan_type, name):
-        path = None
-        for i in self.encsync.targets:
-            if i.name == name:
-                path = i[scan_type]
-                break
-
-        if scan_type == "local":
-            path = os.path.realpath(os.path.expanduser(path))
-        elif scan_type == "remote":
-            path = Paths.join_properly("/", path)
-
-        target = ScanTarget(scan_type, name, path)
-
+    def add_new_target(self, scan_type, name):
+        target = self.make_target(scan_type, name)
         self.add_target(target)
+
+        return target
+
+    def make_target(self, scan_type, name):
+        encsync_target = self.encsync.find_target_by_name(name)
+
+        if encsync_target is None:
+            raise ValueError("Unknown target: %r" % (name,))
+
+        path = encsync_target[scan_type]
+        filename_encoding = encsync_target["filename_encoding"]
+        target = ScanTarget(scan_type, name, path, filename_encoding)
 
         return target
 
@@ -77,12 +76,6 @@ class Scanner(Worker):
     def get_targets(self):
         with self.targets_lock:
             return list(self.targets)
-
-    def add_local_dir(self, name):
-        return self.add_dir("local", name)
-
-    def add_remote_dir(self, name):
-        return self.add_dir("remote", name)
 
     def stop_condition(self):
         return self.stopped
@@ -122,7 +115,8 @@ class Scanner(Worker):
     def begin_remote_scan(self, target):
         self.shared_rlist.remove_node_children(target.path)
 
-        scannable = RemoteScannable(self.encsync, target.path)
+        scannable = RemoteScannable(self.encsync, target.path,
+                                    filename_encoding=target.filename_encoding)
 
         try:
             scannable.identify()

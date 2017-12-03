@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import time
 import traceback
 
 from yadisk.exceptions import YaDiskError
 
-from ..Scanner import Scanner, ScanTarget
+from ..Scanner import Scanner
 from ..Event.EventHandler import EventHandler
 from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from .. import Paths
@@ -226,33 +225,19 @@ def do_scan(env, names):
             else:
                 scan_type = None
 
-            local_path = None
-            remote_path = None
-
             if scan_type is None:
                 if env["local_only"]:
                     scan_type = "local"
                 elif env["remote_only"]:
                     scan_type = "remote"
 
-            for target in encsync.targets:
-                if target["name"] == name:
-                    if scan_type != "remote":
-                        local_path = target["local"]
-                        local_path = os.path.abspath(os.path.expanduser(local_path))
+            try:
+                if scan_type in (None, "local"):
+                    targets.append(scanner.make_target("local", name))
 
-                    if scan_type != "local":
-                        remote_path = target["remote"]
-                        remote_path = common.prepare_remote_path(remote_path)
-
-                    break
-
-            if local_path is not None:
-                targets.append(ScanTarget("local", name, local_path))
-            if remote_path is not None:
-                targets.append(ScanTarget("remote", name, remote_path))
-
-            if local_path is None and remote_path is None:
+                if scan_type in (None, "remote"):
+                    targets.append(scanner.make_target("remote", name))
+            except ValueError:
                 show_error("Error: unknown target %r" % (name,))
                 return 1
 

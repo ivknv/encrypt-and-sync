@@ -29,7 +29,8 @@ class DiffList(object):
         with self.connection:
             self.connection.execute("""CREATE TABLE IF NOT EXISTS differences
                                        (diff_type TEXT, type TEXT, path TEXT,
-                                        local_prefix TEXT, remote_prefix TEXT, IVs TEXT)""")
+                                        local_prefix TEXT, remote_prefix TEXT, IVs TEXT,
+                                        filename_encoding TEXT)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS differences_path_index
                                        ON differences(path ASC)""")
 
@@ -39,8 +40,9 @@ class DiffList(object):
         remote_prefix = Paths.dir_normalize(p.remote_prefix)
 
         self.connection.execute("""INSERT INTO differences VALUES
-                                   (?, ?, ?, ?, ?, ?)""",
-                                (diff[0], diff[1], p.path, local_prefix, remote_prefix, p.IVs))
+                                   (?, ?, ?, ?, ?, ?, ?)""",
+                                (diff[0], diff[1], p.path, local_prefix, remote_prefix,
+                                 p.IVs, diff[3]))
 
     def clear_differences(self, local_prefix, remote_prefix):
         local_prefix = Paths.from_sys(local_prefix)
@@ -52,7 +54,7 @@ class DiffList(object):
 
     def fetch_differences(self):
         for i in self.connection.genfetch():
-            encpath = EncPath(self.encsync, i[2])
+            encpath = EncPath(self.encsync, i[2], i[6])
             encpath.IVs = i[5]
             encpath.local_prefix = i[3]
             encpath.remote_prefix = i[4]

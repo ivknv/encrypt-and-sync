@@ -46,9 +46,11 @@ class Downloader(Worker):
 
     def add_download(self, name, remote_prefix, remote, local):
         target = DownloadTarget(name)
+        encsync_target = self.encsync.find_target_by_name(name)
         target.local = Paths.to_sys(local)
         target.remote = remote
         target.prefix = remote_prefix
+        target.filename_encoding = encsync_target["filename_encoding"]
 
         self.add_target(target)
 
@@ -127,7 +129,8 @@ class Downloader(Worker):
         for node in nodes:
             new_task = DownloadTask()
 
-            enc_path = self.encsync.encrypt_path(node["path"], target.prefix, node["IVs"])[0]
+            enc_path = self.encsync.encrypt_path(node["path"], target.prefix, node["IVs"],
+                                                 filename_encoding=target.filename_encoding)[0]
             name = Paths.cut_prefix(node["path"], target.remote)
 
             new_task.type = node["type"]

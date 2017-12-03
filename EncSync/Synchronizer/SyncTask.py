@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from ..Task import Task
+from .. import Paths
 
 class SyncTask(Task):
     def __init__(self):
@@ -29,14 +32,21 @@ class SyncTask(Task):
             self.emit_event("uploaded_changed")
 
 class SyncTarget(Task):
-    def __init__(self, synchronizer, name, local=None, remote=None):
+    def __init__(self, synchronizer, name, local=None, remote=None, filename_encoding=None):
         Task.__init__(self)
         self._stage = None
         self.local, self.remote = local, remote
+        self.filename_encoding = filename_encoding
         self.skip_integrity_check = False
         self.total_children = 0
         self.name = name
         self.enable_scan = True
+
+        if self.local is not None:
+            self.local = os.path.abspath(os.path.expanduser(self.local))
+
+        if self.remote is not None:
+            self.remote = Paths.join_properly("/", self.remote)
 
         self.add_event("stage_changed")
         self.add_event("local_scan")

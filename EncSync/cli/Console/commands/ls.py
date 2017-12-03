@@ -23,10 +23,13 @@ class LsCommand(Command):
 
         for filename in filenames:
             path = Paths.join_properly(console.cwd, filename)
-            prefix = encsync.find_encrypted_dir(path)
+            target = encsync.find_target_by_remote_path(path)
+
+            prefix = target["remote"]
+            filename_encoding = target["filename_encoding"]
 
             if prefix is not None:
-                encpath = EncPath(encsync)
+                encpath = EncPath(encsync, None, filename_encoding)
                 encpath.remote_prefix = prefix
                 encpath.path = Paths.cut_prefix(path, prefix)
 
@@ -44,7 +47,9 @@ class LsCommand(Command):
             for response in console.encsync.ynd.listdir(path):
                 try:
                     if prefix is not None:
-                        contents.append(encsync.decrypt_path(response.name)[0])
+                        name = encsync.decrypt_path(response.name,
+                                                    filename_encoding=filename_encoding)[0]
+                        contents.append(name)
                     else:
                         contents.append(response.name)
                 except yadisk.exceptions.YaDiskError as e:

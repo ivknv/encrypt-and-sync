@@ -18,14 +18,6 @@ try:
 except AttributeError:
     JSONDecodeError = ValueError
 
-def expand_path(path):
-    return os.path.realpath(os.path.expanduser(path))
-
-def chunk(b, n):
-    n = int(n)
-    for i in range(int(len(b) // n)):
-        yield b[i * n:(i + 1) * n]
-
 APP_ID = "59c915d2c2d546d3842f2c6fe3a9678e"
 APP_SECRET = "faca3ddd1d574e54a258aa5d8e521c8d"
 
@@ -68,6 +60,20 @@ class EncSync(object):
             p = Paths.dir_normalize(Paths.join_properly(p, i))
             if p in self.encrypted_dirs:
                 return p
+
+    def find_target_by_remote_path(self, path):
+        path = Paths.dir_normalize(Paths.join_properly("/", path))
+
+        for target in self.targets:
+            prefix = Paths.dir_normalize(Paths.join_properly("/", target["remote"]))
+
+            if Paths.contains(prefix, path):
+                return target
+
+    def find_target_by_name(self, name):
+        for target in self.targets:
+            if target["name"] == name:
+                return target
 
     def set_token(self, token):
         self.ynd_token = token
@@ -196,8 +202,10 @@ class EncSync(object):
     def decrypt_file(self, in_path, out_path):
         Encryption.decrypt_file(in_path, out_path, self.key)
 
-    def encrypt_path(self, path, prefix=None, IVs=b""):
-        return Encryption.encrypt_path(path, self.key, prefix, ivs=IVs)
+    def encrypt_path(self, path, prefix=None, IVs=b"", filename_encoding="base64"):
+        return Encryption.encrypt_path(path, self.key, prefix, ivs=IVs,
+                                       filename_encoding=filename_encoding)
 
-    def decrypt_path(self, path, prefix=None):
-        return Encryption.decrypt_path(path, self.key, prefix)    
+    def decrypt_path(self, path, prefix=None, filename_encoding="base64"):
+        return Encryption.decrypt_path(path, self.key, prefix,
+                                       filename_encoding=filename_encoding)    

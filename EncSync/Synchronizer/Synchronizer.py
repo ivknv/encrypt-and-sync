@@ -79,9 +79,23 @@ class Synchronizer(StagedWorker):
 
         return target
 
-    def add_new_target(self, name, enable_scan, local, remote, status="pending"):
-        target = SyncTarget(self, name, local, remote)
+    def make_target(self, name, enable_scan):
+        encsync_target = self.encsync.find_target_by_name(name)
+
+        if encsync_target is None:
+            raise ValueError("Unknown target: %r" % (name,))
+
+        local = encsync_target["local"]
+        remote = encsync_target["remote"]
+        filename_encoding = encsync_target["filename_encoding"]
+        
+        target = SyncTarget(self, name, local, remote, filename_encoding)
         target.enable_scan = enable_scan
+
+        return target
+
+    def add_new_target(self, name, enable_scan, status="pending"):
+        target = self.make_target(name, enable_scan)
 
         target.change_status(status)
 
@@ -321,8 +335,10 @@ class Synchronizer(StagedWorker):
             target = ScanTarget(scan_type, self.cur_target.name, self.cur_target.local)
             scannable = LocalScannable(target.path)
         elif scan_type == "remote":
-            target = ScanTarget(scan_type, self.cur_target.name, self.cur_target.remote)
-            scannable = RemoteScannable(self.encsync, target.path)
+            target = ScanTarget(scan_type, self.cur_target.name, self.cur_target.remote,
+                                self.cur_target.filename_encoding)
+            scannable = RemoteScannable(self.encsync, target.path,
+                                        filename_encoding=target.filename_encoding)
 
         self.cur_target.emit_event("%s_scan" % scan_type, target)
 

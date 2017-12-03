@@ -54,13 +54,13 @@ def encrypt(env, paths):
 
     return 0
 
-def encrypt_filename(env, paths, prefix):
+def encrypt_filename(env, paths, prefix, encoding):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
         return ret
 
     for path in paths:
-        print(encsync.encrypt_path(path, prefix)[0])
+        print(encsync.encrypt_path(path, prefix, filename_encoding=encoding)[0])
 
     return 0

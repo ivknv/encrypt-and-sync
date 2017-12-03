@@ -151,7 +151,7 @@ class LocalScannable(BaseScannable):
         return node
 
 class RemoteScannable(BaseScannable):
-    def __init__(self, encsync, prefix, enc_path=None, resource=None):
+    def __init__(self, encsync, prefix, enc_path=None, resource=None, filename_encoding="base64"):
         if resource is not None:
             type = resource.type[0]
 
@@ -166,7 +166,7 @@ class RemoteScannable(BaseScannable):
             modified = None
             size = 0
 
-        path, IVs = encsync.decrypt_path(enc_path, prefix)
+        path, IVs = encsync.decrypt_path(enc_path, prefix, filename_encoding=filename_encoding)
 
         BaseScannable.__init__(self, path, type, modified, size)
         self.enc_path = enc_path
@@ -175,6 +175,7 @@ class RemoteScannable(BaseScannable):
 
         self.encsync = encsync
         self.ynd = encsync.ynd
+        self.filename_encoding = filename_encoding
 
     def identify(self):
         resource = self.ynd.get_meta(self.enc_path, n_retries=30)
@@ -195,7 +196,8 @@ class RemoteScannable(BaseScannable):
                 for resource in self.ynd.listdir(self.enc_path):
                     enc_path = Paths.join(self.enc_path, resource.name)
 
-                    scannable = RemoteScannable(self.encsync, self.prefix, enc_path, resource)
+                    scannable = RemoteScannable(self.encsync, self.prefix, enc_path,
+                                                resource, self.filename_encoding)
 
                     path = scannable.path
 

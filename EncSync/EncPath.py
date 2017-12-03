@@ -15,9 +15,10 @@ class EncPath(object):
 
         :param encsync: `EncSync` object
         :param path: path relative to the prefixes
+        :param filename_encoding: `str`, filename encoding to use
     """
 
-    def __init__(self, encsync, path=None):
+    def __init__(self, encsync, path=None, filename_encoding="base64"):
         self.encsync = encsync
         self._path = None
         self._path_enc = None
@@ -27,6 +28,7 @@ class EncPath(object):
         self._local_prefix = None
         self._remote_prefix = None
         self._IVs = None
+        self._filename_encoding = filename_encoding
 
         self.path = path
 
@@ -37,7 +39,7 @@ class EncPath(object):
             :returns: `EncPath`
         """
 
-        copy = EncPath(self.encsync, self.path)
+        copy = EncPath(self.encsync, self.path, self.filename_encoding)
         copy._IVs = self._IVs
         copy._local_prefix = self._local_prefix
         copy._remote_prefix = self._remote_prefix
@@ -74,7 +76,8 @@ class EncPath(object):
 
     def _get_path(self):
         if self._path_enc is not None:
-            path, self._IVs = self.encsync.decrypt_path(self._path_enc)
+            path, self._IVs = self.encsync.decrypt_path(self._path_enc,
+                                                        filename_encoding=self.filename_encoding)
 
             return path
 
@@ -84,7 +87,8 @@ class EncPath(object):
 
         self._update_IVs()
 
-        return self.encsync.encrypt_path(self.path, IVs=self._IVs)[0]
+        return self.encsync.encrypt_path(self.path, IVs=self._IVs,
+                                         filename_encoding=self.filename_encoding)[0]
 
     def _get_local(self):
         prefix = self._local_prefix
@@ -111,7 +115,7 @@ class EncPath(object):
         IVs = b""
 
         for name in (i for i in self.path_enc.split("/") if i):
-            IVs += Encryption.get_filename_IV(name)
+            IVs += Encryption.get_filename_IV(name, self.filename_encoding)
 
         return IVs
 
@@ -234,3 +238,14 @@ class EncPath(object):
         self._IVs = value
         self._remote_enc = None
         self._path_enc = None
+
+    @property
+    def filename_encoding(self):
+        """Filename encoding."""
+        return self._filename_encoding
+
+    @filename_encoding.setter
+    def filename_encoding(self, value):
+        self._filename_encoding = value
+        self._path_enc = None
+        self._remote_enc = None

@@ -22,10 +22,12 @@ class CatCommand(Command):
 
         for filename in ns.filenames:
             path = Paths.join_properly(console.cwd, filename)
-            prefix = encsync.find_encrypted_dir(path)
+            target = encsync.find_target_by_remote_path(path)
+            filename_encoding = target["filename_encoding"]
+            prefix = target["remote"]
 
             if prefix is not None:
-                encpath = EncPath(encsync)
+                encpath = EncPath(encsync, None, filename_encoding)
                 encpath.remote_prefix = prefix
                 encpath.path = Paths.cut_prefix(path, prefix)
 
@@ -47,9 +49,10 @@ class CatCommand(Command):
 
             console.encsync.ynd.download(path, enc_buf)
             enc_buf.seek(0)
+
             encsync.decrypt_file(enc_buf, dec_buf)
+            del enc_buf
             dec_buf.seek(0)
-            enc_buf.truncate(0)
 
             for line in dec_buf:
                 print(line.decode("utf8"), end="")

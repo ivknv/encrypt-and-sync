@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import traceback
 
 from yadisk.exceptions import YaDiskError
@@ -11,7 +10,7 @@ from .common import show_error, get_progress_str
 from .scan import WorkerReceiver as ScanWorkerReceiver
 from .scan import TargetReceiver as ScanTargetReceiver
 
-from ..Synchronizer import Synchronizer, SyncTarget
+from ..Synchronizer import Synchronizer
 from ..Scanner.Workers import ScanWorker
 from ..Event.EventHandler import EventHandler
 from ..DiffList import DiffList
@@ -465,20 +464,7 @@ def do_sync(env, names):
         targets = []
 
         for name in names:
-            local_path = None
-            remote_path = None
-            for i in encsync.targets:
-                if i["name"] == name:
-                    local_path = os.path.abspath(os.path.expanduser(i["local"]))
-                    remote_path = common.prepare_remote_path(i["remote"])
-                    break
-
-            if local_path is None and remote_path is None:
-                show_error("Error: unknown target %r" % (name,))
-                return 1
-
-            target = SyncTarget(synchronizer, name, local_path, remote_path)
-            target.enable_scan = not no_scan
+            target = synchronizer.make_target(name, not no_scan)
             target.skip_integrity_check = no_check
             targets.append(target)
 

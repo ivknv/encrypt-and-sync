@@ -113,11 +113,13 @@ def main(args=None):
                ("encrypt", lambda: encrypt(env, ns.encrypt)),
                ("encrypt_filename", lambda: encrypt_filename(env,
                                                              ns.encrypt_filename,
-                                                             ns.prefix or "/")),
+                                                             ns.prefix or "/",
+                                                             ns.filename_encoding)),
                ("decrypt", lambda: decrypt(env, ns.decrypt)),
                ("decrypt_filename", lambda: decrypt_filename(env,
                                                              ns.decrypt_filename,
-                                                             ns.prefix or "/")),
+                                                             ns.prefix or "/",
+                                                             ns.filename_encoding)),
                ("show_duplicates", lambda: show_duplicates(env, ns.show_duplicates)),
                ("console", lambda: run_console(env)),
                ("make_config", lambda: make_config(env, ns.make_config)),
@@ -156,6 +158,7 @@ def parse_args(args):
     parser.add_argument("--force-ask-password", action="store_true")
     parser.add_argument("--choose-targets", action="store_true")
     parser.add_argument("--prefix", default=None)
+    parser.add_argument("--filename-encoding", default="base64")
     parser.add_argument("--no-scan", action="store_true")
     parser.add_argument("--no-diffs", action="store_true")
     parser.add_argument("--no-token-check", action="store_true")

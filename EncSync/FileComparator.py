@@ -65,16 +65,16 @@ class FileComparator(object):
         self.node2 = try_next(self.it2)
         if self.type2 == "d":
             self.last_rm = self.path2
-        return [("path no longer exists", "rm", self.type2, self.encpath2)[1:]]
+        return [("rm", self.type2, self.encpath2, self.target["filename_encoding"])]
 
     def diff_new(self):
         self.node1 = try_next(self.it1)
-        return [("path is new", "new", self.type1, self.encpath1)[1:]]
+        return [("new", self.type1, self.encpath1, self.target["filename_encoding"])]
 
     def diff_update(self):
         self.node1 = try_next(self.it1)
         self.node2 = try_next(self.it2)
-        return [("path is newer", "update", self.type2, self.encpath2)[1:]]
+        return [("update", self.type2, self.encpath2, self.target["filename_encoding"])]
 
     def diff_transition(self):
         self.node1 = try_next(self.it1)
@@ -83,13 +83,13 @@ class FileComparator(object):
         if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
             if self.type2 == "d":
                 self.last_rm = self.path2
-            diffs.append(("file <==> dir transition", "rm", self.type2, self.encpath2)[1:])
-        diffs.append(("file <==> dir transition", "new", self.type1, self.encpath1)[1:])
+            diffs.append(("rm", self.type2, self.encpath2, self.target["filename_encoding"]))
+        diffs.append(("new", self.type1, self.encpath1, self.target["filename_encoding"]))
 
         return diffs
 
     def diff_rmdup(self):
-        return [("duplicate", "rmdup", self.type2, self.encpath2)[1:]]
+        return [("rmdup", self.type2, self.encpath2, self.target["filename_encoding"])]
 
     def __next__(self):
         while True:
@@ -107,7 +107,8 @@ class FileComparator(object):
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
 
-                self.encpath1 = EncPath(self.encsync, self.path1)
+                self.encpath1 = EncPath(self.encsync, self.path1,
+                                        self.target["filename_encoding"])
                 self.encpath1.local_prefix = self.prefix1
                 self.encpath1.remote_prefix = self.prefix2
                 self.encpath1.IVs = b""
@@ -127,7 +128,8 @@ class FileComparator(object):
                 self.padded_size2 = self.node2["padded_size"]
                 self.IVs = self.node2["IVs"]
 
-                self.encpath2 = EncPath(self.encsync, self.path2)
+                self.encpath2 = EncPath(self.encsync, self.path2,
+                                        self.target["filename_encoding"])
                 self.encpath2.local_prefix = self.prefix1
                 self.encpath2.remote_prefix = self.prefix2
                 self.encpath2.IVs = self.IVs
@@ -165,7 +167,7 @@ class FileComparator(object):
         self.IVs = row[1]
         self.path2 = Paths.cut_prefix(row[2], self.prefix2) or "/"
 
-        self.encpath2 = EncPath(self.encsync, self.path2)
+        self.encpath2 = EncPath(self.encsync, self.path2, self.target["filename_encoding"])
         self.encpath2.local_prefix = self.prefix1
         self.encpath2.remote_prefix = self.prefix2
         self.encpath2.IVs = self.IVs
