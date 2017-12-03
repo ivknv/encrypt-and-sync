@@ -22,4 +22,3 @@ class ConfigNamespace(Namespace):
         self["target"] = blocks.TargetBlock
         self["include"] = blocks.IncludeBlock
         self["exclude"] = blocks.ExcludeBlock
-        self["encrypted-dirs"] = blocks.EncryptedDirsBlock

@@ -16,7 +16,6 @@ class Config(object):
         self.upload_limit = float("inf")
         self.download_limit = float("inf")
 
-        self.encrypted_dirs = set()
         self.targets = []
         self.allowed_paths = []
 

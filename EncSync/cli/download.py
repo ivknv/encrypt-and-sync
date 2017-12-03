@@ -200,8 +200,9 @@ def download(env, paths):
             path, path_type = common.recognize_path(path)
 
             path = common.prepare_remote_path(path)
+            target = encsync.find_target_by_remote_path(path)
 
-            prefix = encsync.find_encrypted_dir(path)
+            prefix = target["remote"]
 
             if prefix is None:
                 show_error("%r does not appear to be encrypted" % (path,))

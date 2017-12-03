@@ -50,16 +50,8 @@ class EncSync(object):
         self.sync_threads = 1
         self.download_threads = 1
         self.scan_threads = 1
-        self.encrypted_dirs = set()
         self.allowed_paths = [] # Compiled
         self._allowed_paths = [] # Uncompiled
-
-    def find_encrypted_dir(self, path):
-        p = "/"
-        for i in ("/" + path).split("/"):
-            p = Paths.dir_normalize(Paths.join_properly(p, i))
-            if p in self.encrypted_dirs:
-                return p
 
     def find_target_by_remote_path(self, path):
         path = Paths.dir_normalize(Paths.join_properly("/", path))
@@ -95,7 +87,6 @@ class EncSync(object):
     def make_config(self):
         config = Config()
         config.targets          = self.targets
-        config.encrypted_dirs   = self.encrypted_dirs
         config.download_limit   = self.download_limit
         config.upload_limit     = self.upload_limit
         config.sync_threads     = self.sync_threads
@@ -165,7 +156,6 @@ class EncSync(object):
 
     def set_config(self, config):
         self.targets = config.targets
-        self.encrypted_dirs = config.encrypted_dirs
         self.download_limit = config.download_limit
         self.upload_limit = config.upload_limit
         self.sync_threads = config.sync_threads
@@ -175,7 +165,6 @@ class EncSync(object):
         self.allowed_paths = PathMatch.compile_patterns(self._allowed_paths)
 
         for target in self.targets:
-            self.encrypted_dirs.add(Paths.dir_normalize(target["remote"]))
             target["_allowed_paths"] = target["allowed_paths"]
             target["allowed_paths"]  = PathMatch.compile_patterns(target["_allowed_paths"])
 
