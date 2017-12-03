@@ -28,18 +28,14 @@ n-retries 10
 upload-connect-timeout 10
 upload-read-timeout 60
 
-# List of targets to sync
+# Specify targets
 # Target name can contain digits, characters of english alphabet, '+', '-', '_' and '.'
-targets {
-    # preferred-target-name /path/to/local/dir /path/to/remote/dir
-}
-
-# List of remote directories that are known to be encrypted but not listed in targets
-# This is required by console commands like 'ls', 'cat', etc.
-encrypted-dirs {
-    # /path/to/remote/dir1
-    # /path/to/remote/dir2
-}
+# Filename encoding can be omitted.
+# target preferred-target-name {
+#     local /path/to/local/dir
+#     remote /path/to/remote/dir
+#     filename-encoding base64
+# }
 
 # List of patterns to exclude when performing local scan
 # The synchronizer will think they don't exist
