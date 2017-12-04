@@ -17,7 +17,7 @@ from ..DiffList import DiffList
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from ..ExceptionManager import ExceptionManager
-from ..Synchronizer.Exceptions import TooLongFilenameError
+from ..Synchronizer.Exceptions import TooLongFilenameError, LocalPathNotFoundError
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
@@ -173,6 +173,7 @@ class SynchronizerReceiver(EventHandler):
         self.add_emitter_callback(synchronizer, "error", self.on_error)
 
         self.exc_manager.add(YaDiskError, self.on_disk_error)
+        self.exc_manager.add(LocalPathNotFoundError, self.on_local_path_not_found)
         self.exc_manager.add(BaseException, self.on_exception)
 
     def on_started(self, event):
@@ -236,6 +237,10 @@ class SynchronizerReceiver(EventHandler):
         target = synchronizer.cur_target
         print("[%s -> %s]: error: %s: %s" % (target.local, target.remote,
                                              exc.error_type, exc))
+
+    def on_local_path_not_found(self, exc, synchronizer):
+        target = synchronizer.cur_target
+        print("[%s -> %s]: error: %s" % (target.local, target.remote, exc))
 
     def on_exception(self, exc, synchronizer):
         traceback.print_exc()
