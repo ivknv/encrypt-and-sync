@@ -354,6 +354,8 @@ class WorkerReceiver(EventHandler):
                 msg += "uploading file"
             elif task.type == "d":
                 msg += "creating remote directory"
+        elif task.task_type == "update":
+            msg += "updating remote file"
         elif task.task_type == "rm":
             if task.type == "f":
                 msg += "removing remote file"
