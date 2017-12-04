@@ -16,7 +16,7 @@ class Config(object):
         self.upload_limit = float("inf")
         self.download_limit = float("inf")
 
-        self.targets = []
+        self.targets = {}
         self.allowed_paths = []
 
     @staticmethod

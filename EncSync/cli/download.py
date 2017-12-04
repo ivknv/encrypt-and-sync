@@ -202,24 +202,13 @@ def download(env, paths):
             path = common.prepare_remote_path(path)
             target = encsync.find_target_by_remote_path(path)
 
-            prefix = target["remote"]
-
-            if prefix is None:
+            if target is None:
                 show_error("%r does not appear to be encrypted" % (path,))
                 return 1
 
-            name = None
+            name = target["name"]
 
-            for target in encsync.targets:
-                if target["remote"] == prefix:
-                    name = target["name"]
-                    break
-
-            if name is None:
-                show_error("%r is not a target" % (path,))
-                return 1
-
-            target = downloader.add_download(name, prefix, path, local)
+            target = downloader.add_download(name, path, local)
             target.add_receiver(target_receiver)
             targets.append(target)
 

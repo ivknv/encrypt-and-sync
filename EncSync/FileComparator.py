@@ -18,13 +18,12 @@ class FileComparator(object):
     def __init__(self, encsync, name, directory=None):
         self.encsync = encsync
 
-        self.target = None
-        self.directory = directory
+        try:
+            self.target = encsync.targets[name]
+        except KeyError:
+            raise ValueError("Unknown target: %r" % (name,))
 
-        for target in encsync.targets:
-            if target["name"] == name:
-                self.target = target
-                break
+        self.directory = directory
 
         llist = LocalFileList(name, directory)
         rlist = RemoteFileList(name, directory)

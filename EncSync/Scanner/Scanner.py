@@ -58,9 +58,9 @@ class Scanner(Worker):
         return target
 
     def make_target(self, scan_type, name):
-        encsync_target = self.encsync.find_target_by_name(name)
-
-        if encsync_target is None:
+        try:
+            encsync_target = self.encsync.targets[name]
+        except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
         path = encsync_target[scan_type]

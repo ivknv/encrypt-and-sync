@@ -51,7 +51,7 @@ class TargetBlock(ConfigBlock):
         if self.target["remote"] is None:
             raise EvaluationError(self, "Target is missing the remote path")
 
-        config.targets.append(self.target)
+        config.targets[self.target["name"]] = self.target
 
 class TargetNamespace(dict):
     def __init__(self, parent=None):

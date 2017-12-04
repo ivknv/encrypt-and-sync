@@ -9,6 +9,7 @@ from yadisk.exceptions import DiskNotFoundError
 from .Workers import UploadWorker, MkdirWorker, RmWorker, RmDupWorker
 from .SyncTask import SyncTask, SyncTarget
 from .Logging import logger
+from .Exceptions import LocalPathNotFoundError
 from ..Scanner.Workers import LocalScanWorker, RemoteScanWorker
 from ..Scanner.Task import ScanTask
 from ..Scanner.Target import ScanTarget
@@ -80,9 +81,9 @@ class Synchronizer(StagedWorker):
         return target
 
     def make_target(self, name, enable_scan):
-        encsync_target = self.encsync.find_target_by_name(name)
-
-        if encsync_target is None:
+        try:
+            encsync_target = self.encsync.targets[name]
+        except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
         local = encsync_target["local"]
@@ -355,6 +356,10 @@ class Synchronizer(StagedWorker):
             scannable.identify()
 
             if scan_type == "local":
+                if scannable.type is None:
+                    raise LocalPathNotFoundError("%r does not exist" % (scannable.path,),
+                                                 scannable.path)
+                    
                 path = Paths.from_sys(scannable.path)
                 if scannable.type == "d":
                     path = Paths.dir_normalize(path)

@@ -223,7 +223,7 @@ def cleanup_filelists(env):
     encsync = env["encsync"]
     files = os.listdir(env["db_dir"])
 
-    target_names = {i["name"] for i in encsync.targets}
+    target_names = set(encsync.targets.keys())
 
     for filename in files:
         suffix = None

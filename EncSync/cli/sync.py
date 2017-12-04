@@ -436,8 +436,7 @@ def do_sync(env, names):
     names = list(names)
 
     if env.get("all", False):
-        for target in encsync.targets:
-            names.append(target["name"])
+        names.extend(sorted(encsync.targets.keys()))
 
     if len(names) == 0:
         show_error("Error: no targets given")

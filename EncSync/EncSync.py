@@ -36,7 +36,7 @@ class WrongMasterKeyError(EncSyncError):
 
 class EncSync(object):
     def __init__(self, master_key):
-        self.targets = []
+        self.targets = {}
         self.plain_key = ""
         self.key = ""
         self.set_master_key(master_key)
@@ -60,11 +60,6 @@ class EncSync(object):
             prefix = Paths.dir_normalize(Paths.join_properly("/", target["remote"]))
 
             if Paths.contains(prefix, path):
-                return target
-
-    def find_target_by_name(self, name):
-        for target in self.targets:
-            if target["name"] == name:
                 return target
 
     def set_token(self, token):
@@ -164,7 +159,7 @@ class EncSync(object):
         self._allowed_paths = config.allowed_paths
         self.allowed_paths = PathMatch.compile_patterns(self._allowed_paths)
 
-        for target in self.targets:
+        for target in self.targets.values():
             target["_allowed_paths"] = target["allowed_paths"]
             target["allowed_paths"]  = PathMatch.compile_patterns(target["_allowed_paths"])
 

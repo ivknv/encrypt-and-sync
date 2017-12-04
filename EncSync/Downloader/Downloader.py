@@ -44,13 +44,20 @@ class Downloader(Worker):
         with self.targets_lock:
             return list(self.targets)
 
-    def add_download(self, name, remote_prefix, remote, local):
+    def make_target(self, name, remote, local):
+        try:
+            encsync_target = self.encsync.targets[name]
+        except KeyError:
+            raise ValueError("Unknown target: %r" % (name,))
+
         target = DownloadTarget(name)
-        encsync_target = self.encsync.find_target_by_name(name)
         target.local = Paths.to_sys(local)
         target.remote = remote
-        target.prefix = remote_prefix
+        target.prefix = encsync_target["remote"]
         target.filename_encoding = encsync_target["filename_encoding"]
+
+    def add_download(self, name, remote, local):
+        target = self.make_target(name, remote, local)
 
         self.add_target(target)
 
