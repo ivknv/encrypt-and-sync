@@ -86,8 +86,8 @@ class Synchronizer(StagedWorker):
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
-        local = encsync_target["local"]
-        remote = encsync_target["remote"]
+        local = encsync_target["dirs"]["local"]
+        remote = encsync_target["dirs"]["remote"]
         filename_encoding = encsync_target["filename_encoding"]
         
         target = SyncTarget(self, name, local, remote, filename_encoding)

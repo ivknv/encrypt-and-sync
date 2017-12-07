@@ -53,7 +53,7 @@ class Downloader(Worker):
         target = DownloadTarget(name)
         target.local = Paths.to_sys(local)
         target.remote = remote
-        target.prefix = encsync_target["remote"]
+        target.prefix = encsync_target["dirs"]["remote"]
         target.filename_encoding = encsync_target["filename_encoding"]
 
     def add_download(self, name, remote, local):

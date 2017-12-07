@@ -58,7 +58,10 @@ class EncPath(object):
 
         if name is None:
             for target in self.encsync.targets.values():
-                if self.local_prefix == target["local"] or self.remote_prefix == target["remote"]:
+                local = target["dirs"]["local"]
+                remote = target["dirs"]["remote"]
+
+                if self.local_prefix == local or self.remote_prefix == remote:
                     name = target["name"]
                     break
 

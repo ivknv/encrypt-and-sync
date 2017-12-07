@@ -24,7 +24,7 @@ class CatCommand(Command):
             path = Paths.join_properly(console.cwd, filename)
             target = encsync.find_target_by_remote_path(path)
             filename_encoding = target["filename_encoding"]
-            prefix = target["remote"]
+            prefix = target["dirs"]["remote"]
 
             if prefix is not None:
                 encpath = EncPath(encsync, None, filename_encoding)

@@ -63,7 +63,7 @@ class Scanner(Worker):
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
-        path = encsync_target[scan_type]
+        path = encsync_target["dirs"][scan_type]
         filename_encoding = encsync_target["filename_encoding"]
         target = ScanTarget(scan_type, name, path, filename_encoding)
 

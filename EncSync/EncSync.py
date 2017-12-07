@@ -57,7 +57,8 @@ class EncSync(object):
         path = Paths.dir_normalize(Paths.join_properly("/", path))
 
         for target in self.targets:
-            prefix = Paths.dir_normalize(Paths.join_properly("/", target["remote"]))
+            prefix = target["dirs"]["remote"]
+            prefix = Paths.dir_normalize(Paths.join_properly("/", prefix))
 
             if Paths.contains(prefix, path):
                 return target

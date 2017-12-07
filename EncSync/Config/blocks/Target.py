@@ -24,8 +24,8 @@ class TargetBlock(ConfigBlock):
         ConfigBlock.__init__(self, args, body, parent_namespace)
         self.namespace = TargetNamespace(parent_namespace)
         self.target = {"name": None,
-                       "local": None,
-                       "remote": None,
+                       "dirs": {"local": None,
+                                "remote": None}
                        "filename_encoding": "base64",
                        "allowed_paths": []}
 
@@ -45,10 +45,10 @@ class TargetBlock(ConfigBlock):
             self.retcode = i.evaluate(config, self.target, *args, **kwargs)
 
     def end(self, config, *args, **kwargs):
-        if self.target["local"] is None:
+        if self.target["dirs"]["local"] is None:
             raise EvaluationError(self, "Target is missing the local path")
 
-        if self.target["remote"] is None:
+        if self.target["dirs"]["remote"] is None:
             raise EvaluationError(self, "Target is missing the remote path")
 
         config.targets[self.target["name"]] = self.target
@@ -66,14 +66,14 @@ class LocalCommand(Command):
         if len(self.args) != 2:
             raise EvaluationError(self, "Expected 1 argument")
 
-        target["local"] = prepare_local_path(self.args[1])
+        target["dirs"]["local"] = prepare_local_path(self.args[1])
 
 class RemoteCommand(Command):
     def evaluate(self, config, target, *args, **kwargs):
         if len(self.args) != 2:
             raise EvaluationError(self, "Expected 1 argument")
 
-        target["remote"] = prepare_remote_path(self.args[1])
+        target["dirs"]["remote"] = prepare_remote_path(self.args[1])
 
 class FilenameEncodingCommand(Command):
     def evaluate(self, config, target, *args, **kwargs):

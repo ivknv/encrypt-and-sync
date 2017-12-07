@@ -25,7 +25,7 @@ class LsCommand(Command):
             path = Paths.join_properly(console.cwd, filename)
             target = encsync.find_target_by_remote_path(path)
 
-            prefix = target["remote"]
+            prefix = target["dirs"]["remote"]
             filename_encoding = target["filename_encoding"]
 
             if prefix is not None:
