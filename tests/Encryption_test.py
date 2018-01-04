@@ -77,6 +77,9 @@ class EncryptionTestCase(unittest.TestCase):
         self.assertEqual(Encryption.encrypt_path("/", key), ("/", b""))
         self.assertEqual(Encryption.encrypt_path("", key), ("", b""))
 
+        self.assertEqual(Encryption.encrypt_path("/a", key, "/a"), ("/a", b""))
+        self.assertEqual(Encryption.encrypt_path("/a/", key, "/a"), ("/a/", b""))
+
     def test_decrypt_path(self):
         key = b"1234" * 4
         iv = b"78" * 8
@@ -92,3 +95,6 @@ class EncryptionTestCase(unittest.TestCase):
                          ("/", b""))
         self.assertEqual(Encryption.decrypt_path(Encryption.encrypt_path("", key)[0], key),
                          ("", b""))
+
+        self.assertEqual(Encryption.decrypt_path("/a", key, "/a"), ("/a", b""))
+        self.assertEqual(Encryption.decrypt_path("/a/", key, "/a"), ("/a/", b""))

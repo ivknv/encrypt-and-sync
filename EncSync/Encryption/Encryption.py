@@ -485,8 +485,15 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep=None, filename_encoding="b
             path_names.append(enc_name)
             out_ivs += iv
 
-    if orig_path.startswith(Paths.dir_normalize(prefix, sep)):
-        return Paths.join(prefix, sep.join(path_names), sep=sep), out_ivs
+    if Paths.contains(prefix, orig_path, sep):
+        result = Paths.join(prefix, sep.join(path_names), sep=sep)
+
+        if orig_path.endswith(sep):
+            result = Paths.dir_normalize(result)
+        else:
+            result = Paths.dir_denormalize(result)
+
+        return result, out_ivs
 
     return sep.join(path_names), out_ivs
 
@@ -516,8 +523,14 @@ def decrypt_path(path, key, prefix=None, sep=None, filename_encoding="base64"):
     if prefix is not None:
         dec_path, ivs = decrypt_path(Paths.cut_prefix(path, prefix, sep), key, None, sep, decode)
 
-        if path.startswith(Paths.dir_normalize(prefix, sep)):
-            return Paths.join(prefix, dec_path, sep=sep), ivs
+        if Paths.contains(prefix, path, sep):
+            result = Paths.join(prefix, dec_path, sep=sep)
+            if path.endswith(sep):
+                result = Paths.dir_normalize(result)
+            else:
+                result = Paths.dir_denormalize(result)
+
+            return result, ivs
 
         return dec_path, ivs
 
