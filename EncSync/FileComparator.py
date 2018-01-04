@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-
 from . import Paths
 from . import PathMatch
-from .FileList import LocalFileList, RemoteFileList, DuplicateList
-from .EncPath import EncPath
+from .FileList import FileList
 
 def try_next(it, default=None):
     try:
@@ -17,6 +14,7 @@ def try_next(it, default=None):
 class FileComparator(object):
     def __init__(self, encsync, name, directory=None):
         self.encsync = encsync
+        self.name = name
 
         try:
             self.target = encsync.targets[name]
@@ -25,19 +23,19 @@ class FileComparator(object):
 
         self.directory = directory
 
-        llist = LocalFileList(name, directory)
-        rlist = RemoteFileList(name, directory)
+        flist1 = FileList(name, self.target["src"]["name"], directory)
+        flist2 = FileList(name, self.target["dst"]["name"], directory)
+        flist1.create()
+        flist2.create()
 
-        target_local = self.target["dirs"]["local"]
-        target_remote = self.target["dirs"]["remote"]
+        target_src = self.target["src"]["path"]
+        target_dst = self.target["dst"]["path"]
 
-        self.prefix1 = Paths.from_sys(os.path.abspath(os.path.expanduser(target_local)))
-        self.prefix1 = Paths.dir_normalize(self.prefix1)
-        self.prefix2 = Paths.dir_normalize(Paths.join_properly("/", target_remote))
+        self.prefix1 = Paths.dir_normalize(Paths.join_properly("/", target_src))
+        self.prefix2 = Paths.dir_normalize(Paths.join_properly("/", target_dst))
 
-        self.nodes1 = llist.select_all_nodes()
-        self.nodes2 = rlist.select_all_nodes()
-        self.duplicates = None
+        self.nodes1 = flist1.select_all_nodes()
+        self.nodes2 = flist2.select_all_nodes()
 
         self.it1 = iter(self.nodes1)
         self.it2 = iter(self.nodes2)
@@ -49,14 +47,11 @@ class FileComparator(object):
         self.path1 = None
         self.modified1 = None
         self.padded_size1 = None
-        self.encpath1 = None
 
         self.type2 = None
         self.path2 = None
         self.modified2 = None
         self.padded_size2 = None
-        self.IVs = None
-        self.encpath2 = None
 
         self.last_rm = None
 
@@ -67,16 +62,27 @@ class FileComparator(object):
         self.node2 = try_next(self.it2)
         if self.type2 == "d":
             self.last_rm = self.path2
-        return [("rm", self.type2, self.encpath2, self.target["filename_encoding"])]
+
+        return [{"type": "rm",
+                 "node_type": self.type2,
+                 "path": self.path2,
+                 "name": self.name}]
 
     def diff_new(self):
         self.node1 = try_next(self.it1)
-        return [("new", self.type1, self.encpath1, self.target["filename_encoding"])]
+        return [{"type": "new",
+                 "node_type": self.type1,
+                 "path": self.path1,
+                 "name": self.name}]
 
     def diff_update(self):
         self.node1 = try_next(self.it1)
         self.node2 = try_next(self.it2)
-        return [("update", self.type2, self.encpath2, self.target["filename_encoding"])]
+
+        return [{"type": "update",
+                 "node_type": self.type2,
+                 "path": self.path2,
+                 "name": self.name}]
 
     def diff_transition(self):
         self.node1 = try_next(self.it1)
@@ -85,18 +91,23 @@ class FileComparator(object):
         if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
             if self.type2 == "d":
                 self.last_rm = self.path2
-            diffs.append(("rm", self.type2, self.encpath2, self.target["filename_encoding"]))
-        diffs.append(("new", self.type1, self.encpath1, self.target["filename_encoding"]))
+
+            diffs.append({"type": "rm",
+                          "node_type": self.type2,
+                          "path": self.path2,
+                          "name": self.name})
+
+        diffs.append({"type": "new",
+                      "node_type": self.type1,
+                      "path": self.path1,
+                      "name": self.name})
 
         return diffs
-
-    def diff_rmdup(self):
-        return [("rmdup", self.type2, self.encpath2, self.target["filename_encoding"])]
 
     def __next__(self):
         while True:
             if self.node1 is None and self.node2 is None:
-                break
+                raise StopIteration
 
             if self.node1 is None:
                 self.type1 = None
@@ -109,12 +120,6 @@ class FileComparator(object):
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
 
-                self.encpath1 = EncPath(self.encsync, self.path1,
-                                        self.target["filename_encoding"])
-                self.encpath1.local_prefix = self.prefix1
-                self.encpath1.remote_prefix = self.prefix2
-                self.encpath1.IVs = b""
-
                 assert(self.type1 is not None)
 
             if self.node2 is None:
@@ -122,19 +127,11 @@ class FileComparator(object):
                 self.path2 = None
                 self.modified2 = None
                 self.padded_size2 = None
-                self.IVs = b""
             else:
                 self.type2 = self.node2["type"]
                 self.path2 = Paths.cut_prefix(self.node2["path"], self.prefix2) or "/"
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
-                self.IVs = self.node2["IVs"]
-
-                self.encpath2 = EncPath(self.encsync, self.path2,
-                                        self.target["filename_encoding"])
-                self.encpath2.local_prefix = self.prefix1
-                self.encpath2.remote_prefix = self.prefix2
-                self.encpath2.IVs = self.IVs
 
             if self.path1 is not None and self.target is not None:
                 if not PathMatch.match(self.node1["path"], self.target["allowed_paths"]):
@@ -155,26 +152,6 @@ class FileComparator(object):
             else:
                 self.node1 = try_next(self.it1)
                 self.node2 = try_next(self.it2)
-
-        if self.duplicates is None:
-            duplist = DuplicateList(self.directory)
-            duplist.create()
-            self.duplicates = iter(duplist.find_children(self.prefix2))
-
-        row = try_next(self.duplicates)
-        if row is None:
-            raise StopIteration
-
-        self.type2 = row[0]
-        self.IVs = row[1]
-        self.path2 = Paths.cut_prefix(row[2], self.prefix2) or "/"
-
-        self.encpath2 = EncPath(self.encsync, self.path2, self.target["filename_encoding"])
-        self.encpath2.local_prefix = self.prefix1
-        self.encpath2.remote_prefix = self.prefix2
-        self.encpath2.IVs = self.IVs
-
-        return self.diff_rmdup()
 
     def is_newer(self):
         condition = self.node1 is not None and self.node2 is not None

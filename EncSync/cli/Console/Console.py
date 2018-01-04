@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 use_readline = False
 
 try:
@@ -14,19 +16,49 @@ except ImportError:
         pass
 
 from ...EncScript import Parser, Tokenizer, ast2program
+from ...EncryptedStorage import EncryptedStorage
+from ... import Paths
 from .. import common
 from ..common import show_error
 from ..Environment import Environment
 from .ConsoleProgram import ConsoleProgram
 
 class Console(object):
-    def __init__(self, encsync):
-        self.cwd = "/"
-        self.pwd = "/"
-        self.env = Environment()
+    def __init__(self, encsync, env):
+        self.storages = {}
+        self.cwd = Paths.from_sys(os.getcwd())
+        self.pwd = self.cwd
+        self.env = env
         self.exit_code = 0
         self.quit = False
         self.encsync = encsync
+        self.cur_storage = self.get_storage("local")
+        self.previous_storage = self.cur_storage
+
+    def change_storage(self, name, new_path=None):
+        if name == self.cur_storage.name:
+            return
+
+        new_storage = self.get_storage(name)
+
+        self.cur_storage, self.previous_storage = new_storage, self.cur_storage
+
+        if new_path is None:
+            if name == "local":
+                new_path = Paths.from_sys(os.getcwd())
+            else:
+                new_path = "/"
+
+        self.cwd, self.pwd = new_path, self.cwd
+
+    def get_storage(self, name):
+        try:
+            return self.storages[name]
+        except KeyError:
+            directory = self.env["db_dir"]
+            storage = EncryptedStorage(self.encsync, name, directory)
+            self.storages[name] = storage
+            return storage
 
     def execute_commands(self, ast):
         program = ConsoleProgram([])
@@ -74,7 +106,7 @@ class Console(object):
                     prompt_more = False
                 else:
                     self.exit_code = 0
-                    msg = "{}\nEncSync console> ".format(self.cwd)
+                    msg = "%s://%s\nConsole> " % (self.cur_storage.name, self.cwd,)
 
                 line = input(msg)
 
@@ -128,7 +160,7 @@ def run_console(env):
     if use_readline:
         readline.parse_and_bind("tab: complete")
 
-    console = Console(encsync)
+    console = Console(encsync, Environment(env))
     console.env.parent = env
 
     return console.input_loop()

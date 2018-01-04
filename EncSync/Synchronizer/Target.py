@@ -1,60 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-
 from ..Task import Task
-from .. import Paths
 
-class SyncTask(Task):
+__all__ = ["SyncTarget"]
+
+class SyncTarget(Task):
     def __init__(self):
         Task.__init__(self)
 
-        self.task_type = None # "new", "update", "rm" or "rmdup"
-        self.type = None # "f" or "d"
-        self.path = None
-        self._uploaded = 0
-        self.size = 0
-
-        self.add_event("uploaded_changed")
-        self.add_event("filename_too_long")
-        self.add_event("interrupted")
-
-    @property
-    def uploaded(self):
-        return self._uploaded
-
-    @uploaded.setter
-    def uploaded(self, value):
-        old_value = self._uploaded
-        self._uploaded = value
-        if value != old_value:
-            self.emit_event("uploaded_changed")
-
-class SyncTarget(Task):
-    def __init__(self, synchronizer, name, local=None, remote=None, filename_encoding=None):
-        Task.__init__(self)
         self._stage = None
-        self.local, self.remote = local, remote
-        self.filename_encoding = filename_encoding
+        self.src = None
+        self.dst = None
+        
         self.skip_integrity_check = False
         self.total_children = 0
-        self.name = name
+        self.name = None
         self.enable_scan = True
 
-        if self.local is not None:
-            self.local = os.path.abspath(os.path.expanduser(self.local))
-
-        if self.remote is not None:
-            self.remote = Paths.join_properly("/", self.remote)
-
         self.add_event("stage_changed")
-        self.add_event("local_scan")
-        self.add_event("local_scan_failed")
-        self.add_event("local_scan_finished")
-        self.add_event("remote_scan")
-        self.add_event("remote_scan_failed")
-        self.add_event("remote_scan_finished")
         self.add_event("integrity_check")
         self.add_event("integrity_check_finished")
         self.add_event("integrity_check_failed")

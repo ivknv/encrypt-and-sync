@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import threading
 
 from .Logging import logger
@@ -10,10 +9,14 @@ from .DownloadTask import DownloadTask
 from .DownloadTarget import DownloadTarget
 from .Exceptions import NotFoundInDBError
 from ..Encryption import MIN_ENC_SIZE
-from ..FileList import RemoteFileList
+from ..FileList import FileList
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
+from ..TargetStorage import get_target_storage
+from ..EncryptedStorage import EncryptedStorage
 from .. import Paths
+
+__all__ = ["Downloader"]
 
 class Downloader(Worker):
     def __init__(self, encsync, directory, n_workers=2):
@@ -44,20 +47,28 @@ class Downloader(Worker):
         with self.targets_lock:
             return list(self.targets)
 
-    def make_target(self, name, remote, local):
+    def make_target(self, name, src_path, dst_storage_name, dst_path):
         try:
             encsync_target = self.encsync.targets[name]
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
-        target = DownloadTarget(name)
-        target.local = Paths.to_sys(local)
-        target.remote = remote
-        target.prefix = encsync_target["dirs"]["remote"]
-        target.filename_encoding = encsync_target["filename_encoding"]
+        # downloader's "src" is synchronizer's "dst"
+        src_name = encsync_target["dst"]["name"]
 
-    def add_download(self, name, remote, local):
-        target = self.make_target(name, remote, local)
+        src = get_target_storage(src_name)(name, "dst", self.encsync, self.directory)
+        dst = EncryptedStorage(self.encsync, dst_storage_name, self.directory)
+
+        target = DownloadTarget(name)
+        target.src = src
+        target.dst = dst
+        target.src_path = src_path
+        target.dst_path = dst_path
+
+        return target
+
+    def add_download(self, name, src_path, dst_storage_name, dst_path):
+        target = self.make_target(name, src_path, dst_storage_name, dst_path)
 
         self.add_target(target)
 
@@ -79,8 +90,9 @@ class Downloader(Worker):
         while not self.stopped:
             try:
                 with self.targets_lock:
-                    if self.stopped or not len(self.targets):
+                    if self.stopped or not self.targets:
                         break
+
                     target = self.targets.pop(0)
                     self.cur_target = target
 
@@ -96,7 +108,7 @@ class Downloader(Worker):
 
                 with target.pool_lock, target.lock:
                     for i in target.children:
-                        if i.status in {"pending", None}:
+                        if i.status in ("pending", None):
                             target.pool.append(i)
 
                 if self.stopped:
@@ -118,48 +130,71 @@ class Downloader(Worker):
                            DownloaderWorker, self, self.cur_target)
 
     def scan(self, target):
-        rlist = RemoteFileList(target.name, self.directory)
+        # Downloader's "src" is synchronizer's "dst"
+        flist = FileList(target.name, target.src.storage.name, self.directory)
+        flist.create()
 
-        rlist.create()
+        src_path = target.src_path
 
-        dec_remote = target.remote
+        nodes = flist.find_node_children(src_path)
 
-        nodes = list(rlist.find_node_children(dec_remote))
-
-        if len(nodes) == 0:
+        try:
+            node = next(nodes)
+        except StopIteration:
             # Fail if not found
-            raise NotFoundInDBError("Path wasn't found in the database: %r" % dec_remote, dec_remote)
+            msg = "Path wasn't found in the database: %r" % (src_path,)
+            raise NotFoundInDBError(msg, src_path)
 
-        target.type = nodes[0]["type"]
+        target.type = node["type"]
         target.total_children = 0
+
+        src_prefix = target.src.prefix
+
+        try:
+            dst_type = target.dst.get_meta(target.dst_path)["type"]
+        except FileNotFoundError:
+            dst_type = None
+
+        if target.type == "f":
+            new_task = DownloadTask()
+            new_task.type = "f"
+            new_task.modified = node["modified"]
+            new_task.src = target.src
+            new_task.dst = target.dst
+            new_task.src_path = Paths.cut_prefix(node["path"], src_prefix)
+            new_task.dst_path = target.dst_path
+
+            if dst_type == "d":
+                filename = Paths.split(new_task.src_path)[1]
+                new_task.dst_path = Paths.join(new_task.dst_path, filename)
+
+            with target.lock:
+                target.size = new_task.size
+                target.total_children = 1
+                target.children.append(new_task)
+
+            return
 
         for node in nodes:
             new_task = DownloadTask()
 
-            enc_path = self.encsync.encrypt_path(node["path"], target.prefix, node["IVs"],
-                                                 filename_encoding=target.filename_encoding)[0]
-            name = Paths.cut_prefix(node["path"], target.remote)
-
             new_task.type = node["type"]
             new_task.modified = node["modified"]
-            new_task.remote = enc_path
-            new_task.dec_remote = node["path"]
+            new_task.src = target.src
+            new_task.dst = target.dst
+            new_task.src_path = Paths.cut_prefix(node["path"], src_prefix)
+            new_task.dst_path = target.dst_path
 
             # Set destination path
-            if os.path.isdir(target.local) or target.type == "d":
-                new_task.local = os.path.join(target.local, name)
-            elif target.type == "f":
-                new_task.local = target.local
+            if dst_type == "d" or target.type == "d":
+                suffix = Paths.cut_prefix(node["path"], target.src_path)
+                new_task.dst_path = Paths.join(new_task.dst_path, suffix)
 
             new_task.parent = target
-            new_task.IVs = node["IVs"]
 
-            if new_task.type == "f":
+            if new_task.type == "f" and target.src.encrypted:
                 new_task.size = node["padded_size"] + MIN_ENC_SIZE
-            else:
-                new_task.size = 0
 
             with target.lock:
                 target.total_children += 1
-                target.size += new_task.size
                 target.children.append(new_task)

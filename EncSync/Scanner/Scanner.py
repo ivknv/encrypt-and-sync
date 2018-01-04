@@ -3,15 +3,13 @@
 
 import threading
 
-from yadisk.exceptions import DiskNotFoundError
-
-from .Workers import LocalScanWorker, RemoteScanWorker
+from .Workers import *
 from .Logging import logger
 from .Task import ScanTask
 from .Target import ScanTarget
 from ..Worker import Worker
-from ..FileList import LocalFileList, RemoteFileList, DuplicateList
-from ..Scannable import LocalScannable, RemoteScannable
+from ..FileList import FileList, DuplicateList
+from ..Scannable import DecryptedScannable, EncryptedScannable
 from ..LogReceiver import LogReceiver
 from .. import PathMatch
 from .. import Paths
@@ -28,9 +26,8 @@ class Scanner(Worker):
         self.targets = []
         self.targets_lock = threading.Lock()
 
-        self.shared_llist = None
-        self.shared_rlist = None
-        self.shared_duplist = DuplicateList(directory)
+        self.shared_flist = None
+        self.shared_duplist = None
 
         if not self.enable_journal:
             self.shared_duplist.disable_journal()
@@ -58,14 +55,23 @@ class Scanner(Worker):
         return target
 
     def make_target(self, scan_type, name):
+        if scan_type not in ("src", "dst"):
+            msg = "Unknown scan_type: %r, must be 'src' or 'dst'" % (scan_type,)
+            raise ValueError(msg)
+
         try:
             encsync_target = self.encsync.targets[name]
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
-        path = encsync_target["dirs"][scan_type]
-        filename_encoding = encsync_target["filename_encoding"]
-        target = ScanTarget(scan_type, name, path, filename_encoding)
+        target_dir = encsync_target[scan_type]
+
+        path = target_dir["path"]
+        encrypted = target_dir["encrypted"]
+        filename_encoding = target_dir["filename_encoding"]
+        storage = self.encsync.storages[target_dir["name"]]
+
+        target = ScanTarget(scan_type, encrypted, storage, name, path, filename_encoding)
 
         return target
 
@@ -112,46 +118,44 @@ class Scanner(Worker):
             if len(self.pool) > 0:
                 return self.pool.pop(0)
 
-    def begin_remote_scan(self, target):
-        self.shared_rlist.remove_node_children(target.path)
+    def begin_scan(self, target):
+        self.shared_flist.clear()
 
-        scannable = RemoteScannable(self.encsync, target.path,
-                                    filename_encoding=target.filename_encoding)
+        if target.encrypted:
+            self.shared_duplist.remove_children(target.path)
+
+        if self.stop_condition():
+            return
+
+        if target.encrypted:
+            scannable = EncryptedScannable(target.storage, target.path,
+                                           filename_encoding=target.filename_encoding)
+        else:
+            scannable = DecryptedScannable(target.storage, target.path)
 
         try:
             scannable.identify()
-        except DiskNotFoundError:
+        except FileNotFoundError:
             return
 
-        self.shared_rlist.insert_node(scannable.to_node())
-        self.add_task(scannable)
-
-    def begin_local_scan(self, target):
-        self.shared_llist.remove_node_children(target.path)
-
-        scannable = LocalScannable(target.path)
-        scannable.identify()
-
-        path = Paths.from_sys(target.path)
-
-        if scannable.type == "d":
-            path = Paths.dir_normalize(path)
-
-        if not PathMatch.match(path, self.encsync.allowed_paths):
+        if self.stop_condition():
             return
+
+        if target.storage.name == "local":
+            path = Paths.from_sys(target.path)
+
+            if scannable.type == "d":
+                path = Paths.dir_normalize(path)
+
+            if not PathMatch.match(path, self.encsync.allowed_paths):
+                return
 
         if scannable.type is not None:
-            self.shared_llist.insert_node(scannable.to_node())
+            self.shared_flist.insert_node(scannable.to_node())
             self.add_task(scannable)
 
     def work(self):
-        try:
-            assert(self.n_workers >= 1)
-
-            self.shared_duplist.create()
-        except BaseException as e:
-            self.emit_event("error", e)
-            return
+        assert(self.n_workers >= 1)
 
         target = None
 
@@ -164,23 +168,20 @@ class Scanner(Worker):
 
                 self.cur_target = target
 
-                assert(target.type in ("local", "remote"))
-
                 if target.status == "suspended":
                     continue
 
-                self.shared_llist = LocalFileList(target.name, self.directory)
-                self.shared_rlist = RemoteFileList(target.name, self.directory)
+                storage_name = target.storage.name
+
+                self.shared_flist = FileList(target.name, storage_name, self.directory)
+                self.shared_duplist = DuplicateList(storage_name, self.directory)
 
                 if not self.enable_journal:
-                    self.shared_llist.disable_journal()
-                    self.shared_rlist.disable_journal()
+                    self.shared_flist.disable_journal()
+                    self.shared_duplist.disable_journal()
 
-                self.shared_llist.create()
-                self.shared_rlist.create()
-
-                filelist = {"local":  self.shared_llist,
-                            "remote": self.shared_rlist}[target.type]
+                self.shared_flist.create()
+                self.shared_duplist.create()
             except BaseException as e:
                 try:
                     self.emit_event("error", e)
@@ -192,39 +193,60 @@ class Scanner(Worker):
                 continue
 
             try:
+                if self.stop_condition():
+                    break
+
                 target.change_status("pending")
 
-                filelist.begin_transaction()
+                self.shared_flist.begin_transaction()
                 self.shared_duplist.begin_transaction()
 
-                if target.type == "local":
-                    self.begin_local_scan(target)
+                self.begin_scan(target)
 
-                    if self.pool:
-                        self.start_worker(LocalScanWorker, self, target)
-                elif target.type == "remote":
-                    self.shared_duplist.remove_children(target.path)
+                if self.stop_condition():
+                    self.shared_flist.rollback()
+                    self.shared_duplist.rollback()
+                    break
 
-                    self.start_workers(self.n_workers, RemoteScanWorker, self, target)
-                    self.begin_remote_scan(target)
+                if target.storage.parallelizable:
+                    if target.encrypted:
+                        worker_class = AsyncEncryptedScanWorker
+                    else:
+                        worker_class = AsyncDecryptedScanWorker
 
+                    self.start_workers(self.n_workers, worker_class, self, target)
                     self.wait_workers()
                     self.stop_workers()
+                else:
+                    if target.encrypted:
+                        worker_class = EncryptedScanWorker
+                    else:
+                        worker_class = DecryptedScanWorker
+
+                    if self.pool:
+                        self.start_worker(worker_class, self, target)
+
+                if self.stop_condition():
+                    self.stop_workers()
+                    self.join_workers()
+                    self.shared_flist.rollback()
+                    self.shared_duplist.rollback()
+                    break
 
                 self.join_workers()
 
                 if target.status == "pending":
-                    filelist.commit()
+                    self.shared_flist.commit()
                     self.shared_duplist.commit()
                     target.change_status("finished")
 
                     target.emit_event("scan_finished")
                 else:
-                    filelist.rollback()
+                    self.shared_flist.rollback()
                     self.shared_duplist.rollback()
             except BaseException as e:
                 self.stop_workers()
-                filelist.rollback()
+                self.shared_flist.rollback()
                 self.shared_duplist.rollback()
 
                 self.emit_event("error", e)

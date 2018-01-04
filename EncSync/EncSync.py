@@ -2,24 +2,23 @@
 # -*- coding: utf-8 -*-
 
 import json
-import os
 import hashlib
 import tempfile
 import io
-import yadisk
 
 from . import Encryption
 from . import Paths
 from .Config import Config
 from . import PathMatch
+from .common import get_file_size
+
+__all__ = ["EncSync", "EncSyncError", "InvalidEncryptedDataError",
+           "WrongMasterKeyError"]
 
 try:
     JSONDecodeError = json.JSONDecodeError
 except AttributeError:
     JSONDecodeError = ValueError
-
-APP_ID = "59c915d2c2d546d3842f2c6fe3a9678e"
-APP_SECRET = "faca3ddd1d574e54a258aa5d8e521c8d"
 
 CONFIG_TEST = b"TEST STRING\n"
 
@@ -38,12 +37,12 @@ class EncSync(object):
     def __init__(self, master_key):
         self.targets = {}
         self.plain_key = ""
-        self.key = ""
+        self._key = ""
         self.set_master_key(master_key)
-        self.ynd_id = APP_ID
-        self.ynd_token = ""
-        self.ynd_secret = APP_SECRET
-        self.ynd = yadisk.YaDisk(self.ynd_id, self.ynd_secret, "")
+
+        self.encrypted_data = {}
+
+        self.storages = {}
 
         self.upload_limit = float("inf")
         self.download_limit = float("inf")
@@ -53,23 +52,41 @@ class EncSync(object):
         self.allowed_paths = [] # Compiled
         self._allowed_paths = [] # Uncompiled
 
-    def find_target_by_remote_path(self, path):
-        path = Paths.dir_normalize(Paths.join_properly("/", path))
+    def identify_target(self, storage_name, path, dir_type=None):
+        best_match = None
+        best_dir = None
+        best_path = None
 
-        for target in self.targets:
-            prefix = target["dirs"]["remote"]
-            prefix = Paths.dir_normalize(Paths.join_properly("/", prefix))
+        if dir_type is None:
+            dir_types = ("src", "dst")
+        else:
+            dir_types = (dir_type,)
 
-            if Paths.contains(prefix, path):
-                return target
+        for target in self.targets.values():
+            for d in dir_types:
+                if target[d]["name"] != storage_name:
+                    continue
 
-    def set_token(self, token):
-        self.ynd_token = token
-        self.ynd = yadisk.YaDisk(self.ynd_id, self.ynd_secret, self.ynd_token)
+                prefix = target[d]["path"]
 
-    def set_key(self, key):
+                if best_path is None:
+                    if Paths.contains(prefix, path):
+                        best_match, best_dir = target, d
+                        best_path = target[d]["path"]
+                elif Paths.contains(prefix, best_path):
+                    best_match, best_dir = target, d
+                    best_path = target[d]["path"]
+
+        return best_match, best_dir
+
+    @property
+    def key(self):
+        return self._key
+
+    @key.setter
+    def key(self, key):
         self.plain_key = key
-        self.key = hashlib.sha256(key.encode("utf8")).digest()
+        self._key = hashlib.sha256(key.encode("utf8")).digest()
 
     def set_master_key(self, master_key):
         self.master_key = hashlib.sha256(master_key.encode("utf8")).digest()
@@ -96,12 +113,14 @@ class EncSync(object):
         return config
 
     def make_encrypted_data(self):
-        return {"key":            self.plain_key,
-                "yandexAppToken": self.ynd_token}
+        d = dict(self.encrypted_data)
+        d["key"] = self.plain_key
+
+        return d
 
     def set_encrypted_data(self, enc_data):
-        self.set_key(enc_data["key"])
-        self.set_token(enc_data["yandexAppToken"])
+        self.key = enc_data["key"]
+        self.encrypted_data = enc_data
 
     @staticmethod
     def load_encrypted_data(path, master_key, enable_test=True):
@@ -164,28 +183,39 @@ class EncSync(object):
             target["_allowed_paths"] = target["allowed_paths"]
             target["allowed_paths"]  = PathMatch.compile_patterns(target["_allowed_paths"])
 
-    def temp_encrypt(self, path):
-        size = os.path.getsize(path)
+            for k in ("src", "dst"):
+                path = target[k]["path"]
+                path = Paths.dir_normalize(Paths.join_properly("/", path))
+                target[k]["path"] = path
+
+    def temp_encrypt(self, in_file):
+        size = get_file_size(in_file)
+
         if size < TEMP_ENCRYPT_BUFFER_LIMIT:
             f = io.BytesIO()
         else:
             f = tempfile.TemporaryFile(mode="w+b")
-        Encryption.encrypt_file(path, f, self.key)
+
+        Encryption.encrypt_file(in_file, f, self.key)
         f.seek(0)
+
         return f
 
-    def temp_decrypt(self, path):
-        size = os.path.getsize(path)
+    def temp_decrypt(self, in_file):
+        size = get_file_size(in_file)
+
         if size < TEMP_ENCRYPT_BUFFER_LIMIT:
             f = io.BytesIO()
         else:
             f = tempfile.TemporaryFile(mode="w+b")
-        Encryption.decrypt_file(path, f, self.key)
+
+        Encryption.decrypt_file(in_file, f, self.key)
         f.seek(0)
+
         return f
 
-    def decrypt_file(self, in_path, out_path):
-        Encryption.decrypt_file(in_path, out_path, self.key)
+    def decrypt_file(self, in_file, out_file):
+        Encryption.decrypt_file(in_file, out_file, self.key)
 
     def encrypt_path(self, path, prefix=None, IVs=b"", filename_encoding="base64"):
         return Encryption.encrypt_path(path, self.key, prefix, ivs=IVs,

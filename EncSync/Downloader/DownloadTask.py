@@ -1,28 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import yadisk.exceptions
-
 from ..Task import Task
+
+__all__ = ["DownloadTask"]
 
 class DownloadTask(Task):
     def __init__(self):
         Task.__init__(self)
 
         self.type = None
-        self.prefix = "/"
-        self.remote = "" # TODO make it an instance of EncPath
-        self.dec_remote = None
-        self.IVs = None
-        self.local = ""
+        self.src = None
+        self.dst = None
+        self.src_path = ""
+        self.dst_path = ""
         self.size = 0
         self.modified = 0
         self._downloaded = 0
-        self.link = None
+        self._uploaded = 0
         self.total_children = 0
 
         self.add_event("downloaded_changed")
-        self.add_event("obtain_link_failed")
+        self.add_event("uploaded_changed")
 
     @property
     def downloaded(self):
@@ -33,13 +32,20 @@ class DownloadTask(Task):
         old_value = self._downloaded
         self._downloaded = value
 
-        self.emit_event("downloaded_changed")
+        if old_value != value:
+            self.emit_event("downloaded_changed")
 
-        if self.parent is not None:
-            self.parent.downloaded += value - old_value
+            if self.parent is not None:
+                self.parent.downloaded += value - old_value
 
-    def obtain_link(self, ynd):
-        try:
-            return ynd.get_download_link(self.remote)
-        except yadisk.exceptions.YaDiskError:
-            pass
+    @property
+    def uploaded(self):
+        return self._uploaded
+
+    @uploaded.setter
+    def uploaded(self, value):
+        old_value = self._uploaded
+        self._uploaded = value
+
+        if old_value != value:
+            self.emit_event("uploaded_changed")

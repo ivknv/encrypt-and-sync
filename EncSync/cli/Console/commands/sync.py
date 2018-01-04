@@ -3,17 +3,18 @@
 
 import argparse
 
-from .... import Paths
 from ...sync import do_sync
-from ...common import positive_int, recognize_path
+from ...common import positive_int
 from ...Environment import Environment
 from ....EncScript import Command
+
+__all__ = ["SyncCommand"]
 
 class SyncCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Sync directories",
                                          prog=self.args[0])
-        parser.add_argument("dirs", nargs="*")
+        parser.add_argument("targets", nargs="*")
         parser.add_argument("-a", "--all", action="store_true")
         parser.add_argument("--n-workers", "-w", type=positive_int)
         parser.add_argument("--ask", action="store_true")
@@ -24,16 +25,6 @@ class SyncCommand(Command):
         parser.add_argument("-I", "--integrity-check", action="store_true")
 
         ns = parser.parse_args(self.args[1:])
-
-        paths = []
-
-        for path in ns.dirs:
-            path, path_type = recognize_path(path)
-
-            if path_type == "remote":
-                path = "disk://" + Paths.join_properly(console.cwd, path)
-
-            paths.append(path)
 
         env = Environment(console.env)
         env["all"] = ns.all
@@ -47,4 +38,4 @@ class SyncCommand(Command):
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers
 
-        return do_sync(env, paths)
+        return do_sync(env, ns.targets)

@@ -8,11 +8,10 @@ from yadisk.exceptions import YaDiskError
 
 from ..Scanner import Scanner
 from ..Event.EventHandler import EventHandler
-from ..FileList import LocalFileList, RemoteFileList, DuplicateList
-from .. import Paths
+from ..FileList import FileList, DuplicateList
+from ..ExceptionManager import ExceptionManager
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
-from ..ExceptionManager import ExceptionManager
 
 from . import common
 from .common import show_error
@@ -21,12 +20,11 @@ PRINT_RATE_LIMIT = 1.0
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
-        path = get_path_with_schema(target)
-        print("[%d] [%s]" % (i + 1, path))
+        print("[%d] [%s:%s]" % (i + 1, target.name, target.type))
 
     while True:
         try:
-            answer = input("Enter numbers of targets [default: all]: ")
+            answer = input("Enter the numbers of targets [default: all]: ")
         except (KeyboardInterrupt, EOFError):
             return []
 
@@ -36,10 +34,10 @@ def ask_target_choice(targets):
         try:
             return interpret_choice(answer, targets)
         except (ValueError, IndexError) as e:
-            print("Error: %s" % str(e))
+            show_error("Error: %s" % str(e))
 
 def get_path_with_schema(target):
-    if target.type == "remote":
+    if target.storage.name == "yadisk":
         return "disk://" + target.path
 
     return target.path
@@ -47,14 +45,8 @@ def get_path_with_schema(target):
 def print_target_totals(env, target):
     n_files = n_dirs = 0
 
-    assert(target.type in ("local", "remote"))
-
-    if target.type == "local":
-        filelist = LocalFileList(target.name, env["db_dir"])
-        children = filelist.find_node_children(Paths.from_sys(target.path))
-    elif target.type == "remote":
-        filelist = RemoteFileList(target.name, env["db_dir"])
-        children = filelist.find_node_children(target.path)
+    filelist = FileList(target.name, target.storage.name, env["db_dir"])
+    children = filelist.find_node_children(target.path)
 
     for i in children:
         if i["type"] == "f":
@@ -64,15 +56,13 @@ def print_target_totals(env, target):
 
     filelist.close()
 
-    path = get_path_with_schema(target)
+    print("[%s:%s]: %d files" % (target.name, target.type, n_files))
+    print("[%s:%s]: %d directories" % (target.name, target.type, n_dirs))
 
-    print("[%s]: %d files" % (path, n_files))
-    print("[%s]: %d directories" % (path, n_dirs))
-
-    if target.type != "remote":
+    if not target.encrypted:
         return
 
-    duplist = DuplicateList(env["db_dir"])
+    duplist = DuplicateList(target.storage.name, env["db_dir"])
     duplist.create()
 
     children = duplist.find_children(target.path)
@@ -80,18 +70,19 @@ def print_target_totals(env, target):
 
     duplist.close()
 
-    print("[%s]: %d duplicates" % (path, n_duplicates))
+    print("[%s:%s]: %d duplicate(s)" % (target.name, target.type, n_duplicates))
 
 class ScannerReceiver(EventHandler):
-    def __init__(self, scanner):
+    def __init__(self, env, scanner):
         EventHandler.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
+        self.target_receiver = TargetReceiver(env)
 
         self.add_emitter_callback(scanner, "started", self.on_started)
         self.add_emitter_callback(scanner, "finished", self.on_finished)
         self.add_emitter_callback(scanner, "next_target", self.on_next_target)
-        self.add_emitter_callback(scanner, "worker_started", self.on_worker_started)
+        self.add_emitter_callback(scanner, "worker_starting", self.on_worker_starting)
         self.add_emitter_callback(scanner, "error", self.on_error)
 
         self.exc_manager = ExceptionManager()
@@ -106,10 +97,11 @@ class ScannerReceiver(EventHandler):
         print("Scanner: finished")
 
     def on_next_target(self, event, target):
-        path = get_path_with_schema(target)
-        print("Next %s target: [%s]" % (target.type, path))
+        target.add_receiver(self.target_receiver)
 
-    def on_worker_started(self, event, worker):
+        print("Performing %s scan: [%s:%s]" % (target.storage.name, target.name, target.type))
+
+    def on_worker_starting(self, event, worker):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exception):
@@ -117,9 +109,9 @@ class ScannerReceiver(EventHandler):
 
     def on_disk_error(self, exc, scanner):
         target = scanner.cur_target
-        path = get_path_with_schema(target)
 
-        print("[%s]: error: %s: %s" % (path, exc.error_type, exc))
+        print("[%s:%s]: error: %s: %s" % (target.name, target.type,
+                                          exc.error_type, exc))
 
     def on_exception(self, exc, scanner):
         traceback.print_exc()
@@ -137,14 +129,14 @@ class TargetReceiver(EventHandler):
         target = event["emitter"]
 
         if target.status in ("finished", "failed", "suspended"):
-            path = get_path_with_schema(target)
-            print("[%s]: %s" % (path, target.status))
+            print("[%s:%s]: %s scan %s" % (target.name, target.type,
+                                           target.storage.name, target.status))
 
         if target.status == "finished":
             print_target_totals(self.env, target)
 
     def on_duplicates_found(self, event, duplicates):
-        print("Found %d duplicates of %s" % (len(duplicates) - 1, duplicates[0].path))
+        print("Found %d duplicate(s) of %s" % (len(duplicates) - 1, duplicates[0].path))
 
 class WorkerReceiver(EventHandler):
     def __init__(self):
@@ -173,9 +165,9 @@ class WorkerReceiver(EventHandler):
 
     def on_disk_error(self, exc, scanner):
         target = scanner.cur_target
-        path = get_path_with_schema(target)
 
-        print("[%s]: error: %s: %s" % (path, exc.error_type, exc))
+        print("[%s:%s]: error: %s: %s" % (target.name, target.type,
+                                          exc.error_type, exc))
 
     def on_exception(self, exc, scanner):
         traceback.print_exc()
@@ -196,11 +188,11 @@ def do_scan(env, names):
 
     if env.get("all", False):
         for name in sorted(encsync.targets.keys()):
-            if not env.get("remote_only", False):
-                names.append(name + ":local")
+            if not env.get("dst_only", False):
+                names.append(name + ":src")
 
-            if not env.get("local_only", False):
-                names.append(name + ":remote")
+            if not env.get("src_only", False):
+                names.append(name + ":dst")
 
     if len(names) == 0:
         show_error("Error: no targets given")
@@ -208,35 +200,34 @@ def do_scan(env, names):
 
     no_journal = env.get("no_journal", False)
 
-    scanner = Scanner(env["encsync"], env["db_dir"], n_workers, enable_journal=not no_journal)
+    scanner = Scanner(env["encsync"], env["db_dir"], n_workers,
+                      enable_journal=not no_journal)
 
     with GenericSignalManager(scanner):
         targets = []
 
-        target_receiver = TargetReceiver(env)
-
         for name in names:
-            if name.endswith(":local"):
-                scan_type = "local"
-                name = name[:-6]
-            elif name.endswith(":remote"):
-                scan_type = "remote"
-                name = name[:-7]
+            if name.endswith(":src"):
+                scan_type = "src"
+                name = name[:-4]
+            elif name.endswith(":dst"):
+                scan_type = "dst"
+                name = name[:-4]
             else:
                 scan_type = None
 
             if scan_type is None:
-                if env["local_only"]:
-                    scan_type = "local"
-                elif env["remote_only"]:
-                    scan_type = "remote"
+                if env["src_only"]:
+                    scan_type = "src"
+                elif env["dst_only"]:
+                    scan_type = "dst"
 
             try:
-                if scan_type in (None, "local"):
-                    targets.append(scanner.make_target("local", name))
+                if scan_type in (None, "src"):
+                    targets.append(scanner.make_target("src", name))
 
-                if scan_type in (None, "remote"):
-                    targets.append(scanner.make_target("remote", name))
+                if scan_type in (None, "dst"):
+                    targets.append(scanner.make_target("dst", name))
             except ValueError:
                 show_error("Error: unknown target %r" % (name,))
                 return 1
@@ -246,13 +237,12 @@ def do_scan(env, names):
 
         for target in targets:
             scanner.add_target(target)
-            target.add_receiver(target_receiver)
 
         print("Targets to scan:")
         for target in targets:
-            print("[%s]" % get_path_with_schema(target))
+            print("[%s:%s]" % (target.name, target.type))
 
-        scanner_receiver = ScannerReceiver(scanner)
+        scanner_receiver = ScannerReceiver(env, scanner)
 
         scanner.add_receiver(scanner_receiver)
 

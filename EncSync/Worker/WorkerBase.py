@@ -21,6 +21,7 @@ class WorkerBase(EventHandler):
         self.add_event("started")
         self.add_event("stopping")
         self.add_event("finished")
+        self.add_event("worker_starting")
         self.add_event("worker_started")
         self.add_event("worker_finished")
 
@@ -103,8 +104,14 @@ class WorkerBase(EventHandler):
     def get_num_alive(self):
         return sum(1 for i in self.get_worker_list() if i.is_alive())
 
-    def start_worker(self, worker_class, *args, **kwargs):
-        worker = worker_class(*args, **kwargs)
+    def start_worker(self, worker_or_class, *args, **kwargs):
+        if isinstance(worker_or_class, type):
+            worker = worker_or_class(*args, **kwargs)
+        else:
+            worker = worker_or_class
+
+        self.emit_event("worker_starting", worker)
+
         worker.start()
         self.add_worker(worker)
 

@@ -19,5 +19,6 @@ class ConsoleNamespace(Namespace):
         self["sync"]       = commands.SyncCommand
         self["diffs"]      = commands.DiffsCommand
         self["duplicates"] = commands.DuplicatesCommand
-        self["lscan"]      = commands.LScanCommand
-        self["rscan"]      = commands.RScanCommand
+        self["src-scan"]   = commands.SrcScanCommand
+        self["dst-scan"]   = commands.DstScanCommand
+        self["rmdup"]      = commands.RemoveDuplicatesCommand

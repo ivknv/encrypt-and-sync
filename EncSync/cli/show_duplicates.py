@@ -1,16 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sqlite3
+
 from . import common
 from ..FileList import DuplicateList
 
+__all__ = ["show_duplicates"]
+
 def show_duplicates(env, paths):
-    duplist = DuplicateList(env["db_dir"])
-    duplist.create()
-    
     for path in paths:
-        path = common.recognize_path(path)[0]
-        for duplicate in duplist.find_children(path):
-            print("{} {}".format(duplicate[0], duplicate[1]))
+        path, path_type = common.recognize_path(path)
+        duplist = DuplicateList(path_type, env["db_dir"])
+
+        try:
+            for duplicate in duplist.find_children(path):
+                print("%s %s" % (duplicate[0], duplicate[2]))
+        except sqlite3.OperationalError:
+            pass
 
     return 0

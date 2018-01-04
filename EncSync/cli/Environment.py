@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+__all__ = ["Environment"]
+
 class Environment(dict):
     def __init__(self, parent=None):
         dict.__init__(self)

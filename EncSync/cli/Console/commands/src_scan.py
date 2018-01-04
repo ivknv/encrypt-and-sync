@@ -7,9 +7,11 @@ from ...scan import do_scan
 from ...Environment import Environment
 from ....EncScript import Command
 
-class LScanCommand(Command):
+__all__ = ["SrcScanCommand"]
+
+class SrcScanCommand(Command):
     def evaluate(self, console):
-        parser = argparse.ArgumentParser(description="Scan local directories",
+        parser = argparse.ArgumentParser(description="Scan source directories",
                                          prog=self.args[0])
         parser.add_argument("names", nargs="*")
         parser.add_argument("--ask", action="store_true")
@@ -24,7 +26,7 @@ class LScanCommand(Command):
         env["all"] = ns.all
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
-        env["remote_only"] = False
-        env["local_only"] = True
+        env["dst_only"] = False
+        env["src_only"] = True
 
         return do_scan(env, ns.names)

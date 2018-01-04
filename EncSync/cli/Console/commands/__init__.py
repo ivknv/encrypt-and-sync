@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .cd import CdCommand
-from .ls import LsCommand
-from .cat import CatCommand
-from .exit import ExitCommand
-from .echo import EchoCommand
-from .download import DownloadCommand
-from .scan import ScanCommand
-from .sync import SyncCommand
-from .diffs import DiffsCommand
-from .duplicates import DuplicatesCommand
-from .lscan import LScanCommand
-from .rscan import RScanCommand
+# pylint: disable=wildcard-import
+from .cd import *
+from .ls import *
+from .cat import *
+from .exit import *
+from .echo import *
+from .download import *
+from .scan import *
+from .sync import *
+from .diffs import *
+from .duplicates import *
+from .src_scan import *
+from .dst_scan import *
+from .remove_duplicates import *

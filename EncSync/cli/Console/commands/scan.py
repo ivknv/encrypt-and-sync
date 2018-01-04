@@ -8,6 +8,8 @@ from ...common import positive_int
 from ...Environment import Environment
 from ....EncScript import Command
 
+__all__ = ["ScanCommand"]
+
 class ScanCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Scan directories",
@@ -20,8 +22,8 @@ class ScanCommand(Command):
         parser.add_argument("--n-workers", "-w", type=positive_int)
 
         group = parser.add_mutually_exclusive_group()
-        group.add_argument("--local-only", action="store_true")
-        group.add_argument("--remote-only", action="store_true")
+        group.add_argument("--src-only", action="store_true")
+        group.add_argument("--dst-only", action="store_true")
 
         ns = parser.parse_args(self.args[1:])
 
@@ -31,8 +33,8 @@ class ScanCommand(Command):
         env["ask"] = ns.ask
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
-        env["local_only"] = ns.local_only
-        env["remote_only"] = ns.remote_only
+        env["src_only"] = ns.src_only
+        env["dst_only"] = ns.dst_only
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

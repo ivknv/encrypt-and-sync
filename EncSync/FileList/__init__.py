@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .LocalFileList import LocalFileList
-from .RemoteFileList import RemoteFileList
+from .BaseFileList import BaseFileList
+from .FileList import FileList
 from .DuplicateList import DuplicateList

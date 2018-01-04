@@ -8,9 +8,11 @@ from ...common import positive_int
 from ...Environment import Environment
 from ....EncScript import Command
 
-class RScanCommand(Command):
+__all__ = ["DstScanCommand"]
+
+class DstScanCommand(Command):
     def evaluate(self, console):
-        parser = argparse.ArgumentParser(description="Scan remote directories",
+        parser = argparse.ArgumentParser(description="Scan destination directories",
                                          prog=self.args[0])
         parser.add_argument("names", nargs="*")
         parser.add_argument("--ask", action="store_true")
@@ -27,8 +29,8 @@ class RScanCommand(Command):
         env["all"] = ns.all
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
-        env["local_only"] = False
-        env["remote_only"] = True
+        env["src_only"] = False
+        env["dst_only"] = True
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

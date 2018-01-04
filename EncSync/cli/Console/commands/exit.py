@@ -4,6 +4,8 @@
 from ....EncScript import Command
 from ...common import show_error
 
+__all__ = ["ExitCommand"]
+
 class ExitCommand(Command):
     def evaluate(self, console):
         if len(self.args) >= 2:

@@ -12,6 +12,7 @@ from ..EncSync import EncSync, InvalidEncryptedDataError
 from ..Config.Exceptions import InvalidConfigError
 from ..Downloader import DownloadTask
 from ..Synchronizer import SyncTask
+from ..DuplicateRemover import DuplicateRemoverTask
 from ..Encryption import DecryptionError
 from .. import Paths
 
@@ -43,16 +44,18 @@ def get_failed_percent(target):
         return 0.0
 
 def get_progress_str(task):
-    assert(isinstance(task, (SyncTask, DownloadTask)))
-
-    if isinstance(task, SyncTask):
-        path = task.path.path
-    elif isinstance(task, DownloadTask):
-        path = task.dec_remote
+    assert(isinstance(task, (SyncTask, DownloadTask, DuplicateRemoverTask)))
 
     target = task.parent
     finished_percent = get_finished_percent(target)
     failed_percent = get_failed_percent(target)
+
+    if isinstance(task, SyncTask):
+        path = task.path
+    elif isinstance(task, DownloadTask):
+        path = task.src_path
+    else:
+        path = task.path
 
     return "[%6.2f%%:%6.2f%%][%s]" % (finished_percent, failed_percent, path)
 
@@ -88,7 +91,7 @@ def remote_path(arg):
     if path_type == "remote":
         return arg
 
-    raise argparse.ArgumentTypeError("%r is not a local path" % arg)
+    raise argparse.ArgumentTypeError("%r is not a remote path" % arg)
 
 def non_local_path(arg):
     path_type = recognize_path(arg, "remote")[1]
@@ -107,16 +110,16 @@ def non_remote_path(arg):
     raise argparse.ArgumentTypeError("%r is a remote path" % arg)
 
 def recognize_path(path, default="local"):
-    if path.startswith("disk://"):
-        path = path[7:]
-        path_type = "remote"
-    elif path.startswith("local://"):
-        path_type = "local"
-        path = path[8:]
-    else:
-        path_type = default
+    before, div, after = path.partition("://")
 
-    return (path, path_type)
+    if not div:
+        return (before, default)
+
+    sub_map = {"disk": "yadisk"}
+
+    before = sub_map.get(before, before)
+
+    return (after, before)
 
 def prepare_remote_path(path, cwd="/"):
     return Paths.join(cwd, path)
@@ -225,10 +228,13 @@ def cleanup_filelists(env):
 
     target_names = set(encsync.targets.keys())
 
+    suffixes = ("-local-filelist.db", "-yadisk-filelist.db",
+                "-local-duplicates.db", "-yadisk-duplicates.db")
+
     for filename in files:
         suffix = None
 
-        for s in ("-local.db", "-remote.db"):
+        for s in suffixes:
             if filename.endswith(s):
                 suffix = s
                 break

@@ -4,14 +4,17 @@
 from .. import Paths
 from ..common import escape_glob
 
-from .FileList import FileList
+from .BaseFileList import BaseFileList
+
+__all__ = ["DuplicateList"]
 
 def prepare_path(path):
     return Paths.join_properly("/", path)
 
-class DuplicateList(FileList):
-    def __init__(self, directory=None, *args, **kwargs):
-        FileList.__init__(self, "duplicates.db", directory, *args, **kwargs)
+class DuplicateList(BaseFileList):
+    def __init__(self, storage_name, directory=None, *args, **kwargs):
+        filename = "%s-duplicates.db" % (storage_name,)
+        BaseFileList.__init__(self, filename, directory, *args, **kwargs)
 
     def create(self):
         self.connection.execute("""CREATE TABLE IF NOT EXISTS duplicates
@@ -68,6 +71,16 @@ class DuplicateList(FileList):
     def get_count(self):
         with self.connection:
             self.connection.execute("SELECT COUNT(*) FROM duplicates")
+            return self.connection.fetchone()[0]
+
+    def get_children_count(self, path):
+        path = prepare_path(Paths.dir_normalize(path))
+        path = escape_glob(path)
+
+        with self.connection:
+            self.connection.execute("SELECT COUNT(*) FROM duplicates WHERE path GLOB ?",
+                                    (path + "*",))
+
             return self.connection.fetchone()[0]
 
     def is_empty(self, path="/"):

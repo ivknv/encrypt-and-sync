@@ -5,14 +5,15 @@ from .common import make_encsync, show_error
 
 from .Console import Console
 
+__all__ = ["execute", "execute_script"]
+
 def execute(env, s):
     encsync, ret = make_encsync(env)
 
     if encsync is None:
         return ret
 
-    console = Console(encsync)
-    console.env.parent = env
+    console = Console(encsync, env)
 
     return console.execute(s)
 

@@ -5,6 +5,8 @@ from .Exceptions import UnknownStageError, DuplicateStageError
 
 from .Worker import Worker
 
+__all__ = ["StagedWorker"]
+
 class StagedWorker(Worker):
     def __init__(self, parent=None, daemon=None):
         Worker.__init__(self, parent, daemon)

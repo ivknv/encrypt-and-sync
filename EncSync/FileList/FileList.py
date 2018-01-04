@@ -1,148 +1,125 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
+from .BaseFileList import BaseFileList
+from .. import Paths
+from ..common import node_tuple_to_dict, format_timestamp
+from ..common import escape_glob, validate_target_name
 
-from .. import CDB
+__all__ = ["FileList"]
 
-class FileList(object):
-    def __init__(self, filename, directory=None, *args, **kwargs):
-        kwargs = dict(kwargs)
+def prepare_path(path):
+    return Paths.join_properly("/", path)
 
-        kwargs.setdefault("isolation_level", None)
+class FileList(BaseFileList):
+    def __init__(self, name, suffix, directory=None, *args, **kwargs):
+        if not validate_target_name(name):
+            raise ValueError("Invalid target name: %r" % (name,))
 
-        if directory is None:
-            path = filename
-        else:
-            path = os.path.join(directory, filename)
-
-        self.connection = CDB.connect(path, *args, **kwargs)
-
-    def __enter__(self):
-        self.connection.__enter__()
-
-    def __exit__(self, *args, **kwargs):
-        self.connection.__exit__()
-
-    def time_since_last_commit(self):
-        """
-            Get the number of seconds since last commit.
-
-            :returns: `float`
-        """
-
-        return self.connection.time_since_last_commit()
+        BaseFileList.__init__(self, "%s-%s-filelist.db" % (name, suffix),
+                              directory, *args, **kwargs)
 
     def create(self):
-        """Create the filelist table if it doesn't exist."""
-
-        raise NotImplementedError
-
-    def disable_journal(self):
-        """Disables journaling."""
-
-        self.connection.execute("PRAGMA journal_mode = OFF")
-
-    def enable_journal(self):
-        """Enables journaling."""
-
-        self.connection.execute("PRAGMA journal_mode = DELETE")
-
-    def insert_node(self, node):
+        with self.connection:
+            self.connection.execute("""CREATE TABLE IF NOT EXISTS filelist
+                                       (type TEXT,
+                                        modified DATETIME,
+                                        padded_size INTEGER,
+                                        path TEXT UNIQUE ON CONFLICT REPLACE,
+                                        IVs TEXT)""")
+            self.connection.execute("""CREATE INDEX IF NOT EXISTS path_index
+                                       ON filelist(path ASC)""")
+    def get_root(self):
         """
-            Insert the node into the database.
-            If the node already exists, it will be overwritten.
-
-            :param node: `dict`, node to be inserted
-        """
-
-        raise NotImplementedError
-
-    def remove_node(self, path):
-        """
-            Remove node from the database.
-
-            :param path: path of the node to be removed
-        """
-
-        raise NotImplementedError
-
-    def remove_node_children(self, path):
-        """
-            Remove node's children from the database.
-
-            :param path: path of the parent node
-        """
-
-        raise NotImplementedError
-
-    def clear(self):
-        """Delete all nodes from the database."""
-
-        raise NotImplementedError
-
-    def find_node(self, path):
-        """
-            Find node by its path.
-
-            :param path: path of the node to find
+            Get the root node which is also the target prefix.
 
             :returns: `dict`
         """
 
-        raise NotImplementedError
+        with self.connection:
+            self.connection.execute("SELECT * FROM filelist ORDER BY path ASC LIMIT 1")
+            return node_tuple_to_dict(self.connection.fetchone())
+
+    def insert_node(self, node):
+        node = dict(node)
+        if node["type"] == "d":
+            node["path"] = Paths.dir_normalize(node["path"])
+
+        if node["type"] is None:
+            raise ValueError("Node type is None")
+
+        self.connection.execute("""INSERT INTO filelist VALUES
+                                   (?, ?, ?, ?, ?)""",
+                                (node["type"],
+                                 format_timestamp(node["modified"]),
+                                 node["padded_size"],
+                                 prepare_path(node["path"]),
+                                 node["IVs"]))
+
+    def remove_node(self, path):
+        path = prepare_path(path)
+
+        self.connection.execute("DELETE FROM filelist WHERE path=? OR path=?",
+                                (path, Paths.dir_normalize(path)))
+
+    def remove_node_children(self, path):
+        path = prepare_path(Paths.dir_normalize(path))
+        path = escape_glob(path)
+
+        self.connection.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
+
+    def clear(self):
+        self.connection.execute("DELETE FROM filelist")
+
+    def find_node(self, path):
+        path = prepare_path(path)
+
+        with self.connection:
+            self.connection.execute("""SELECT * FROM filelist
+                                       WHERE path=? OR path=? LIMIT 1""",
+                                    (path, Paths.dir_normalize(path)))
+            return node_tuple_to_dict(self.connection.fetchone())
 
     def find_node_children(self, path):
-        """
-            Find node children by path.
+        path = prepare_path(path)
+        path = escape_glob(path)
+        path_n = Paths.dir_normalize(path)
 
-            :param path: path of the parent node
+        with self.connection:
+            self.connection.execute("""SELECT * FROM filelist
+                                       WHERE path GLOB ? OR path=? OR path=?
+                                       ORDER BY path ASC""",
+                                    (path_n + "*", path, path_n))
 
-            :returns: iterable of `dict`
-        """
-
-        raise NotImplementedError
+            return (node_tuple_to_dict(i) for i in self.connection.genfetch())
 
     def select_all_nodes(self):
-        """
-            List all the nodes in the database.
+        with self.connection:
+            self.connection.execute("SELECT * FROM filelist ORDER BY path ASC")
 
-            :returns: iterable of `dict`
-        """
+            return (node_tuple_to_dict(i) for i in self.connection.genfetch())
 
-        raise NotImplementedError
+    def is_empty(self, parent_dir="/"):
+        parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
+        parent_dir = escape_glob(parent_dir)
 
-    def insert_nodes(self, nodes):
-        """
-            Insert multiple nodes into the database.
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM filelist
+                                       WHERE path GLOB ? LIMIT 1""",
+                                    (parent_dir + "*",))
 
-            :param nodes: iterable of `dict`
-        """
+            return self.connection.fetchone()[0] == 0
 
-        for i in nodes:
-            self.insert_node(i)
+    def get_file_count(self, parent_dir="/"):
+        parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
+        parent_dir = escape_glob(parent_dir)
 
-    def begin_transaction(self, *args, **kwargs):
-        """Start a transaction."""
+        with self.connection:
+            self.connection.execute("SELECT COUNT(*) FROM filelist WHERE path GLOB ?",
+                                    (parent_dir + "*",))
 
-        self.connection.begin_transaction(*args, **kwargs)
+            return self.connection.fetchone()[0]
 
-    def commit(self):
-        """Do a commit."""
-
-        self.connection.commit()
-
-    def seamless_commit(self):
-        """Do a seamless commit."""
-
-        self.connection.seamless_commit()
-
-    def rollback(self):
-        """Do a rollback."""
-
-        self.connection.rollback()
-
-    def close(self):
-        """Close the database connection."""
-
-        self.connection.close()
+    def update_size(self, path, new_size):
+        self.connection.execute("UPDATE filelist SET padded_size=? WHERE path=?",
+                                (new_size, path))

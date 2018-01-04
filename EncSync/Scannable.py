@@ -1,29 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import ctypes
-import sys
-from datetime import datetime
-
-from yadisk.exceptions import UnknownYaDiskError
-
 from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
 from .common import normalize_node
+from .Storage.Exceptions import TemporaryStorageError
 from . import PathMatch
 
-if sys.platform.startswith("win"):
-    def is_reparse_point(path):
-        # https://stackoverflow.com/questions/15258506/os-path-islink-on-windows-with-python
-        FILE_ATTRIBUTE_REPARSE_POINT = 0x0400
-        return bool(os.path.isdir(path) and (ctypes.windll.kernel32.GetFileAttributesW(path) & FILE_ATTRIBUTE_REPARSE_POINT))
-else:
-    def is_reparse_point(path):
-        return False
+__all__ = ["BaseScannable", "DecryptedScannable", "EncryptedScannable"]
 
 class BaseScannable(object):
-    def __init__(self, path=None, type=None, modified=0, size=0):
+    def __init__(self, storage, path=None, type=None, modified=0, size=0):
+        self.storage = storage
         self.path = path
         self.type = type
         self.modified = modified
@@ -36,7 +24,15 @@ class BaseScannable(object):
         raise NotImplementedError
 
     def to_node(self):
-        raise NotImplementedError
+        node = {"type": self.type,
+                "path": self.path,
+                "modified": self.modified,
+                "padded_size": self.size,
+                "IVs": b""}
+
+        normalize_node(node)
+
+        return node
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, self.path)
@@ -57,7 +53,10 @@ class BaseScannable(object):
 
         for i in content:
             if i.type is None:
-                i.identify()
+                try:
+                    i.identify()
+                except FileNotFoundError:
+                    i.type = None
 
         sort_kwargs.setdefault("key", lambda x: x.path)
         content.sort(*sort_args, **sort_kwargs)
@@ -91,99 +90,35 @@ class BaseScannable(object):
 
             yield s
 
-            scan_result = s.scan(allowed_paths)
+            try:
+                scan_result = s.scan(allowed_paths)
+            except FileNotFoundError:
+                continue
+
             scan_result["d"].reverse()
 
             flist["f"] = scan_result["f"]
             flist["d"] += scan_result["d"]
             del scan_result
 
-class LocalScannable(BaseScannable):
+class DecryptedScannable(BaseScannable):
     def identify(self):
-        self.path = os.path.abspath(self.path)
-        self.path = os.path.expanduser(self.path)
+        self.path = Paths.join_properly("/", self.path)
 
-        if is_reparse_point(self.path):
+        meta = self.storage.get_meta(self.path, n_retries=30)
+
+        if meta["type"] == "d":
+            self.path = Paths.dir_normalize(self.path)
+        elif not meta["type"]:
             self.type = None
             return
 
-        if os.path.isfile(self.path):
-            self.type = "f"
-        elif os.path.isdir(self.path):
-            self.type = "d"
-        else:
-            self.type = None
-            return
+        self.type = meta["type"][0]
+        self.modified = meta["modified"]
+        self.size = meta["size"]
 
         if self.type == "f":
-            self.size = pad_size(os.path.getsize(self.path))
-        else:
-            self.size = 0
-
-        m = os.path.getmtime(self.path)
-
-        try:
-            self.modified = datetime.utcfromtimestamp(m).timestamp()
-        except (OverflowError, OSError):
-            self.modified = 0
-
-    def listdir(self, allowed_paths=None):
-        if allowed_paths is None:
-            allowed_paths = []
-
-        for i in os.listdir(self.path):
-            path = os.path.join(self.path, i)
-            path_norm = Paths.from_sys(path)
-            if os.path.isdir(path):
-                path_norm = Paths.dir_normalize(path_norm)
-
-            if PathMatch.match(path_norm, allowed_paths):
-                yield LocalScannable(path)
-
-    def to_node(self):
-        node = {"type": self.type,
-                "path": self.path,
-                "modified": self.modified,
-                "padded_size": self.size,
-                "IVs": b""}
-        normalize_node(node)
-
-        return node
-
-class RemoteScannable(BaseScannable):
-    def __init__(self, encsync, prefix, enc_path=None, resource=None, filename_encoding="base64"):
-        if resource is not None:
-            type = resource.type[0]
-
-            modified = resource.modified.timestamp()
-
-            size = max((resource.size or 0) - MIN_ENC_SIZE, 0)
-        else:
-            if enc_path is None:
-                enc_path = prefix
-
-            type = "d"
-            modified = None
-            size = 0
-
-        path, IVs = encsync.decrypt_path(enc_path, prefix, filename_encoding=filename_encoding)
-
-        BaseScannable.__init__(self, path, type, modified, size)
-        self.enc_path = enc_path
-        self.IVs = IVs
-        self.prefix = prefix
-
-        self.encsync = encsync
-        self.ynd = encsync.ynd
-        self.filename_encoding = filename_encoding
-
-    def identify(self):
-        resource = self.ynd.get_meta(self.enc_path, n_retries=30)
-
-        self.modified = resource.modified.timestamp() - resource.modified.utcoffset().seconds
-
-        self.size = resource.size or 0
-        self.type = resource.type[0]
+            self.size = pad_size(self.size)
 
     def listdir(self, allowed_paths=None):
         if allowed_paths is None:
@@ -191,39 +126,106 @@ class RemoteScannable(BaseScannable):
 
         scannables = []
 
-        for j in range(10):
+        for i in range(10):
+            scannables.clear()
+
             try:
-                for resource in self.ynd.listdir(self.enc_path):
-                    enc_path = Paths.join(self.enc_path, resource.name)
+                for meta in self.storage.listdir(self.path):
+                    if meta["type"] is None:
+                        continue
 
-                    scannable = RemoteScannable(self.encsync, self.prefix, enc_path,
-                                                resource, self.filename_encoding)
+                    path = Paths.join(self.path, meta["name"])
 
-                    path = scannable.path
-
-                    if scannable.type == "d":
+                    if meta["type"] == "dir":
                         path = Paths.dir_normalize(path)
 
+                    meta["size"] = pad_size(meta["size"])
+
                     if PathMatch.match(path, allowed_paths):
-                        scannables.append(scannable)
+                        s = DecryptedScannable(self.storage, path, meta["type"][0],
+                                               meta["modified"], meta["size"])
+                        scannables.append(s)
                 break
-            except UnknownYaDiskError as e:
-                scannables.clear()
-                if j == 9:
+            except TemporaryStorageError as e:
+                if i == 9:
                     raise e
 
-        for i in scannables:
-            yield i
+        return scannables
+
+class EncryptedScannable(BaseScannable):
+    def __init__(self, storage, prefix, enc_path=None, type=None, modified=0, size=0,
+                 filename_encoding="base64"):
+
+        if enc_path is None:
+            enc_path = prefix
+
+        path, IVs = storage.encsync.decrypt_path(enc_path, prefix,
+                                                 filename_encoding=filename_encoding)
+        
+        BaseScannable.__init__(self, storage, path, type, modified, size)
+
+        self.prefix = prefix
+        self.enc_path = enc_path
+        self.IVs = IVs
+        self.filename_encoding = filename_encoding
 
     def to_node(self):
-        node = {"type": self.type,
-                "path": self.path,
-                "modified": self.modified,
-                "padded_size": self.size,
-                "IVs": self.IVs}
-        normalize_node(node)
+        node = BaseScannable.to_node(self)
+        node["IVs"] = self.IVs
 
         return node
+
+    def identify(self):
+        self.enc_path = Paths.join_properly("/", self.enc_path)
+
+        meta = self.storage.get_meta(self.enc_path, n_retries=30)
+
+        if meta["type"] == "d":
+            self.enc_path = Paths.dir_normalize(self.enc_path)
+            self.path = Paths.dir_normalize(self.path)
+        elif not meta["type"]:
+            self.type = None
+            return
+
+        self.type = meta["type"][0]
+        self.modified = meta["modified"]
+        self.size = meta["size"]
+
+        self.size = max((self.size or 0) - MIN_ENC_SIZE, 0)
+
+    def listdir(self, allowed_paths=None):
+        if allowed_paths is None:
+            allowed_paths = []
+
+        scannables = []
+
+        for i in range(10):
+            scannables.clear()
+
+            try:
+                for meta in self.storage.listdir(self.enc_path):
+                    if meta["type"] is None:
+                        continue
+
+                    enc_path = Paths.join(self.enc_path, meta["name"])
+
+                    if meta["type"] == "dir":
+                        enc_path = Paths.dir_normalize(enc_path)
+
+                    meta["size"] = max((meta["size"] or 0) - MIN_ENC_SIZE, 0)
+
+                    scannable = EncryptedScannable(self.storage, self.prefix, enc_path,
+                                                   meta["type"][0], meta["modified"], meta["size"],
+                                                   filename_encoding=self.filename_encoding)
+
+                    if PathMatch.match(scannable.path, allowed_paths):
+                        scannables.append(scannable)
+                break
+            except TemporaryStorageError as e:
+                if i == 9:
+                    raise e
+
+        return scannables
 
 def scan_files(scannable, allowed_paths=None):
     if allowed_paths is None:

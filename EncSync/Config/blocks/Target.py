@@ -14,7 +14,7 @@ __all__ = ["TargetBlock"]
 KNOWN_FILENAME_ENCODINGS = ("base64", "base41")
 
 def prepare_local_path(path):
-    return Paths.sys_explicit(os.path.realpath(os.path.expanduser(path)))
+    return Paths.sys_explicit(os.path.abspath(os.path.expanduser(path)))
 
 def prepare_remote_path(path):
     return Paths.dir_normalize(Paths.join_properly("/", path))
@@ -24,8 +24,8 @@ class TargetBlock(ConfigBlock):
         ConfigBlock.__init__(self, args, body, parent_namespace)
         self.namespace = TargetNamespace(parent_namespace)
         self.target = {"name": None,
-                       "dirs": {"local": None,
-                                "remote": None}
+                       "src": {},
+                       "dst": {},
                        "filename_encoding": "base64",
                        "allowed_paths": []}
 
@@ -45,44 +45,67 @@ class TargetBlock(ConfigBlock):
             self.retcode = i.evaluate(config, self.target, *args, **kwargs)
 
     def end(self, config, *args, **kwargs):
-        if self.target["dirs"]["local"] is None:
-            raise EvaluationError(self, "Target is missing the local path")
+        if not self.target["src"]:
+            raise EvaluationError(self, "Target has no source")
 
-        if self.target["dirs"]["remote"] is None:
-            raise EvaluationError(self, "Target is missing the remote path")
+        if not self.target["dst"]:
+            raise EvaluationError(self, "Target has no destination")
 
         config.targets[self.target["name"]] = self.target
 
-class TargetNamespace(dict):
+class TargetNamespace(object):
     def __init__(self, parent=None):
-        dict.__init__(self)
+        pass
 
-        self["local"] = LocalCommand
-        self["remote"] = RemoteCommand
-        self["filename-encoding"] = FilenameEncodingCommand
+    def __getitem__(self, key):
+        if key == "encrypted":
+            return EncryptedCommand
+        elif key in ("from", "to"):
+            return DirCommand
 
-class LocalCommand(Command):
+        raise KeyError("Unknown command/block: %r" % (key,))
+
+class DirCommand(Command):
     def evaluate(self, config, target, *args, **kwargs):
-        if len(self.args) != 2:
-            raise EvaluationError(self, "Expected 1 argument")
+        if len(self.args) != 3:
+            raise EvaluationError(self, "Expected 2 arguments")
 
-        target["dirs"]["local"] = prepare_local_path(self.args[1])
+        name, path = self.args[1:]
 
-class RemoteCommand(Command):
-    def evaluate(self, config, target, *args, **kwargs):
-        if len(self.args) != 2:
-            raise EvaluationError(self, "Expected 1 argument")
+        if self.args[0] == "from":
+            dir_type = "src"
+        else:
+            dir_type = "dst"
 
-        target["dirs"]["remote"] = prepare_remote_path(self.args[1])
+        if name == "local":
+            path = prepare_local_path(path)
+        else:
+            path = prepare_remote_path(path)
 
-class FilenameEncodingCommand(Command):
-    def evaluate(self, config, target, *args, **kwargs):
-        if len(self.args) != 2:
-            raise EvaluationError(self, "Expected 1 argument")
-
-        encoding = self.args[1]
-
-        if encoding not in KNOWN_FILENAME_ENCODINGS:
-            raise EvaluationError(self, "Unknown filename encoding: %r" % (encoding,))
+        directory = {"name": name,
+                     "path": path,
+                     "encrypted": False,
+                     "filename_encoding": "base64"}
         
-        target["filename_encoding"] = encoding
+        target[dir_type] = directory
+
+class EncryptedCommand(Command):
+    def evaluate(self, config, target, *args, **kwargs):
+        if len(self.args) < 2:
+            raise EvaluationError(self, "Expected at least 1 argument")
+
+        for arg in self.args[1:]:
+            if ":" in arg:
+                dir_type, encoding = arg.rsplit(":", 1)
+            else:
+                dir_type, encoding = arg, "base64"
+
+            if dir_type not in ("src", "dst"):
+                msg = "Wrong directory type: %r, must be 'src' or 'dst'" % (dir_type,)
+                raise EvaluationError(self, msg)
+
+            if encoding not in KNOWN_FILENAME_ENCODINGS:
+                raise EvaluationError(self, "Unknown filename encoding: %r" % (encoding,))
+
+            target[dir_type]["encrypted"] = True
+            target[dir_type]["filename_encoding"] = encoding

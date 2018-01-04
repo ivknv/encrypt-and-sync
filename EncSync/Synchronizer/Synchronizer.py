@@ -2,29 +2,24 @@
 # -*- coding: utf-8 -*-
 
 import threading
-import os
 
-from yadisk.exceptions import DiskNotFoundError
-
-from .Workers import UploadWorker, MkdirWorker, RmWorker, RmDupWorker
-from .SyncTask import SyncTask, SyncTarget
+from .Workers import UploadWorker, MkdirWorker, RmWorker
+from .Task import SyncTask
+from .Target import SyncTarget
 from .Logging import logger
-from .Exceptions import LocalPathNotFoundError
-from ..Scanner.Workers import LocalScanWorker, RemoteScanWorker
-from ..Scanner.Task import ScanTask
-from ..Scanner.Target import ScanTarget
+from ..Scanner import Scanner
+from ..DuplicateRemover import DuplicateRemover
 from ..Worker import StagedWorker
 from ..LogReceiver import LogReceiver
-from ..FileList import LocalFileList, RemoteFileList, DuplicateList
 from ..DiffList import DiffList
-from ..Scannable import LocalScannable, RemoteScannable
-from ..Encryption import pad_size, MIN_ENC_SIZE
-from .. import PathMatch
-from .. import Paths
+from ..TargetStorage import get_target_storage
 from .. import FileComparator
 
+__all__ = ["Synchronizer"]
+
 class Synchronizer(StagedWorker):
-    def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2, enable_journal=True):
+    def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2,
+                 enable_journal=True):
         StagedWorker.__init__(self)
 
         self.encsync = encsync
@@ -43,26 +38,18 @@ class Synchronizer(StagedWorker):
         self.cur_target = None
         self.diffs = None
 
-        self.shared_llist = None
-        self.shared_rlist = None
-        self.shared_duplist = DuplicateList(directory)
+        self.shared_flist1 = None
+        self.shared_flist2 = None
         self.difflist = DiffList(self.encsync, self.directory)
 
-        if not self.enable_journal:
-            self.shared_duplist.disable_journal()
-            self.difflist.disable_journal()
+        self.stage_order = ("scan", "rmdup", "rm", "dirs", "files", "check")
 
-        self.stage_order = ("scan", "duplicates", "rm", "dirs", "files", "check")
-
-        self.scannables = []
-        self.scannables_lock = threading.Lock()
-
-        self.add_stage("scan",       self.init_scan_stage,       self.finalize_scan_stage)
-        self.add_stage("duplicates", self.init_duplicates_stage, self.finalize_duplicates_stage)
-        self.add_stage("rm",         self.init_rm_stage,         self.finalize_rm_stage)
-        self.add_stage("dirs",       self.init_dirs_stage,       self.finalize_dirs_stage)
-        self.add_stage("files",      self.init_files_stage,      self.finalize_files_stage)
-        self.add_stage("check",      self.init_check_stage,      self.finalize_check_stage)
+        self.add_stage("scan",  self.init_scan_stage,  self.finalize_scan_stage)
+        self.add_stage("rmdup", self.init_rmdup_stage, self.finalize_rmdup_stage)
+        self.add_stage("rm",    self.init_rm_stage,    self.finalize_rm_stage)
+        self.add_stage("dirs",  self.init_dirs_stage,  self.finalize_dirs_stage)
+        self.add_stage("files", self.init_files_stage, self.finalize_files_stage)
+        self.add_stage("check", self.init_check_stage, self.finalize_check_stage)
 
         self.add_event("next_target")
         self.add_event("error")
@@ -80,25 +67,29 @@ class Synchronizer(StagedWorker):
 
         return target
 
-    def make_target(self, name, enable_scan):
+    def make_target(self, name, enable_scan, skip_integrity_check=False):
         try:
             encsync_target = self.encsync.targets[name]
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
-        local = encsync_target["dirs"]["local"]
-        remote = encsync_target["dirs"]["remote"]
-        filename_encoding = encsync_target["filename_encoding"]
+        src_name = encsync_target["src"]["name"]
+        dst_name = encsync_target["dst"]["name"]
+
+        src = get_target_storage(src_name)(name, "src", self.encsync, self.directory)
+        dst = get_target_storage(dst_name)(name, "dst", self.encsync, self.directory)
         
-        target = SyncTarget(self, name, local, remote, filename_encoding)
+        target = SyncTarget()
+        target.name = name
+        target.src = src
+        target.dst = dst
         target.enable_scan = enable_scan
+        target.skip_integrity_check = skip_integrity_check
 
         return target
 
-    def add_new_target(self, name, enable_scan, status="pending"):
-        target = self.make_target(name, enable_scan)
-
-        target.change_status(status)
+    def add_new_target(self, name, enable_scan, skip_integrity_check=False):
+        target = self.make_target(name, enable_scan, skip_integrity_check)
 
         self.add_target(target)
 
@@ -115,9 +106,6 @@ class Synchronizer(StagedWorker):
             worker.speed_limit = self.speed_limit
 
     def get_next_task(self):
-        if self.stage["name"] in ("scan", "check"):
-            return self.get_next_scannable()
-
         with self.task_lock:
             try:
                 diff = next(self.diffs)
@@ -127,14 +115,9 @@ class Synchronizer(StagedWorker):
             task = SyncTask()
             task.parent = self.cur_target
 
-            task.task_type, task.type, task.path = diff[:3]
-
-            try:
-                if task.task_type in ("new", "update") and task.type == "f":
-                    size = os.path.getsize(Paths.to_sys(diff[2].local))
-                    task.size = pad_size(size) + MIN_ENC_SIZE
-            except FileNotFoundError:
-                task.size = 0
+            task.task_type = diff["type"]
+            task.type = diff["node_type"]
+            task.path = diff["path"]
 
             task.change_status("pending")
 
@@ -151,8 +134,7 @@ class Synchronizer(StagedWorker):
         
         try:
             self.difflist.begin_transaction()
-            self.difflist.clear_differences(self.cur_target.local,
-                                            self.cur_target.remote)
+            self.difflist.clear_differences(self.cur_target.name)
             self.difflist.insert_differences(diffs)
             self.difflist.commit()
         except BaseException as e:
@@ -162,8 +144,7 @@ class Synchronizer(StagedWorker):
 
         try:
             if self.cur_target.stage != "check":
-                diff_count = self.difflist.get_difference_count(self.cur_target.local,
-                                                                self.cur_target.remote)
+                diff_count = self.difflist.get_difference_count(self.cur_target.name)
                 n_done = self.cur_target.get_n_done()
 
                 self.cur_target.total_children = diff_count + n_done
@@ -174,22 +155,26 @@ class Synchronizer(StagedWorker):
         self.cur_target.emit_event("diffs_finished")
 
     def work(self):
+        assert(self.n_workers >= 1)
+
         try:
-            self.shared_duplist.create()
+            if not self.enable_journal:
+                self.difflist.disable_journal()
+
             self.difflist.create()
         except BaseException as e:
             self.emit_event("error", e)
             return
 
         while not self.stopped:
+            with self.targets_lock:
+                if self.stopped or not self.targets:
+                    break
+
+                target = self.targets.pop(0)
+                self.cur_target = target
+
             try:
-                with self.targets_lock:
-                    if self.stopped or not len(self.targets):
-                        break
-
-                    target = self.targets.pop(0)
-                    self.cur_target = target
-
                 self.emit_event("next_target", target)
 
                 if target.status == "suspended":
@@ -200,16 +185,16 @@ class Synchronizer(StagedWorker):
 
                 assert(self.stage is None)
 
-                self.shared_llist = LocalFileList(target.name, self.directory)
-                self.shared_rlist = RemoteFileList(target.name, self.directory)
+                self.shared_flist1 = target.src.filelist
+                self.shared_flist2 = target.dst.filelist
 
                 try:
                     if not self.enable_journal:
-                        self.shared_llist.disable_journal()
-                        self.shared_rlist.disable_journal()
+                        self.shared_flist1.disable_journal()
+                        self.shared_flist2.disable_journal()
 
-                    self.shared_llist.create()
-                    self.shared_rlist.create()
+                    self.shared_flist1.create()
+                    self.shared_flist2.create()
                 except BaseException as e:
                     self.emit_event("error", e)
                     target.change_state("failed")
@@ -235,7 +220,7 @@ class Synchronizer(StagedWorker):
 
                     self.run_stage(stage)
 
-                    self.reset_diffs()
+                    self.diffs = None
 
                     if target.status == "suspended":
                         break
@@ -245,7 +230,7 @@ class Synchronizer(StagedWorker):
 
                 if target.status == "finished":
                     target.stage = None
-                    self.difflist.clear_differences(target.local, target.remote)
+                    self.difflist.clear_differences(target.name)
 
                 self.cur_target = None
             except BaseException as e:
@@ -255,179 +240,99 @@ class Synchronizer(StagedWorker):
 
         assert(self.stage is None)
 
-    def init_duplicates_stage(self):
-        self.diffs = self.difflist.select_rmdup_differences(self.cur_target.remote)
+    def init_rmdup_stage(self):
+        try:
+            duprem = DuplicateRemover(self.encsync, self.directory,
+                                      self.n_workers, self.enable_journal)
 
-        self.shared_duplist.begin_transaction()
+            if self.cur_target.src.encrypted:
+                duprem.add_new_target(self.cur_target.src.storage.name,
+                                      self.cur_target.src.prefix)
 
-        self.start_workers(self.n_workers, RmDupWorker, self)
+            if self.cur_target.dst.encrypted:
+                duprem.add_new_target(self.cur_target.dst.storage.name,
+                                      self.cur_target.dst.prefix)
 
-    def finalize_duplicates_stage(self):
-        self.shared_duplist.commit()
+            if self.stopped or self.cur_target.status != "pending":
+                return
+
+            self.start_worker(duprem).join()
+        except Exception as e:
+            self.emit_event("error", e)
+
+    def finalize_rmdup_stage(self):
+        pass
 
     def init_rm_stage(self):
-        self.diffs = self.difflist.select_rm_differences(self.cur_target.local,
-                                                         self.cur_target.remote)
+        self.diffs = self.difflist.select_rm_differences(self.cur_target.name)
 
-        self.shared_llist.begin_transaction()
-        self.shared_rlist.begin_transaction()
+        self.shared_flist1.begin_transaction()
+        self.shared_flist2.begin_transaction()
 
         self.start_workers(self.n_workers, RmWorker, self)
 
     def finalize_rm_stage(self):
-        self.shared_llist.commit()
-        self.shared_rlist.commit()
+        self.shared_flist1.commit()
+        self.shared_flist2.commit()
 
     def init_dirs_stage(self):
-        self.diffs = self.difflist.select_dirs_differences(self.cur_target.local,
-                                                           self.cur_target.remote)
+        self.diffs = self.difflist.select_dirs_differences(self.cur_target.name)
 
-        self.shared_llist.begin_transaction()
-        self.shared_rlist.begin_transaction()
+        self.shared_flist1.begin_transaction()
+        self.shared_flist2.begin_transaction()
 
         self.start_worker(MkdirWorker, self)
 
     def finalize_dirs_stage(self):
-        self.shared_llist.commit()
-        self.shared_rlist.commit()
+        self.shared_flist1.commit()
+        self.shared_flist2.commit()
 
     def init_files_stage(self):
-        self.diffs = self.difflist.select_files_differences(self.cur_target.local,
-                                                            self.cur_target.remote)
+        self.diffs = self.difflist.select_files_differences(self.cur_target.name)
 
-        self.shared_llist.begin_transaction()
-        self.shared_rlist.begin_transaction()
+        self.shared_flist1.begin_transaction()
+        self.shared_flist2.begin_transaction()
 
         self.start_workers(self.n_workers, UploadWorker, self)
 
     def finalize_files_stage(self):
-        self.shared_llist.commit()
-        self.shared_rlist.commit()
+        self.shared_flist1.commit()
+        self.shared_flist2.commit()
 
-    def get_next_scannable(self):
-        with self.scannables_lock:
-            if len(self.scannables) > 0:
-                return self.scannables.pop(0)
+    def do_scan(self, *scan_types, force=False):
+        scanner = Scanner(self.encsync, self.directory,
+                          self.n_scan_workers, self.enable_journal)
+        targets = []
 
-    def add_task(self, scannable):
-        with self.scannables_lock:
-            task = ScanTask(scannable)
-            self.scannables.append(task)
+        for scan_type in scan_types:
+            assert(scan_type in ("src", "dst"))
 
-            for worker in self.get_worker_list():
-                worker.set_dirty()
+            target = scanner.make_target(scan_type, self.cur_target.name)
 
-    def wait_workers(self):
-        workers = self.get_worker_list()
+            if scan_type == "src":
+                scanner.add_target(target)
+                targets.append(target)
+            elif force or self.shared_flist2.is_empty(self.cur_target.dst.prefix):
+                scanner.add_target(target)
+                targets.append(target)
 
-        while True:
-            for worker in workers:
-                worker.wait_idle()
+        if self.stopped or self.cur_target.status != "pending":
+            return
 
-            workers = self.get_worker_list()
+        self.start_worker(scanner).join()
 
-            if all(worker.is_idle() for worker in workers):
-                return
-
-    def do_scan(self, scan_type):
-        assert(scan_type in ("local", "remote"))
-
-        if scan_type == "local":
-            target = ScanTarget(scan_type, self.cur_target.name, self.cur_target.local)
-            scannable = LocalScannable(target.path)
-        elif scan_type == "remote":
-            target = ScanTarget(scan_type, self.cur_target.name, self.cur_target.remote,
-                                self.cur_target.filename_encoding)
-            scannable = RemoteScannable(self.encsync, target.path,
-                                        filename_encoding=target.filename_encoding)
-
-        self.cur_target.emit_event("%s_scan" % scan_type, target)
-
-        target.change_status("pending")
-
-        filelist = {"local":  self.shared_llist,
-                    "remote": self.shared_rlist}[scan_type]
-
-        filelist.begin_transaction()
-
-        try:
-            filelist.remove_node_children(target.path)
-
-            scannable.identify()
-
-            if scan_type == "local":
-                if scannable.type is None:
-                    raise LocalPathNotFoundError("%r does not exist" % (scannable.path,),
-                                                 scannable.path)
-                    
-                path = Paths.from_sys(scannable.path)
-                if scannable.type == "d":
-                    path = Paths.dir_normalize(path)
-
-                if PathMatch.match(path, self.encsync.allowed_paths):
-                    self.add_task(scannable)
-                    filelist.insert_node(scannable.to_node())
-
-                self.start_worker(LocalScanWorker, self, target)
-            else:
-                self.add_task(scannable)
-                filelist.insert_node(scannable.to_node())
-
-                self.start_workers(self.n_scan_workers, RemoteScanWorker, self, target)
-
-                self.wait_workers()
-                self.stop_workers()
-
-            self.join_workers()
-        except DiskNotFoundError:
-            pass
-        except BaseException as e:
-            filelist.rollback()
-
-            self.emit_event("error", e)
-
-            target.change_status("failed")
-
-            self.cur_target.emit_event("%s_scan_failed" % scan_type, target)
-            if self.cur_target.status == "pending":
-                self.cur_target.change_status("failed")
-
-            return False
-
-        if target.status == "pending" and self.cur_target.status == "pending":
-            filelist.commit()
-            target.change_status("finished")
-            self.cur_target.emit_event("%s_scan_finished" % scan_type, target)
-
-            return True
-        else:
-            filelist.rollback()
-            target.change_status("failed")
-            self.cur_target.emit_event("%s_scan_failed" % scan_type, target)
-            if self.cur_target.status == "pending":
-                self.cur_target.change_status("failed")
-
-            return False
+        if any(i.status != "finished" for i in targets):
+            self.cur_target.change_status("failed")
 
     def init_scan_stage(self):
         try:
             if not self.cur_target.enable_scan:
                 return
 
-            self.do_scan("local")
-
-            if self.cur_target.status != "pending":
-                return
-
-            if self.shared_rlist.is_empty(self.cur_target.remote):
-                self.do_scan("remote")
+            self.do_scan("src", "dst")
         except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
-            self.shared_llist.rollback()
-            self.shared_rlist.rollback()
-        finally:
-            self.scannables.clear()
 
     def finalize_scan_stage(self):
         try:
@@ -447,11 +352,14 @@ class Synchronizer(StagedWorker):
             if self.cur_target.skip_integrity_check:
                 return
 
+            if self.stopped or self.cur_target.status == "suspended":
+                return
+
             self.cur_target.change_status("pending")
 
             self.cur_target.emit_event("integrity_check")
 
-            self.do_scan("remote")
+            self.do_scan("dst", force=True)
         except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
@@ -466,7 +374,7 @@ class Synchronizer(StagedWorker):
 
             self.build_diffs_table()
 
-            if self.difflist.get_difference_count(self.cur_target.local, self.cur_target.remote):
+            if self.difflist.get_difference_count(self.cur_target.name):
                 self.cur_target.emit_event("integrity_check_failed")
                 self.cur_target.change_status("failed")
             else:
@@ -475,6 +383,3 @@ class Synchronizer(StagedWorker):
         except BaseException as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
-
-    def reset_diffs(self):
-        self.diffs = None

@@ -10,9 +10,10 @@ class DownloadTarget(Task):
 
         self.type = None
         self.name = name
-        self.prefix = "/" # Remote prefix
-        self.remote = "" # Must be unencrypted
-        self.local = ""
+        self.src = None
+        self.dst = None
+        self.src_path = ""
+        self.dst_path = ""
         self.size = 0
         self.downloaded = 0
         self.children = []

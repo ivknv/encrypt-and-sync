@@ -7,6 +7,8 @@ from ...show_diffs import show_diffs
 from ...Environment import Environment
 from ....EncScript import Command
 
+__all__ = ["DiffsCommand"]
+
 class DiffsCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Show differences",

@@ -6,6 +6,10 @@ import argparse
 from ....EncScript import Command
 from .... import Paths
 
+from ...common import show_error, recognize_path
+
+__all__ = ["CdCommand"]
+
 class CdCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Change directory",
@@ -16,10 +20,32 @@ class CdCommand(Command):
 
         if ns.directory == "-":
             console.cwd, console.pwd = console.pwd, console.cwd
+            cur_storage, previous_storage = console.cur_storage, console.previous_storage
+            console.cur_storage, console.previous_storage = previous_storage, cur_storage
             return 0
 
-        console.pwd = console.cwd
+        path, path_type = recognize_path(ns.directory, console.cur_storage.name)
 
-        console.cwd = Paths.join_properly(console.cwd, ns.directory)
+        if path_type == console.cur_storage.name:
+            new_path = Paths.join_properly(console.cwd, path)
+            storage = console.cur_storage
+        else:
+            new_path = Paths.join_properly("/", path)            
+            storage = console.get_storage(path_type)
+
+        try:
+            meta = storage.get_meta(new_path)
+        except FileNotFoundError:
+            show_error("Path doesn't exist: %r" % (new_path,))
+            return 1
+
+        if meta["type"] != "dir":
+            show_error("%r is not a directory" % (new_path,))
+            return 1
+
+        if path_type != console.cur_storage.name:
+            console.change_storage(path_type, new_path)
+        else:
+            console.cwd, console.pwd = new_path, console.cwd
 
         return 0

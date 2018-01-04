@@ -3,6 +3,8 @@
 
 from .Event.Receiver import Receiver
 
+__all__ = ["LogReceiver"]
+
 class LogReceiver(Receiver):
     def __init__(self, logger):
         Receiver.__init__(self)

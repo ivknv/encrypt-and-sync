@@ -6,8 +6,9 @@ import traceback
 
 from yadisk.exceptions import YaDiskError
 
+from .. import Paths
 from ..Downloader import Downloader
-from ..Downloader.Exceptions import NotFoundInDBError, FailedToObtainLinkError
+from ..Downloader.Exceptions import NotFoundInDBError
 from ..Event.EventHandler import EventHandler
 
 from . import common
@@ -21,12 +22,14 @@ def print_target_totals(target):
     n_total = target.total_children
     downloaded = make_size_readable(target.downloaded)
 
-    local, remote = target.local, target.remote
+    dst_path, src_path = target.dst_path, target.src_path
+    dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
+    src_path = "%s://%s" % (target.src.storage.name, src_path)
 
-    print("[%s <- %s]: %d tasks in total" % (local, remote, n_finished))
-    print("[%s <- %s]: %d tasks successful" % (local, remote, n_total))
-    print("[%s <- %s]: %d tasks failed" % (local, remote, n_failed))
-    print("[%s <- %s]: %s downloaded" % (local, remote, downloaded))
+    print("[%s <- %s]: %d tasks in total" % (dst_path, src_path, n_finished))
+    print("[%s <- %s]: %d tasks successful" % (dst_path, src_path, n_total))
+    print("[%s <- %s]: %d tasks failed" % (dst_path, src_path, n_failed))
+    print("[%s <- %s]: %s downloaded" % (dst_path, src_path, downloaded))
 
 class DownloaderReceiver(EventHandler):
     def __init__(self, downloader):
@@ -55,7 +58,7 @@ class DownloaderReceiver(EventHandler):
         print("Downloader: finished")
 
     def on_next_target(self, event, target):
-        print("Next target: [%s <- %s]" % (target.local, target.remote))
+        print("Next target: [%s <- %s]" % (target.dst_path, target.src_path))
 
     def on_worker_started(self, event, worker):
         worker.add_receiver(self.worker_receiver)
@@ -65,12 +68,22 @@ class DownloaderReceiver(EventHandler):
 
     def on_disk_error(self, exc):
         target = self.downloader.cur_target
-        print("[%s <- %s]: error: %s: %s" % (target.local, target.remote,
+
+        dst_path, src_path = target.dst_path, target.src_path
+        dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
+        src_path = "%s://%s" % (target.src.storage.name, src_path)
+
+        print("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
                                              exc.error_type, exc))
 
     def on_not_found_error(self, exc):
         target = self.downloader.cur_target
-        print("[%s <- %s]: error: %s" % (target.local, target.remote, exc))
+
+        dst_path, src_path = target.dst_path, target.src_path
+        dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
+        src_path = "%s://%s" % (target.src.storage.name, src_path)
+
+        print("[%s <- %s]: error: %s" % (target.dst_path, target.src_path, exc))
 
     def on_exception(self, exception):
         traceback.print_exc()
@@ -84,10 +97,13 @@ class TargetReceiver(EventHandler):
     def on_status_changed(self, event):
         target = event["emitter"]
 
-        local, remote, status = target.local, target.remote, target.status
+        dst_path, src_path = target.dst_path, target.src_path
+        dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
+        src_path = "%s://%s" % (target.src.storage.name, src_path)
+        status = target.status
 
         if status in ("finished", "failed", "suspended"):
-            print("Target [%s <- %s]: %s" % (local, remote, status))
+            print("[%s <- %s]: %s" % (dst_path, src_path, status))
 
         if status in ("finished", "failed",):
             print_target_totals(target)
@@ -104,7 +120,6 @@ class WorkerReceiver(EventHandler):
         self.exc_manager = ExceptionManager()
 
         self.exc_manager.add(YaDiskError, self.on_disk_error)
-        self.exc_manager.add(FailedToObtainLinkError, self.on_failed_to_obtain_link_error)
         self.exc_manager.add(BaseException, self.on_exception)
 
     def on_next_task(self, event, task):
@@ -121,10 +136,6 @@ class WorkerReceiver(EventHandler):
         progress_str = get_progress_str(worker.cur_task)
         print("%s: error: %s: %s" % (progress_str, exc.error_type, exc))
 
-    def on_failed_to_obtain_link_error(self, exc, worker):
-        progress_str = get_progress_str(worker.cur_task)
-        print("%s: error: failed to obtain link" % progress_str)
-
     def on_exception(self, exc, worker):
         traceback.print_exc()
 
@@ -134,7 +145,6 @@ class TaskReceiver(EventHandler):
 
         self.add_callback("status_changed", self.on_status_changed)
         self.add_callback("downloaded_changed", self.on_downloaded_changed)
-        self.add_callback("obtain_link_failed", self.on_obtain_link_failed)
 
         self.last_download_percents = {}
 
@@ -165,13 +175,6 @@ class TaskReceiver(EventHandler):
 
         print(progress_str + ": downloaded %6.2f%%" % downloaded_percent)
 
-    def on_obtain_link_failed(self, event):
-        task = event["emitter"]
-
-        progress_str = get_progress_str(task)
-
-        print(progress_str + ": failed to obtain download link")
-
 def download(env, paths):
     encsync, ret = common.make_encsync(env)
 
@@ -192,23 +195,33 @@ def download(env, paths):
         targets = []
 
         if len(paths) == 1:
-            local = os.getcwd()
+            dst_path = Paths.from_sys(os.getcwd())
         else:
-            local = paths.pop()
+            dst_path = paths.pop()
 
-        for path in paths:
-            path, path_type = common.recognize_path(path)
+        dst_path, dst_path_type = common.recognize_path(dst_path)
 
-            path = common.prepare_remote_path(path)
-            target = encsync.find_target_by_remote_path(path)
+        if dst_path_type == "local":
+            dst_path = Paths.from_sys(os.path.abspath(Paths.to_sys(dst_path)))
+
+        dst_path = Paths.join("/", dst_path)
+
+        for src_path in paths:
+            src_path, src_path_type = common.recognize_path(src_path)
+
+            if src_path_type == "local":
+                src_path = Paths.from_sys(os.path.abspath(Paths.to_sys(src_path)))
+
+            src_path = Paths.join("/", src_path)
+            target = encsync.identify_target(src_path_type, src_path, "dst")[0]
 
             if target is None:
-                show_error("%r does not appear to be encrypted" % (path,))
+                show_error("unknown path %r" % (src_path,))
                 return 1
 
             name = target["name"]
 
-            target = downloader.add_download(name, path, local)
+            target = downloader.add_download(name, src_path, dst_path_type, dst_path)
             target.add_receiver(target_receiver)
             targets.append(target)
 

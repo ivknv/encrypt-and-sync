@@ -11,7 +11,8 @@ from .cli.scan import do_scan
 from .cli.show_diffs import show_diffs
 from .cli.sync import do_sync
 from .cli.download import download
-from .cli.check_token import check_token
+from .cli.remove_duplicates import remove_duplicates
+from .cli.authenticate_storages import authenticate_storages
 from .cli.encrypt import encrypt, encrypt_filename
 from .cli.decrypt import decrypt, decrypt_filename
 from .cli.show_duplicates import show_duplicates
@@ -39,11 +40,12 @@ def any_not_none(keys, container):
 
 def setup_logging(env):
     import logging
-    from . import Downloader, Synchronizer, Scanner, CDB
+    from . import Downloader, Synchronizer, Scanner, DuplicateRemover, CDB
 
     loggers = ((Downloader.Logging.logger, "downloader.log"),
                (Synchronizer.Logging.logger, "synchronizer.log"),
                (Scanner.Logging.logger, "scanner.log"),
+               (DuplicateRemover.Logging.logger, "duplicate-remover.log"),
                (CDB.Logging.logger, "cdb.log"))
 
     for logger, filename in loggers:
@@ -80,8 +82,9 @@ def main(args=None):
     env["no_diffs"] = ns.no_diffs
     env["no_journal"] = ns.no_journal
     env["all"] = ns.all
-    env["local_only"] = ns.local_only
-    env["remote_only"] = ns.remote_only
+    env["src_only"] = ns.src_only
+    env["dst_only"] = ns.dst_only
+    env["no_auth_check"] = ns.no_auth_check
 
     if ns.n_workers is not None:
         env["n_workers"] = ns.n_workers
@@ -110,6 +113,7 @@ def main(args=None):
                ("sync", lambda: do_sync(env, ns.sync)),
                ("show_diffs", lambda: show_diffs(env, ns.show_diffs[0])),
                ("download", lambda: download(env, ns.download)),
+               ("remove_duplicates", lambda: remove_duplicates(env, ns.remove_duplicates)),
                ("encrypt", lambda: encrypt(env, ns.encrypt)),
                ("encrypt_filename", lambda: encrypt_filename(env,
                                                              ns.encrypt_filename,
@@ -130,11 +134,14 @@ def main(args=None):
                ("set_master_password", lambda: set_master_password(env)),
                ("password_prompt", lambda: password_prompt(env)))
 
-    if any_not_none(("scan", "sync", "download", "show_diffs", "console"), ns):
-        if not ns.no_token_check:
-            ret = check_token(env)
-            if ret:
-                return ret
+    requiring_auth = ("scan", "sync", "download", "show_diffs",
+                      "console", "remove_duplicates")
+
+    if any_not_none(requiring_auth, ns):
+        ret = authenticate_storages(env)
+
+        if ret:
+            return ret
 
     for key, func in actions:
         if getattr(ns, key) is not None:
@@ -158,18 +165,17 @@ def parse_args(args):
     parser.add_argument("--force-ask-password", action="store_true")
     parser.add_argument("--choose-targets", action="store_true")
     parser.add_argument("--prefix", default=None)
-    parser.add_argument("--filename-encoding", default="base64")
     parser.add_argument("--no-scan", action="store_true")
     parser.add_argument("--no-diffs", action="store_true")
-    parser.add_argument("--no-token-check", action="store_true")
+    parser.add_argument("--no-auth-check", action="store_true")
     parser.add_argument("--no-journal", action="store_true")
     parser.add_argument("--ask", action="store_true")
     parser.add_argument("-a", "--all", action="store_true")
     parser.add_argument("-I", "--integrity-check", action="store_true")
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("--local-only", action="store_true")
-    group.add_argument("--remote-only", action="store_true")
+    group.add_argument("--src-only", action="store_true")
+    group.add_argument("--dst-only", action="store_true")
 
     config_group = parser.add_argument_group("config")
     config_group.add_argument("-c", "--config-dir", metavar="PATH", default=None)
@@ -180,6 +186,7 @@ def parse_args(args):
     actions_group.add_argument("-d", "--show-diffs", nargs=1)
     actions_group.add_argument("-S", "--sync", nargs="*")
     actions_group.add_argument("-D", "--download", nargs="+")
+    actions_group.add_argument("--remove-duplicates", nargs="*")
     actions_group.add_argument("--encrypt", nargs="+")
     actions_group.add_argument("--decrypt", nargs="+")
     actions_group.add_argument("--encrypt-filename", nargs="+")

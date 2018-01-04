@@ -2,10 +2,14 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime
+import os
+import sys
+
 from . import Paths
 
-__all__ = ["format_timestamp", "parse_timestamp",
-           "node_tuple_to_dict", "normalize_node"]
+__all__ = ["format_timestamp", "parse_timestamp", "node_tuple_to_dict",
+           "normalize_node", "escape_glob", "validate_target_name", "is_windows",
+           "get_file_size"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -35,15 +39,27 @@ def node_tuple_to_dict(t):
             "path": None,
             "IVs": None}
 
-def normalize_node(node, local=True):
-    if local:
-        node["path"] = Paths.from_sys_sep(node["path"])
+def normalize_node(node):
     if node["type"] == "d":
         node["path"] = Paths.dir_normalize(node["path"])
-
 
 def escape_glob(s):
     return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
 
 def validate_target_name(name):
     return all(c.isalnum() or c in "_-+." for c in name)
+
+def is_windows():
+    return sys.platform.startswith("win")
+
+def get_file_size(file_or_path):
+    if isinstance(file_or_path, (str, bytes)):
+        return os.path.getsize(file_or_path)
+
+    fpos = file_or_path.tell()
+
+    file_or_path.seek(0, 2)
+    size = file_or_path.tell()
+    file_or_path.seek(fpos)
+
+    return size

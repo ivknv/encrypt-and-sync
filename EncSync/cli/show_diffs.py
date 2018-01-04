@@ -4,8 +4,10 @@
 from . import common
 from ..FileComparator import compare_lists
 
+__all__ = ["show_diffs"]
+
 def print_diff(diff):
-    print("{} {} {}".format(diff[0], diff[1], diff[2].path))
+    print("%s %s %s" % (diff["type"], diff["node_type"], diff["path"]))
 
 def show_diffs(env, name):
     encsync, ret = common.make_encsync(env)
