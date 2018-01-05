@@ -24,7 +24,7 @@ CONFIG_TEST = b"TEST STRING\n"
 
 TEMP_ENCRYPT_BUFFER_LIMIT = 80 * 1024**2 # In bytes
 
-class EncSyncError(BaseException):
+class EncSyncError(Exception):
     pass
 
 class InvalidEncryptedDataError(EncSyncError):

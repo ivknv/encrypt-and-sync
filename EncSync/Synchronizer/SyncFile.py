@@ -5,7 +5,7 @@ import time
 
 MIN_READ_SIZE = 512 * 1024 # Bytes
 
-class SyncFileInterrupt(BaseException):
+class SyncFileInterrupt(Exception):
     pass
 
 class SyncFile(object):

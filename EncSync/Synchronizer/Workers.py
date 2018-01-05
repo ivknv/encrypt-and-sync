@@ -102,7 +102,7 @@ class SynchronizerWorker(Worker):
                 self.work_func()
 
                 self.cur_task = None
-            except BaseException as e:
+            except Exception as e:
                 self.emit_event("error", e)
                 if self.cur_task is not None:
                     self.cur_task.change_status("failed")

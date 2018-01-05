@@ -72,7 +72,7 @@ class ScanWorker(Waiter):
                 return False
 
             return handle_more
-        except BaseException as e:
+        except Exception as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
             task.change_status("failed")

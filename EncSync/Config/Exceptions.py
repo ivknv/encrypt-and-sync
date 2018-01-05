@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-class ConfigError(BaseException):
+class ConfigError(Exception):
     pass
 
-class InvalidConfigError(BaseException):
+class InvalidConfigError(Exception):
     pass

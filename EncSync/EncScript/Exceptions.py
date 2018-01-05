@@ -4,7 +4,7 @@
 __all__ = ["EncScriptError", "TokenizerError", "ParserError", "UnexpectedCharacterError",
            "ASTConversionError", "EvaluationError"]
 
-class EncScriptError(BaseException):
+class EncScriptError(Exception):
     pass
 
 class TokenizerError(EncScriptError):

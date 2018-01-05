@@ -118,7 +118,7 @@ class Downloader(Worker):
                 self.join_workers()
 
                 self.cur_target = None
-            except BaseException as e:
+            except Exception as e:
                 self.emit_event("error", e)
                 if self.cur_target is not None:
                     self.cur_target.change_status("failed")

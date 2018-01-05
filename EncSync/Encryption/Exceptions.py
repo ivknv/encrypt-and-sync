@@ -3,11 +3,11 @@
 
 __all__ = ["EncryptionError", "DecryptionError", "UnknownFilenameEncodingError"]
 
-class EncryptionError(BaseException):
+class EncryptionError(Exception):
     pass
 
-class DecryptionError(BaseException):
+class DecryptionError(Exception):
     pass
 
-class UnknownFilenameEncodingError(BaseException):
+class UnknownFilenameEncodingError(Exception):
     pass

@@ -168,7 +168,7 @@ class DownloaderWorker(Worker):
                 return
 
             task.change_status("finished")
-        except BaseException as e:
+        except Exception as e:
             self.emit_event("error", e)
             task.change_status("failed")
 
@@ -201,7 +201,7 @@ class DownloaderWorker(Worker):
                 self.cur_task = None
                 self.upload_controller = None
                 self.download_controller = None
-            except BaseException as e:
+            except Exception as e:
                 self.emit_event("error", e)
 
                 if self.cur_task is not None:

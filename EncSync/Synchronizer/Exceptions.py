@@ -3,7 +3,7 @@
 
 __all__ = ["SynchronizerError", "LocalPathNotFoundError", "TooLongFilenameError"]
 
-class SynchronizerError(BaseException):
+class SynchronizerError(Exception):
     pass
 
 class LocalPathNotFoundError(SynchronizerError):

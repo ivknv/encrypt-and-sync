@@ -137,7 +137,7 @@ class Synchronizer(StagedWorker):
             self.difflist.clear_differences(self.cur_target.name)
             self.difflist.insert_differences(diffs)
             self.difflist.commit()
-        except BaseException as e:
+        except Exception as e:
             self.difflist.rollback()
             self.cur_target.emit_event("diffs_failed")
             raise e
@@ -148,7 +148,7 @@ class Synchronizer(StagedWorker):
                 n_done = self.cur_target.get_n_done()
 
                 self.cur_target.total_children = diff_count + n_done
-        except BaseException as e:
+        except Exception as e:
             self.cur_target.emit_event("diffs_failed")
             raise e
 
@@ -162,7 +162,7 @@ class Synchronizer(StagedWorker):
                 self.difflist.disable_journal()
 
             self.difflist.create()
-        except BaseException as e:
+        except Exception as e:
             self.emit_event("error", e)
             return
 
@@ -195,7 +195,7 @@ class Synchronizer(StagedWorker):
 
                     self.shared_flist1.create()
                     self.shared_flist2.create()
-                except BaseException as e:
+                except Exception as e:
                     self.emit_event("error", e)
                     target.change_state("failed")
                     continue
@@ -233,7 +233,7 @@ class Synchronizer(StagedWorker):
                     self.difflist.clear_differences(target.name)
 
                 self.cur_target = None
-            except BaseException as e:
+            except Exception as e:
                 self.emit_event("error", e)
                 if self.cur_target is not None:
                     self.cur_target.change_status("failed")
@@ -330,7 +330,7 @@ class Synchronizer(StagedWorker):
                 return
 
             self.do_scan("src", "dst")
-        except BaseException as e:
+        except Exception as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
 
@@ -343,7 +343,7 @@ class Synchronizer(StagedWorker):
                 return
 
             self.build_diffs_table()
-        except BaseException as e:
+        except Exception as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
 
@@ -360,7 +360,7 @@ class Synchronizer(StagedWorker):
             self.cur_target.emit_event("integrity_check")
 
             self.do_scan("dst", force=True)
-        except BaseException as e:
+        except Exception as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")
 
@@ -380,6 +380,6 @@ class Synchronizer(StagedWorker):
             else:
                 self.cur_target.emit_event("integrity_check_finished")
                 self.cur_target.change_status("finished")
-        except BaseException as e:
+        except Exception as e:
             self.emit_event("error", e)
             self.cur_target.change_status("failed")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-class WorkerError(BaseException):
+class WorkerError(Exception):
     pass
 
 class DuplicateStageError(WorkerError):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-class DownloaderError(BaseException):
+class DownloaderError(Exception):
     pass
 
 class NotFoundInDBError(DownloaderError):

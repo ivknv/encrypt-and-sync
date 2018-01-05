@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-class EventError(BaseException):
+class EventError(Exception):
     def __init__(self, event_name, msg):
         self.event_name = event_name
 

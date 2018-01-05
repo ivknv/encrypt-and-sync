@@ -182,7 +182,7 @@ class Scanner(Worker):
 
                 self.shared_flist.create()
                 self.shared_duplist.create()
-            except BaseException as e:
+            except Exception as e:
                 try:
                     self.emit_event("error", e)
                     if target is not None:
@@ -244,7 +244,7 @@ class Scanner(Worker):
                 else:
                     self.shared_flist.rollback()
                     self.shared_duplist.rollback()
-            except BaseException as e:
+            except Exception as e:
                 self.stop_workers()
                 self.shared_flist.rollback()
                 self.shared_duplist.rollback()
