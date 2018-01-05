@@ -42,7 +42,7 @@ class DownloaderReceiver(EventHandler):
         self.add_emitter_callback(downloader, "started", self.on_started)
         self.add_emitter_callback(downloader, "finished", self.on_finished)
         self.add_emitter_callback(downloader, "next_target", self.on_next_target)
-        self.add_emitter_callback(downloader, "worker_started", self.on_worker_started)
+        self.add_emitter_callback(downloader, "worker_starting", self.on_worker_starting)
         self.add_emitter_callback(downloader, "error", self.on_error)
 
         self.exc_manager = ExceptionManager()
@@ -60,7 +60,7 @@ class DownloaderReceiver(EventHandler):
     def on_next_target(self, event, target):
         print("Next target: [%s <- %s]" % (target.dst_path, target.src_path))
 
-    def on_worker_started(self, event, worker):
+    def on_worker_starting(self, event, worker):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exc):
@@ -145,8 +145,10 @@ class TaskReceiver(EventHandler):
 
         self.add_callback("status_changed", self.on_status_changed)
         self.add_callback("downloaded_changed", self.on_downloaded_changed)
+        self.add_callback("uploaded_changed", self.on_uploaded_changed)
 
         self.last_download_percents = {}
+        self.last_upload_percents = {}
 
     def on_status_changed(self, event):
         task = event["emitter"]
@@ -159,7 +161,7 @@ class TaskReceiver(EventHandler):
         task = event["emitter"]
 
         try:
-            downloaded_percent = float(task.downloaded) / task.size * 100.0
+            downloaded_percent = float(task.downloaded) / task.download_size * 100.0
         except ZeroDivisionError:
             downloaded_percent = 100.0
 
@@ -173,7 +175,27 @@ class TaskReceiver(EventHandler):
 
         progress_str = get_progress_str(task)
 
-        print(progress_str + ": downloaded %6.2f%%" % downloaded_percent)
+        print(progress_str + ": received %6.2f%%" % downloaded_percent)
+
+    def on_uploaded_changed(self, event):
+        task = event["emitter"]
+
+        try:
+            uploaded_percent = float(task.uploaded) / task.upload_size * 100.0
+        except ZeroDivisionError:
+            uploaded_percent = 100.0
+
+        last_percent = self.last_upload_percents.get(task, 0.0)
+
+        # Change can be negative due to retries
+        if abs(uploaded_percent - last_percent) < 25.0 and uploaded_percent < 100.0:
+            return
+
+        self.last_upload_percents[task] = uploaded_percent
+
+        progress_str = get_progress_str(task)
+
+        print(progress_str + ": sent %6.2f%%" % uploaded_percent)
 
 def download(env, paths):
     encsync, ret = common.make_encsync(env)
@@ -203,25 +225,19 @@ def download(env, paths):
 
         if dst_path_type == "local":
             dst_path = Paths.from_sys(os.path.abspath(Paths.to_sys(dst_path)))
-
-        dst_path = Paths.join("/", dst_path)
+        else:
+            dst_path = Paths.join_properly("/", dst_path)
 
         for src_path in paths:
             src_path, src_path_type = common.recognize_path(src_path)
 
             if src_path_type == "local":
                 src_path = Paths.from_sys(os.path.abspath(Paths.to_sys(src_path)))
+            else:
+                src_path = Paths.join_properly("/", src_path)
 
-            src_path = Paths.join("/", src_path)
-            target = encsync.identify_target(src_path_type, src_path, "dst")[0]
-
-            if target is None:
-                show_error("unknown path %r" % (src_path,))
-                return 1
-
-            name = target["name"]
-
-            target = downloader.add_download(name, src_path, dst_path_type, dst_path)
+            target = downloader.add_download(src_path_type, src_path,
+                                             dst_path_type, dst_path)
             target.add_receiver(target_receiver)
             targets.append(target)
 

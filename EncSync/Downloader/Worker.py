@@ -2,12 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from .Logging import logger
+from ..common import get_file_size
 from ..Encryption import pad_size, MIN_ENC_SIZE
 from ..Worker import Worker
 from ..FileList import FileList
 from ..LogReceiver import LogReceiver
 from ..Storage.Exceptions import ControllerInterrupt
 from .. import Paths
+
+__all__ = ["DownloaderWorker"]
 
 def check_if_download(task):
     try:
@@ -21,10 +24,10 @@ def check_if_download(task):
     size1 = meta["size"] or 0
     modified1 = meta["modified"] or 0
 
-    size2 = task.size
+    size2 = task.download_size
     modified2 = task.modified
 
-    if task.src.encrypted:
+    if task.src.is_encrypted(task.src_path):
         if not task.dst.is_encrypted(task.dst_path):
             size2 = max(size2 - MIN_ENC_SIZE, 0)
             size1 = pad_size(size1)
@@ -100,12 +103,12 @@ class DownloaderWorker(Worker):
                 "progress":  0.0}
 
     def get_file_size(self, task):
-        if task.src.encrypted:
+        if task.src.is_encrypted(task.src_path):
             flist = FileList(self.target.name,
                              self.target.src.storage.name,
                              self.parent.directory)
 
-            node = flist.find_node(Paths.join(self.target.src.prefix, task.src_path))
+            node = flist.find_node(task.src_path)
             if node["padded_size"]:
                 return node["padded_size"] + MIN_ENC_SIZE
 
@@ -122,10 +125,10 @@ class DownloaderWorker(Worker):
             if self.stop_condition():
                 return
 
-            if not task.src.encrypted:
+            if not task.src.is_encrypted(task.src_path):
                 # In this case the size was not determined yet
                 try:
-                    task.size = self.get_file_size(task)
+                    task.download_size = self.get_file_size(task)
                 except FileNotFoundError:
                     task.change_status("failed")
                     return
@@ -156,6 +159,12 @@ class DownloaderWorker(Worker):
 
             try:
                 tmpfile = next(download_generator)
+
+                if self.download_controller is None:
+                    task.downloaded = task.download_size
+
+                if not task.upload_size:
+                    task.upload_size = get_file_size(tmpfile)
 
                 self.upload_controller, ivs = task.dst.upload(tmpfile, task.dst_path)
 

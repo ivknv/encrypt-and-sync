@@ -4,12 +4,14 @@
 import threading
 from ..Task import Task
 
+__all__ = ["DownloadTarget"]
+
 class DownloadTarget(Task):
-    def __init__(self, name):
+    def __init__(self):
         Task.__init__(self)
 
         self.type = None
-        self.name = name
+        self.name = ""
         self.src = None
         self.dst = None
         self.src_path = ""

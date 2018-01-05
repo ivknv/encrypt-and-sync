@@ -14,7 +14,8 @@ class DownloadTask(Task):
         self.dst = None
         self.src_path = ""
         self.dst_path = ""
-        self.size = 0
+        self.download_size = 0
+        self.upload_size = 0
         self.modified = 0
         self._downloaded = 0
         self._uploaded = 0

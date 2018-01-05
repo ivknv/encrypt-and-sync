@@ -47,19 +47,18 @@ class Downloader(Worker):
         with self.targets_lock:
             return list(self.targets)
 
-    def make_target(self, name, src_path, dst_storage_name, dst_path):
-        try:
-            encsync_target = self.encsync.targets[name]
-        except KeyError:
-            raise ValueError("Unknown target: %r" % (name,))
+    def make_target(self, src_storage_name, src_path, dst_storage_name, dst_path):
+        encsync_target, dir_type = self.encsync.identify_target(src_storage_name,
+                                                                src_path)
 
-        # downloader's "src" is synchronizer's "dst"
-        src_name = encsync_target["dst"]["name"]
+        if encsync_target is None:
+            raise ValueError("%r doesn't belong to any targets" % (src_path,))
 
-        src = get_target_storage(src_name)(name, "dst", self.encsync, self.directory)
+        src = EncryptedStorage(self.encsync, src_storage_name, self.directory)
         dst = EncryptedStorage(self.encsync, dst_storage_name, self.directory)
 
-        target = DownloadTarget(name)
+        target = DownloadTarget()
+        target.name = encsync_target["name"]
         target.src = src
         target.dst = dst
         target.src_path = src_path
@@ -125,12 +124,11 @@ class Downloader(Worker):
 
     def init_workers(self):
         n_running = sum(1 for i in self.get_worker_list() if i.is_alive())
-
+        
         self.start_workers(self.n_workers - n_running,
                            DownloaderWorker, self, self.cur_target)
 
     def scan(self, target):
-        # Downloader's "src" is synchronizer's "dst"
         flist = FileList(target.name, target.src.storage.name, self.directory)
         flist.create()
 
@@ -148,8 +146,6 @@ class Downloader(Worker):
         target.type = node["type"]
         target.total_children = 0
 
-        src_prefix = target.src.prefix
-
         try:
             dst_type = target.dst.get_meta(target.dst_path)["type"]
         except FileNotFoundError:
@@ -161,15 +157,21 @@ class Downloader(Worker):
             new_task.modified = node["modified"]
             new_task.src = target.src
             new_task.dst = target.dst
-            new_task.src_path = Paths.cut_prefix(node["path"], src_prefix)
+            new_task.src_path = node["path"]
             new_task.dst_path = target.dst_path
+            new_task.parent = target
+
+            if target.src.is_encrypted(new_task.src_path):
+                new_task.download_size = node["padded_size"] + MIN_ENC_SIZE
+
+            if target.dst.is_encrypted(new_task.dst_path):
+                new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
 
             if dst_type == "d":
                 filename = Paths.split(new_task.src_path)[1]
                 new_task.dst_path = Paths.join(new_task.dst_path, filename)
 
             with target.lock:
-                target.size = new_task.size
                 target.total_children = 1
                 target.children.append(new_task)
 
@@ -182,7 +184,7 @@ class Downloader(Worker):
             new_task.modified = node["modified"]
             new_task.src = target.src
             new_task.dst = target.dst
-            new_task.src_path = Paths.cut_prefix(node["path"], src_prefix)
+            new_task.src_path = node["path"]
             new_task.dst_path = target.dst_path
 
             # Set destination path
@@ -192,8 +194,11 @@ class Downloader(Worker):
 
             new_task.parent = target
 
-            if new_task.type == "f" and target.src.encrypted:
-                new_task.size = node["padded_size"] + MIN_ENC_SIZE
+            if new_task.type == "f" and target.src.is_encrypted(new_task.src_path):
+                new_task.download_size = node["padded_size"] + MIN_ENC_SIZE
+                
+            if new_task.type == "f" and target.dst.is_encrypted(new_task.dst_path):
+                new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
 
             with target.lock:
                 target.total_children += 1
