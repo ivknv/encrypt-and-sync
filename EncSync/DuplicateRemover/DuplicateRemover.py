@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import os
+import shutil
 import threading
 
 from .. import Paths
@@ -89,6 +91,8 @@ class DuplicateRemover(Worker):
                 pass
 
     def work(self):
+        copy_duplist = None
+
         while not self.stopped:
             with self.targets_lock:
                 try:
@@ -132,10 +136,19 @@ class DuplicateRemover(Worker):
                 if self.stopped:
                     return
 
-                self.shared_duplist.begin_transaction()
+                copy_src_path = self.shared_duplist.connection.path
+                copy_dst_path = os.path.join(os.path.split(copy_src_path)[0], "duplist_copy.db")
 
-                target.total_children = self.shared_duplist.get_children_count(target.path)
-                self.duplicates = self.shared_duplist.find_children(target.path)
+                shutil.copyfile(copy_src_path, copy_dst_path)
+
+                copy_duplist = DuplicateList(target.storage.name, self.directory,
+                                             filename="duplist_copy.db")
+            
+                if self.stopped:
+                    return
+
+                target.total_children = copy_duplist.get_children_count(target.path)
+                self.duplicates = copy_duplist.find_children(target.path)
 
                 if target.status == "pending" and target.total_children == 0:
                     target.status = "finished"
@@ -148,6 +161,8 @@ class DuplicateRemover(Worker):
                     n = self.n_workers
                 else:
                     n = 1
+
+                self.shared_duplist.begin_transaction()
 
                 self.start_workers(n, DuplicateRemoverWorker, self)
                 self.join_workers()
@@ -172,3 +187,9 @@ class DuplicateRemover(Worker):
                 self.emit_event("error", e)
                 if self.cur_target is not None:
                     self.cur_target.status = "failed"
+            finally:
+                if copy_duplist is not None:
+                    try:
+                        os.remove(copy_duplist.connection.path)
+                    except IOError:
+                        pass

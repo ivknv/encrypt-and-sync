@@ -12,8 +12,10 @@ def prepare_path(path):
     return Paths.join_properly("/", path)
 
 class DuplicateList(BaseFileList):
-    def __init__(self, storage_name, directory=None, *args, **kwargs):
-        filename = "%s-duplicates.db" % (storage_name,)
+    def __init__(self, storage_name, directory=None, filename=None, *args, **kwargs):
+        if filename is None:
+            filename = "%s-duplicates.db" % (storage_name,)
+
         BaseFileList.__init__(self, filename, directory, *args, **kwargs)
 
     def create(self):

@@ -54,7 +54,7 @@ class DuplicateRemoverWorker(Worker):
             try:
                 task = self.cur_task
 
-                task.change_status("pending")
+                task.status = "pending"
 
                 self.emit_event("next_task", task)
 
@@ -71,7 +71,7 @@ class DuplicateRemoverWorker(Worker):
                 self.duplist.remove(task.ivs, task.path)
                 self.autocommit()
 
-                task.change_status("finished")
+                task.status = "finished"
             except Exception as e:
                 self.emit_event("error", e)
-                self.cur_task.change_status("failed")
+                self.cur_task.status = "failed"
