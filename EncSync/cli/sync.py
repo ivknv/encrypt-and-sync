@@ -322,22 +322,22 @@ class WorkerReceiver(EventHandler):
     def on_next_task(self, event, task):
         msg = get_progress_str(task) + ": "
 
-        if task.task_type == "new":
-            if task.type == "f":
+        if task.type == "new":
+            if task.node_type == "f":
                 msg += "uploading file"
-            elif task.type == "d":
+            elif task.node_type == "d":
                 msg += "creating directory"
-        elif task.task_type == "update":
+        elif task.type == "update":
             msg += "updating file"
-        elif task.task_type == "rm":
-            if task.type == "f":
+        elif task.type == "rm":
+            if task.node_type == "f":
                 msg += "removing file"
-            elif task.type == "d":
+            elif task.node_type == "d":
                 msg += "removing directory"
-        elif task.task_type == "rmdup":
-            if task.type == "f":
+        elif task.type == "rmdup":
+            if task.node_type == "f":
                 msg += "removing file duplicate"
-            elif task.type == "f":
+            elif task.node_type == "f":
                 msg += "removing directory duplicate"
 
         print(msg)

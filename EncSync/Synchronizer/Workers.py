@@ -91,7 +91,7 @@ class SynchronizerWorker(Worker):
                     break
 
                 if task.status is None:
-                    task.change_status("pending")
+                    task.status = "pending"
 
                 self.path = task.path
                 self.src = self.parent.cur_target.src
@@ -105,7 +105,7 @@ class SynchronizerWorker(Worker):
             except Exception as e:
                 self.emit_event("error", e)
                 if self.cur_task is not None:
-                    self.cur_task.change_status("failed")
+                    self.cur_task.status = "failed"
 
 class UploadWorker(SynchronizerWorker):
     def __init__(self, *args, **kwargs):
@@ -148,7 +148,7 @@ class UploadWorker(SynchronizerWorker):
             self.flist1.remove_node(self.src_path)
             self.autocommit()
 
-            task.change_status("finished")
+            task.status = "finished"
             return
 
         timeout = DEFAULT_UPLOAD_TIMEOUT
@@ -203,7 +203,7 @@ class UploadWorker(SynchronizerWorker):
         self.flist2.insert_node(newnode)
         self.autocommit()
 
-        task.change_status("finished")
+        task.status = "finished"
 
 class MkdirWorker(SynchronizerWorker):
     def get_info(self):
@@ -220,7 +220,7 @@ class MkdirWorker(SynchronizerWorker):
             self.flist1.remove_node(self.src_path)
             self.autocommit()
 
-            task.change_status("finished")
+            task.status = "finished"
             return
 
         ivs = self.dst.mkdir(self.path)
@@ -234,7 +234,7 @@ class MkdirWorker(SynchronizerWorker):
         self.flist2.insert_node(newnode)
         self.autocommit()
 
-        task.change_status("finished")
+        task.status = "finished"
 
 class RmWorker(SynchronizerWorker):
     def get_info(self):
@@ -256,4 +256,4 @@ class RmWorker(SynchronizerWorker):
         self.flist2.remove_node(self.dst_path)
         self.autocommit()
 
-        task.change_status("finished")
+        task.status = "finished"

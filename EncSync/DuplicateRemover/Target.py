@@ -12,5 +12,3 @@ class DuplicateRemoverTarget(Task):
         self.prefix = None
         self.storage = None
         self.filename_encoding = None
-
-        self.total_children = 0

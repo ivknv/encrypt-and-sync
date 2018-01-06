@@ -14,7 +14,6 @@ class SyncTarget(Task):
         self.dst = None
         
         self.skip_integrity_check = False
-        self.total_children = 0
         self.name = None
         self.enable_scan = True
 
@@ -32,29 +31,11 @@ class SyncTarget(Task):
 
     @stage.setter
     def stage(self, value):
+        if self._stage == value:
+            return
+
         self._stage = value
         self.emit_event("stage_changed")
 
     def get_n_done(self):
         return self.progress["finished"] + self.progress["failed"]
-
-    def update_status(self):
-        assert(self.parent is None)
-
-        if self.status == "suspended":
-            return
-
-        syncing = self.progress["pending"]
-        finished = self.progress["finished"]
-        suspended = self.progress["suspended"]
-        failed = self.progress["failed"]
-        queued = self.total_children - (syncing + suspended + failed + finished)
-
-        if finished == self.total_children:
-            self.change_status("finished")
-        elif syncing > 0 or queued > 0:
-            self.change_status("pending")
-        elif failed > 0:
-            self.change_status("failed")
-        elif suspended > 0:
-            self.change_status("suspended")

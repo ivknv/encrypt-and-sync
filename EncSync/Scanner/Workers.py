@@ -74,8 +74,8 @@ class ScanWorker(Waiter):
             return handle_more
         except Exception as e:
             self.emit_event("error", e)
-            self.cur_target.change_status("failed")
-            task.change_status("failed")
+            self.cur_target.status = "failed"
+            task.status = "failed"
             self.stop()
 
             return False
@@ -97,7 +97,7 @@ class DecryptedScanWorker(ScanWorker):
 
         scannable = task.scannable
 
-        task.change_status("pending")
+        task.status = "pending"
 
         if self.cur_target.storage.name == "local":
             allowed_paths = self.encsync.allowed_paths
@@ -117,7 +117,7 @@ class DecryptedScanWorker(ScanWorker):
             if n["type"] is not None:
                 self.flist.insert_node(n)
 
-        task.change_status("finished")
+        task.status = "finished"
 
         return False
 
@@ -134,7 +134,7 @@ class AsyncDecryptedScanWorker(ScanWorker):
 
         scannable = task.scannable
 
-        task.change_status("pending")
+        task.status = "pending"
 
         self.cur_path = scannable.path
 
@@ -156,7 +156,7 @@ class AsyncDecryptedScanWorker(ScanWorker):
 
         del scan_result
 
-        task.change_status("finished")
+        task.status = "finished"
 
         return True
 
@@ -173,7 +173,7 @@ class EncryptedScanWorker(ScanWorker):
 
         to_scan = [task.scannable]
 
-        task.change_status("pending")
+        task.status = "pending"
 
         if self.cur_target.storage.name == "local":
             allowed_paths = self.encsync.allowed_paths
@@ -224,7 +224,7 @@ class EncryptedScanWorker(ScanWorker):
         if self.stop_condition():
             return False
 
-        task.change_status("finished")
+        task.status = "finished"
 
         return True
 
@@ -241,7 +241,7 @@ class AsyncEncryptedScanWorker(ScanWorker):
 
         scannable = task.scannable
 
-        task.change_status("pending")
+        task.status = "pending"
 
         if self.cur_target.storage.name == "local":
             allowed_paths = self.encsync.allowed_paths
@@ -285,6 +285,6 @@ class AsyncEncryptedScanWorker(ScanWorker):
         if self.stop_condition():
             return False
 
-        task.change_status("finished")
+        task.status = "finished"
 
         return True

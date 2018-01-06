@@ -4,39 +4,78 @@
 import threading
 from collections import Counter
 
-from .Event.EventHandler import EventHandler
+from .Event.Emitter import Emitter
 
-class Task(EventHandler):
+__all__ = ["Task"]
+
+class Task(Emitter):
     def __init__(self):
-        EventHandler.__init__(self)
+        Emitter.__init__(self)
 
-        self.status = None
-        self.parent = None
-        self.progress = Counter()
+        self._status = None
+        self._parent = None
+        self._expected_total_children = 0
+        self._total_children = 0
+        self._progress = Counter()
+
+        self._lock = threading.RLock()
 
         self.add_event("status_changed")
 
-        self.lock = threading.RLock()
+    def __del__(self):
+        self.parent = None
 
-    def update_status(self):
-        pass
+    @property
+    def parent(self):
+        return self._parent
 
-    def change_status(self, new_status):
-        if self.status == new_status:
-            return
+    @parent.setter
+    def parent(self, value):
+        with self._lock:
+            if self._parent == value:
+                return
 
-        with self.lock:
+            if self._parent is not None:
+                self._parent._total_children -= 1
+
+            self._parent = value
+
+            if self._parent is not None:
+                self._parent._total_children += 1
+
+    @property
+    def total_children(self):
+        with self._lock:
+            return max(self._expected_total_children, self._total_children)
+
+    @total_children.setter
+    def total_children(self, value):
+        with self._lock:
+            self._expected_total_children = value
+
+    @property
+    def status(self):
+        with self._lock:
+            return self._status
+
+    @status.setter
+    def status(self, new_status):
+        with self._lock:
             old_status = self.status
-            self.status = new_status
 
-        if self.parent is not None:
-            with self.parent.lock:
-                self.parent.progress[old_status] -= 1
-                self.parent.progress[new_status] += 1
+            if old_status == new_status:
+                return
 
-            self.emit_event("status_changed")
+            self._status = new_status
 
-            with self.parent.lock:
-                self.parent.update_status()
-        else:
-            self.emit_event("status_changed")
+            if self.parent is not None:
+                with self.parent._lock:
+                    self.parent.progress[old_status] -= 1
+                    self.parent.progress[new_status] += 1
+
+        self.emit_event("status_changed")
+
+    @property
+    def progress(self):
+        with self._lock:
+            return self._progress

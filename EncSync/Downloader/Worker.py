@@ -130,11 +130,11 @@ class DownloaderWorker(Worker):
                 try:
                     task.download_size = self.get_file_size(task)
                 except FileNotFoundError:
-                    task.change_status("failed")
+                    task.status = "failed"
                     return
 
             if not check_if_download(task):
-                task.change_status("finished")
+                task.status = "finished"
                 return
 
             if self.stop_condition():
@@ -176,10 +176,10 @@ class DownloaderWorker(Worker):
             except ControllerInterrupt:
                 return
 
-            task.change_status("finished")
+            task.status = "finished"
         except Exception as e:
             self.emit_event("error", e)
-            task.change_status("failed")
+            task.status = "failed"
 
     def work(self):
         while not self.stopped:
@@ -193,17 +193,17 @@ class DownloaderWorker(Worker):
 
                     self.emit_event("next_task", task)
 
-                    if task.parent is not None and task.parent.status == "suspended":
-                        continue
+                    if task.parent.status != "pending":
+                        return
 
                     if task.status is None:
-                        task.change_status("pending")
+                        task.status = "pending"
                     elif task.status != "pending":
                         continue
 
                 if task.type == "d":
                     recursive_mkdir(task.dst_path, task.dst)
-                    task.change_status("finished")
+                    task.status = "finished"
                 else:
                     self.download_file(task)
 
@@ -214,4 +214,4 @@ class DownloaderWorker(Worker):
                 self.emit_event("error", e)
 
                 if self.cur_task is not None:
-                    self.cur_task.change_status("failed")
+                    self.cur_task.status = "failed"

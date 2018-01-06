@@ -59,7 +59,7 @@ class Synchronizer(StagedWorker):
     def change_status(self, status):
         for i in self.get_targets() + [self.cur_target]:
             if i is not None:
-                i.change_status(status)
+                i.status = status
 
     def add_target(self, target):
         with self.targets_lock:
@@ -115,11 +115,11 @@ class Synchronizer(StagedWorker):
             task = SyncTask()
             task.parent = self.cur_target
 
-            task.task_type = diff["type"]
-            task.type = diff["node_type"]
+            task.type = diff["type"]
+            task.node_type = diff["node_type"]
             task.path = diff["path"]
 
-            task.change_status("pending")
+            task.status = "pending"
 
             return task
 
@@ -181,7 +181,7 @@ class Synchronizer(StagedWorker):
                     self.cur_target = None
                     continue
 
-                target.change_status("pending")
+                target.status = "pending"
 
                 assert(self.stage is None)
 
@@ -212,6 +212,9 @@ class Synchronizer(StagedWorker):
                 elif target.stage not in {None, "scan", "check"}:
                     self.build_diffs_table()
 
+                if target.total_children == 0 and target.stage not in (None, "scan"):
+                    target.status = "finished"
+
                 for stage in stages:
                     if self.stopped or target.status in ("suspended", "failed"):
                         break
@@ -225,8 +228,13 @@ class Synchronizer(StagedWorker):
                     if target.status == "suspended":
                         break
 
-                if target.total_children == 0 and target.stage not in (None, "scan"):
-                    target.change_status("finished")
+                if target.status == "pending":
+                    if target.progress["finished"] == target.total_children:
+                        target.status = "finished"
+                    elif target.progress["suspended"] > 0:
+                        target.status = "suspended"
+                    elif target.progress["failed"] > 0:
+                        target.status = "failed"
 
                 if target.status == "finished":
                     target.stage = None
@@ -236,7 +244,7 @@ class Synchronizer(StagedWorker):
             except Exception as e:
                 self.emit_event("error", e)
                 if self.cur_target is not None:
-                    self.cur_target.change_status("failed")
+                    self.cur_target.status = "failed"
 
         assert(self.stage is None)
 
@@ -322,17 +330,20 @@ class Synchronizer(StagedWorker):
         self.start_worker(scanner).join()
 
         if any(i.status != "finished" for i in targets):
-            self.cur_target.change_status("failed")
+            self.cur_target.status = "failed"
 
     def init_scan_stage(self):
         try:
             if not self.cur_target.enable_scan:
                 return
 
+            if self.stopped or self.cur_target.status != "pending":
+                return
+
             self.do_scan("src", "dst")
         except Exception as e:
             self.emit_event("error", e)
-            self.cur_target.change_status("failed")
+            self.cur_target.status = "failed"
 
     def finalize_scan_stage(self):
         try:
@@ -345,24 +356,22 @@ class Synchronizer(StagedWorker):
             self.build_diffs_table()
         except Exception as e:
             self.emit_event("error", e)
-            self.cur_target.change_status("failed")
+            self.cur_target.status = "failed"
 
     def init_check_stage(self):
         try:
             if self.cur_target.skip_integrity_check:
                 return
 
-            if self.stopped or self.cur_target.status == "suspended":
+            if self.stopped or self.cur_target.status != "pending":
                 return
-
-            self.cur_target.change_status("pending")
 
             self.cur_target.emit_event("integrity_check")
 
             self.do_scan("dst", force=True)
         except Exception as e:
             self.emit_event("error", e)
-            self.cur_target.change_status("failed")
+            self.cur_target.status = "failed"
 
     def finalize_check_stage(self):
         try:
@@ -376,10 +385,10 @@ class Synchronizer(StagedWorker):
 
             if self.difflist.get_difference_count(self.cur_target.name):
                 self.cur_target.emit_event("integrity_check_failed")
-                self.cur_target.change_status("failed")
+                self.cur_target.status = "failed"
             else:
                 self.cur_target.emit_event("integrity_check_finished")
-                self.cur_target.change_status("finished")
+                self.cur_target.status = "finished"
         except Exception as e:
             self.emit_event("error", e)
-            self.cur_target.change_status("failed")
+            self.cur_target.status = "failed"

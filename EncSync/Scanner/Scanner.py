@@ -46,7 +46,7 @@ class Scanner(Worker):
         with self.targets_lock:
             for i in self.targets + [self.cur_target]:
                 if i is not None:
-                    i.change_status(status)
+                    i.status = status
 
     def add_new_target(self, scan_type, name):
         target = self.make_target(scan_type, name)
@@ -186,7 +186,7 @@ class Scanner(Worker):
                 try:
                     self.emit_event("error", e)
                     if target is not None:
-                        target.change_status("failed")
+                        target.status = "failed"
                 finally:
                     self.cur_target = None
 
@@ -196,7 +196,7 @@ class Scanner(Worker):
                 if self.stop_condition():
                     break
 
-                target.change_status("pending")
+                target.status = "pending"
 
                 self.shared_flist.begin_transaction()
                 self.shared_duplist.begin_transaction()
@@ -238,7 +238,7 @@ class Scanner(Worker):
                 if target.status == "pending":
                     self.shared_flist.commit()
                     self.shared_duplist.commit()
-                    target.change_status("finished")
+                    target.status = "finished" 
 
                     target.emit_event("scan_finished")
                 else:
@@ -252,6 +252,6 @@ class Scanner(Worker):
                 self.emit_event("error", e)
 
                 if target is not None:
-                    target.change_status("failed")
+                    target.status = "failed"
             finally:
                 self.cur_target = None

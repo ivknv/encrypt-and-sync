@@ -12,7 +12,6 @@ from ..Encryption import MIN_ENC_SIZE
 from ..FileList import FileList
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
-from ..TargetStorage import get_target_storage
 from ..EncryptedStorage import EncryptedStorage
 from .. import Paths
 
@@ -41,7 +40,7 @@ class Downloader(Worker):
     def change_status(self, status):
         for i in self.get_targets() + [self.cur_target]:
             if i is not None:
-                i.change_status(status)
+                i.status = status
 
     def get_targets(self):
         with self.targets_lock:
@@ -100,7 +99,7 @@ class Downloader(Worker):
                 if target.status == "suspended":
                     continue
 
-                target.change_status("pending")
+                target.status = "pending"
 
                 if target.total_children == 0:
                     self.scan(target)
@@ -110,7 +109,7 @@ class Downloader(Worker):
                         if i.status in ("pending", None):
                             target.pool.append(i)
 
-                if self.stopped:
+                if self.stopped or target.status != "pending":
                     break
 
                 self.init_workers()
@@ -120,7 +119,7 @@ class Downloader(Worker):
             except Exception as e:
                 self.emit_event("error", e)
                 if self.cur_target is not None:
-                    self.cur_target.change_status("failed")
+                    self.cur_target.status = "failed"
 
     def init_workers(self):
         n_running = sum(1 for i in self.get_worker_list() if i.is_alive())
@@ -171,13 +170,15 @@ class Downloader(Worker):
                 filename = Paths.split(new_task.src_path)[1]
                 new_task.dst_path = Paths.join(new_task.dst_path, filename)
 
-            with target.lock:
-                target.total_children = 1
-                target.children.append(new_task)
+            target.total_children = 1
+            target.children.append(new_task)
 
             return
 
         for node in nodes:
+            if self.stopped or target.status != "pending":
+                return
+
             new_task = DownloadTask()
 
             new_task.type = node["type"]
@@ -200,6 +201,5 @@ class Downloader(Worker):
             if new_task.type == "f" and target.dst.is_encrypted(new_task.dst_path):
                 new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
 
-            with target.lock:
-                target.total_children += 1
-                target.children.append(new_task)
+            target.total_children += 1
+            target.children.append(new_task)

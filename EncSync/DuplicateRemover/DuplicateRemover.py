@@ -42,7 +42,7 @@ class DuplicateRemover(Worker):
     def change_status(self, status):
         for target in self.get_targets() + [self.cur_target]:
             if target is not None:
-                target.change_status(status)
+                target.status = status
 
     def make_target(self, storage_name, path):
         path = Paths.join_properly("/", path)
@@ -107,7 +107,7 @@ class DuplicateRemover(Worker):
                     break
 
                 if target.status is None:
-                    target.change_status("pending")
+                    target.status = "pending"
 
                 if target.status == "suspended":
                     continue
@@ -124,7 +124,9 @@ class DuplicateRemover(Worker):
                     self.shared_duplist.create()
                 except Exception as e:
                     self.emit_event("error", e)
-                    target.change_status("failed")
+                    target.status = "failed"
+                    self.shared_duplist = None
+                    self.cur_target = None
                     continue
 
                 if self.stopped:
@@ -134,6 +136,13 @@ class DuplicateRemover(Worker):
 
                 target.total_children = self.shared_duplist.get_children_count(target.path)
                 self.duplicates = self.shared_duplist.find_children(target.path)
+
+                if target.status == "pending" and target.total_children == 0:
+                    target.status = "finished"
+                    self.cur_target = None
+                    self.duplicates = None
+                    self.shared_duplist = None
+                    continue
 
                 if target.storage.parallelizable:
                     n = self.n_workers
@@ -145,6 +154,14 @@ class DuplicateRemover(Worker):
 
                 self.shared_duplist.commit()
 
+                if target.status == "pending":
+                    if target.progress["finished"] == target.total_children:
+                        target.status = "finished"
+                    elif target.progress["suspended"] > 0:
+                        target.status = "suspended"
+                    elif target.progress["failed"] > 0:
+                        target.status = "failed"
+
                 self.cur_target = None
                 self.duplicates = None
                 self.shared_duplist = None
@@ -154,4 +171,4 @@ class DuplicateRemover(Worker):
 
                 self.emit_event("error", e)
                 if self.cur_target is not None:
-                    self.cur_target.change_status("failed")
+                    self.cur_target.status = "failed"

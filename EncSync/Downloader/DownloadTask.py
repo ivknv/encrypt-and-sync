@@ -19,7 +19,6 @@ class DownloadTask(Task):
         self.modified = 0
         self._downloaded = 0
         self._uploaded = 0
-        self.total_children = 0
 
         self.add_event("downloaded_changed")
         self.add_event("uploaded_changed")

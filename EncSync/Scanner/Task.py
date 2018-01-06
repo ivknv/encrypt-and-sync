@@ -3,6 +3,8 @@
 
 from ..Task import Task
 
+__all__ = ["ScanTask"]
+
 class ScanTask(Task):
     def __init__(self, scannable):
         Task.__init__(self)

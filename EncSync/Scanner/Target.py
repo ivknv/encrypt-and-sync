@@ -3,6 +3,8 @@
 
 from ..Task import Task
 
+__all__ = ["ScanTarget"]
+
 class ScanTarget(Task):
     def __init__(self, scan_type, encrypted, storage, name, path, filename_encoding=None):
         Task.__init__(self)
