@@ -74,7 +74,7 @@ def print_diffs(env, encsync, target):
     print("[%s]: %d new files to upload" % (name, n_new_files))
     print("[%s]: %d files to update" % (name, n_update))
 
-def ask_continue(synchronizer):
+def ask_continue():
     answer = None
     values = {"y": "continue", "n": "stop", "v": "view", "s": "skip"}
 
@@ -82,9 +82,6 @@ def ask_continue(synchronizer):
 
     try:
         while answer not in values.keys():
-            if synchronizer.stopped:
-                return "stop"
-
             answer = input("Continue synchronization? [Y/n/(s)kip/(v)iew differences]: ").lower()
 
             if answer == "":
@@ -181,8 +178,6 @@ class SynchronizerReceiver(EventHandler):
         self.add_emitter_callback(synchronizer, "finished", self.on_finished)
         self.add_emitter_callback(synchronizer, "next_target", self.on_next_target)
         self.add_emitter_callback(synchronizer, "worker_starting", self.on_worker_starting)
-        self.add_emitter_callback(synchronizer, "entered_stage", self.on_entered_stage)
-        self.add_emitter_callback(synchronizer, "exited_stage", self.on_exited_stage)
         self.add_emitter_callback(synchronizer, "error", self.on_error)
 
         self.exc_manager.add(YaDiskError, self.on_disk_error)
@@ -206,45 +201,6 @@ class SynchronizerReceiver(EventHandler):
         else:
             worker.add_receiver(self.worker_receiver)
 
-    def on_entered_stage(self, event, stage):
-        synchronizer = event.emitter
-        target = synchronizer.cur_target
-
-        if stage == "scan" and not target.enable_scan:
-            return
-
-        if stage == "check" and target.skip_integrity_check:
-            return
-
-        print("Synchronizer: entered stage %r" % stage)
-
-    def on_exited_stage(self, event, stage):
-        synchronizer = event.emitter
-        target = synchronizer.cur_target
-
-        if stage == "scan":
-            if target.status not in ("failed", "suspended"):
-                print_diffs(self.env, synchronizer.encsync, target)
-
-                ask = self.env.get("ask", False)
-                no_diffs = self.env.get("no_diffs", False)
-
-                if ask and not no_diffs:
-                    action = ask_continue(synchronizer)
-
-                    while action == "view":
-                        view_diffs(self.env, synchronizer.encsync, target)
-                        action = ask_continue(synchronizer)
-
-                    if action == "stop":
-                        synchronizer.stop()
-                    elif action == "skip":
-                        target.change_status("suspended")
-        elif stage == "check" and target.skip_integrity_check:
-            return
-
-        print("Synchronizer: exited stage %r" % stage)
-
     def on_error(self, event, exc):
         self.exc_manager.handle(exc, event.emitter)
 
@@ -259,6 +215,8 @@ class TargetReceiver(EventHandler):
     def __init__(self, env):
         EventHandler.__init__(self)
 
+        self.env = env
+
         self.add_callback("status_changed", self.on_status_changed)
         self.add_callback("integrity_check", self.on_integrity_check)
         self.add_callback("integrity_check_finished", self.on_integrity_check_finished)
@@ -266,6 +224,8 @@ class TargetReceiver(EventHandler):
         self.add_callback("diffs_started", self.on_diffs_started)
         self.add_callback("diffs_failed", self.on_diffs_failed)
         self.add_callback("diffs_finished", self.on_diffs_finished)
+        self.add_callback("entered_stage", self.on_entered_stage)
+        self.add_callback("exited_stage", self.on_exited_stage)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -303,6 +263,46 @@ class TargetReceiver(EventHandler):
         target = event.emitter
 
         print("[%s]: finished building the difference table" % (target.name,))
+
+    def on_entered_stage(self, event, stage):
+        target = event.emitter
+
+        if stage == "scan" and not target.enable_scan:
+            return
+
+        if stage == "check" and target.skip_integrity_check:
+            return
+
+        print("[%s]: entered stage %r" % (target.name, stage))
+
+    def on_exited_stage(self, event, stage):
+        target = event.emitter
+
+        if stage == "scan":
+            if target.status not in ("failed", "suspended"):
+                print_diffs(self.env, target.encsync, target)
+
+                ask = self.env.get("ask", False)
+                no_diffs = self.env.get("no_diffs", False)
+
+                if ask and not no_diffs:
+                    action = ask_continue()
+
+                    while action == "view":
+                        view_diffs(self.env, target.encsync, target)
+                        action = ask_continue()
+
+                    if action == "stop":
+                        target.synchronizer.stop()
+                    elif action == "skip":
+                        target.change_status("suspended")
+
+                if not target.enable_scan:
+                    return
+        elif stage == "check" and target.skip_integrity_check:
+            return
+
+        print("[%s]: exited stage %r" % (target.name, stage))
 
 class WorkerReceiver(EventHandler):
     def __init__(self):
