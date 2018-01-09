@@ -3,16 +3,10 @@
 
 import threading
 
-from .Workers import *
 from .Logging import logger
-from .Task import ScanTask
 from .Target import ScanTarget
 from ..Worker import Worker
-from ..FileList import FileList, DuplicateList
-from ..Scannable import DecryptedScannable, EncryptedScannable
 from ..LogReceiver import LogReceiver
-from .. import PathMatch
-from .. import Paths
 
 class Scanner(Worker):
     def __init__(self, encsync, directory, n_workers=2, enable_journal=True):
@@ -26,16 +20,10 @@ class Scanner(Worker):
         self.targets = []
         self.targets_lock = threading.Lock()
 
-        self.shared_flist = None
-        self.shared_duplist = None
-
-        if not self.enable_journal:
-            self.shared_duplist.disable_journal()
-
         self.cur_target = None
 
-        self.pool = []
-        self.pool_lock = threading.Lock()
+        self.tasks = []
+        self.tasks_lock = threading.Lock()
 
         self.add_event("next_target")
         self.add_event("error")
@@ -71,7 +59,11 @@ class Scanner(Worker):
         filename_encoding = target_dir["filename_encoding"]
         storage = self.encsync.storages[target_dir["name"]]
 
-        target = ScanTarget(scan_type, encrypted, storage, name, path, filename_encoding)
+        target = ScanTarget(self, name, storage)
+        target.type = scan_type
+        target.encrypted = encrypted
+        target.path = path
+        target.filename_encoding = filename_encoding
 
         return target
 
@@ -105,54 +97,19 @@ class Scanner(Worker):
                 self.emit_event("next_target", target)
                 return target
 
-    def add_task(self, scannable):
-        task = ScanTask(scannable)
-        with self.pool_lock:
-            self.pool.append(task)
+    def add_task(self, task):
+        with self.tasks_lock:
+            self.tasks.append(task)
 
         for w in self.get_worker_list():
             w.set_dirty()
 
     def get_next_task(self):
-        with self.pool_lock:
-            if len(self.pool) > 0:
-                return self.pool.pop(0)
-
-    def begin_scan(self, target):
-        self.shared_flist.clear()
-
-        if target.encrypted:
-            self.shared_duplist.remove_children(target.path)
-
-        if self.stop_condition():
-            return
-
-        if target.encrypted:
-            scannable = EncryptedScannable(target.storage, target.path,
-                                           filename_encoding=target.filename_encoding)
-        else:
-            scannable = DecryptedScannable(target.storage, target.path)
-
-        try:
-            scannable.identify()
-        except FileNotFoundError:
-            return
-
-        if self.stop_condition():
-            return
-
-        if target.storage.name == "local":
-            path = Paths.from_sys(target.path)
-
-            if scannable.type == "d":
-                path = Paths.dir_normalize(path)
-
-            if not PathMatch.match(path, self.encsync.allowed_paths):
-                return
-
-        if scannable.type is not None:
-            self.shared_flist.insert_node(scannable.to_node())
-            self.add_task(scannable)
+        with self.tasks_lock:
+            try:
+                return self.tasks.pop(0)
+            except IndexError:
+                pass
 
     def work(self):
         assert(self.n_workers >= 1)
@@ -171,17 +128,7 @@ class Scanner(Worker):
                 if target.status == "suspended":
                     continue
 
-                storage_name = target.storage.name
-
-                self.shared_flist = FileList(target.name, storage_name, self.directory)
-                self.shared_duplist = DuplicateList(storage_name, self.directory)
-
-                if not self.enable_journal:
-                    self.shared_flist.disable_journal()
-                    self.shared_duplist.disable_journal()
-
-                self.shared_flist.create()
-                self.shared_duplist.create()
+                target.complete(self)
             except Exception as e:
                 try:
                     self.emit_event("error", e)
@@ -189,69 +136,3 @@ class Scanner(Worker):
                         target.status = "failed"
                 finally:
                     self.cur_target = None
-
-                continue
-
-            try:
-                if self.stop_condition():
-                    break
-
-                target.status = "pending"
-
-                self.shared_flist.begin_transaction()
-                self.shared_duplist.begin_transaction()
-
-                self.begin_scan(target)
-
-                if self.stop_condition():
-                    self.shared_flist.rollback()
-                    self.shared_duplist.rollback()
-                    break
-
-                if target.storage.parallelizable:
-                    if target.encrypted:
-                        worker_class = AsyncEncryptedScanWorker
-                    else:
-                        worker_class = AsyncDecryptedScanWorker
-
-                    self.start_workers(self.n_workers, worker_class, self, target)
-                    self.wait_workers()
-                    self.stop_workers()
-                else:
-                    if target.encrypted:
-                        worker_class = EncryptedScanWorker
-                    else:
-                        worker_class = DecryptedScanWorker
-
-                    if self.pool:
-                        self.start_worker(worker_class, self, target)
-
-                if self.stop_condition():
-                    self.stop_workers()
-                    self.join_workers()
-                    self.shared_flist.rollback()
-                    self.shared_duplist.rollback()
-                    break
-
-                self.join_workers()
-
-                if target.status == "pending":
-                    self.shared_flist.commit()
-                    self.shared_duplist.commit()
-                    target.status = "finished" 
-
-                    target.emit_event("scan_finished")
-                else:
-                    self.shared_flist.rollback()
-                    self.shared_duplist.rollback()
-            except Exception as e:
-                self.stop_workers()
-                self.shared_flist.rollback()
-                self.shared_duplist.rollback()
-
-                self.emit_event("error", e)
-
-                if target is not None:
-                    target.status = "failed"
-            finally:
-                self.cur_target = None

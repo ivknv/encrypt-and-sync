@@ -79,3 +79,6 @@ class Task(Emitter):
     def progress(self):
         with self._lock:
             return self._progress
+
+    def complete(self, worker):
+        raise NotImplementedError

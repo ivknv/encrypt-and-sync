@@ -4,6 +4,8 @@
 import threading
 from .Worker import Worker
 
+__all__ = ["Waiter"]
+
 class Waiter(Worker):
     def __init__(self, parent, daemon=None):
         Worker.__init__(self, parent, daemon)
@@ -32,6 +34,9 @@ class Waiter(Worker):
         self.set_dirty()
 
     def get_next_task(self):
+        raise NotImplementedError
+
+    def add_task(self, task):
         raise NotImplementedError
 
     def handle_task(self, task):
