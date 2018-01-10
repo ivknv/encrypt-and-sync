@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import os
-import shutil
 import threading
 
 from .. import Paths
 from ..Worker import Worker
-from ..FileList import DuplicateList
 from ..LogReceiver import LogReceiver
 from .Logging import logger
-from .Worker import DuplicateRemoverWorker
 from .Target import DuplicateRemoverTarget
-from .Task import DuplicateRemoverTask
 
 __all__ = ["DuplicateRemover"]
 
@@ -27,10 +22,6 @@ class DuplicateRemover(Worker):
         self.targets = []
         self.targets_lock = threading.Lock()
         self.cur_target = None
-
-        self.shared_duplist = None
-        self.duplicates = None
-        self.task_lock = threading.Lock()
 
         self.add_event("next_target")
         self.add_event("error")
@@ -48,7 +39,7 @@ class DuplicateRemover(Worker):
 
     def make_target(self, storage_name, path):
         path = Paths.join_properly("/", path)
-        target = DuplicateRemoverTarget()
+        target = DuplicateRemoverTarget(self)
         target.path = path
         target.storage = self.encsync.storages[storage_name]
 
@@ -76,23 +67,7 @@ class DuplicateRemover(Worker):
     def add_new_target(self, storage_name, path):
         return self.add_target(self.make_target(storage_name, path))
 
-    def get_next_task(self):
-        with self.task_lock:
-            try:
-                task = DuplicateRemoverTask()
-                task.parent = self.cur_target
-                task.storage = self.cur_target.storage
-                task.prefix = self.cur_target.prefix
-                task.ivs, task.path = next(self.duplicates)[1:]
-                task.filename_encoding = self.cur_target.filename_encoding
-
-                return task
-            except StopIteration:
-                pass
-
     def work(self):
-        copy_duplist = None
-
         while not self.stopped:
             with self.targets_lock:
                 try:
@@ -107,89 +82,9 @@ class DuplicateRemover(Worker):
 
                 self.emit_event("next_target", target)
 
-                if self.stopped:
-                    break
-
-                if target.status is None:
-                    target.status = "pending"
-
-                if target.status == "suspended":
-                    continue
-
-                if self.stopped:
-                    return
-
-                try:
-                    self.shared_duplist = DuplicateList(target.storage.name, self.directory)
-
-                    if not self.enable_journal:
-                        self.shared_duplist.disable_journal()
-
-                    self.shared_duplist.create()
-                except Exception as e:
-                    self.emit_event("error", e)
-                    target.status = "failed"
-                    self.shared_duplist = None
-                    self.cur_target = None
-                    continue
-
-                if self.stopped:
-                    return
-
-                copy_src_path = self.shared_duplist.connection.path
-                copy_dst_path = os.path.join(os.path.split(copy_src_path)[0], "duplist_copy.db")
-
-                shutil.copyfile(copy_src_path, copy_dst_path)
-
-                copy_duplist = DuplicateList(target.storage.name, self.directory,
-                                             filename="duplist_copy.db")
-            
-                if self.stopped:
-                    return
-
-                target.total_children = copy_duplist.get_children_count(target.path)
-                self.duplicates = copy_duplist.find_children(target.path)
-
-                if target.status == "pending" and target.total_children == 0:
-                    target.status = "finished"
-                    self.cur_target = None
-                    self.duplicates = None
-                    self.shared_duplist = None
-                    continue
-
-                if target.storage.parallelizable:
-                    n = self.n_workers
-                else:
-                    n = 1
-
-                self.shared_duplist.begin_transaction()
-
-                self.start_workers(n, DuplicateRemoverWorker, self)
-                self.join_workers()
-
-                self.shared_duplist.commit()
-
-                if target.status == "pending":
-                    if target.progress["finished"] == target.total_children:
-                        target.status = "finished"
-                    elif target.progress["suspended"] > 0:
-                        target.status = "suspended"
-                    elif target.progress["failed"] > 0:
-                        target.status = "failed"
-
-                self.cur_target = None
-                self.duplicates = None
-                self.shared_duplist = None
+                target.complete(self)
             except Exception as e:
-                if self.shared_duplist is not None:
-                    self.shared_duplist.commit()
-
                 self.emit_event("error", e)
-                if self.cur_target is not None:
-                    self.cur_target.status = "failed"
+                self.cur_target.status = "failed"
             finally:
-                if copy_duplist is not None:
-                    try:
-                        os.remove(copy_duplist.connection.path)
-                    except IOError:
-                        pass
+                self.cur_target = None
