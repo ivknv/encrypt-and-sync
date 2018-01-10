@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from .Logging import logger
-from .Tasks import UploadTask
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
 
@@ -23,16 +22,6 @@ class SyncWorker(Worker):
 
     def get_info(self):
         return {}
-
-    def stop(self):
-        Worker.stop(self)
-
-        if self.cur_task is not None and isinstance(self.cur_task, UploadTask):
-            if self.cur_task.upload_controller is not None:
-                self.cur_task.upload_controller.stop()
-
-            if self.cur_task.download_controller is not None:
-                self.cur_task.download_controller.stop()
 
     def stop_condition(self):
         if self.stopped or self.parent.stopped:

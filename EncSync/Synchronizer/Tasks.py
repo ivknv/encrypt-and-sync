@@ -93,6 +93,19 @@ class UploadTask(SyncTask):
     def __init__(self, *args, **kwargs):
         SyncTask.__init__(self, *args, **kwargs)
 
+        def on_status_changed(event):
+            if self.status != "pending":
+                if self.upload_controller is not None:
+                    self.upload_controller.stop()
+
+                if self.download_controller is not None:
+                    self.download_controller.stop()
+
+        status_receiver = Receiver()
+        status_receiver.add_callback("status_changed", on_status_changed)
+
+        self.add_receiver(status_receiver)
+
         self.upload_controller = None
         self.download_controller = None
 
@@ -151,7 +164,7 @@ class UploadTask(SyncTask):
             try:
                 controller.work()
             except ControllerInterrupt:
-                return
+                return True
 
             self.flist1.update_size(src_path, new_size)
         else:
