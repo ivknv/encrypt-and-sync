@@ -128,7 +128,7 @@ class TargetReceiver(EventHandler):
     def on_status_changed(self, event):
         target = event["emitter"]
 
-        if target.status in ("finished", "failed", "suspended"):
+        if target.status != "pending":
             print("[%s:%s]: %s scan %s" % (target.name, target.type,
                                            target.storage.name, target.status))
 
@@ -249,7 +249,10 @@ def do_scan(env, names):
         scanner.start()
         scanner.join()
 
-        if any(i.status != "finished" for i in targets):
+        if any(i.status not in ("finished", "skipped") for i in targets):
+            return 1
+
+        if scanner.stopped:
             return 1
 
         return 0

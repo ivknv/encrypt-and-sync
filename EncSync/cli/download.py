@@ -102,7 +102,7 @@ class TargetReceiver(EventHandler):
         src_path = "%s://%s" % (target.src.storage.name, src_path)
         status = target.status
 
-        if status in ("finished", "failed", "suspended"):
+        if status != "pending":
             print("[%s <- %s]: %s" % (dst_path, src_path, status))
 
         if status in ("finished", "failed",):
@@ -153,7 +153,7 @@ class TaskReceiver(EventHandler):
     def on_status_changed(self, event):
         task = event["emitter"]
 
-        if task.status in ("finished", "failed", "suspended"):
+        if task.status != "pending":
             progress_str = get_progress_str(task)
             print(progress_str + ": %s" % task.status)
 
@@ -244,7 +244,10 @@ def download(env, paths):
         downloader.start()
         downloader.join()
 
-        if any(i.status != "finished" for i in targets):
+        if any(i.status not in ("finished", "skipped") for i in targets):
+            return 1
+
+        if downloader.stopped:
             return 1
 
     return 0

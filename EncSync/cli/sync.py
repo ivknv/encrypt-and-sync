@@ -231,7 +231,7 @@ class TargetReceiver(EventHandler):
         target = event["emitter"]
         status = target.status
 
-        if status in ("finished", "failed", "suspended"):
+        if status != "pending":
             print("[%s]: %s" % (target.name, status))
 
         if status in ("finished", "failed"):
@@ -279,7 +279,7 @@ class TargetReceiver(EventHandler):
         target = event.emitter
 
         if stage == "scan":
-            if target.status not in ("failed", "suspended"):
+            if target.status == "pending":
                 print_diffs(self.env, target.encsync, target)
 
                 ask = self.env.get("ask", False)
@@ -295,7 +295,7 @@ class TargetReceiver(EventHandler):
                     if action == "stop":
                         target.synchronizer.stop()
                     elif action == "skip":
-                        target.change_status("suspended")
+                        target.status = "skipped"
 
                 if not target.enable_scan:
                     return
@@ -458,7 +458,7 @@ def do_sync(env, names):
         synchronizer.start()
         synchronizer.join()
 
-        if any(i.status not in ("finished", "suspended") for i in targets):
+        if any(i.status not in ("finished", "skipped") for i in targets):
             return 1
 
         if synchronizer.stopped:

@@ -117,7 +117,7 @@ class DuplicateRemoverReceiver(Receiver):
         if action == "stop":
             self.duprem.stop()
         elif action == "skip":
-            target.change_status("suspended")
+            target.change_status("skipped")
 
     def on_worker_starting(self, event, worker):
         worker.add_receiver(self.worker_receiver)
@@ -143,7 +143,7 @@ class TargetReceiver(Receiver):
         target = event["emitter"]
         status = target.status
 
-        if status in ("finished", "failed", "suspended"):
+        if status != "pending":
             print("[%s://%s]: %s" % (target.storage.name, target.path, status))
 
 class WorkerReceiver(Receiver):
@@ -262,7 +262,7 @@ def remove_duplicates(env, paths):
         duprem.start()
         duprem.join()
 
-        if any(i.status not in ("finished", "suspended") for i in targets):
+        if any(i.status not in ("finished", "skipped") for i in targets):
             return 1
 
         if duprem.stopped:
