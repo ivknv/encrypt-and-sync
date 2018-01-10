@@ -26,8 +26,8 @@ def print_target_totals(target):
     dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
     src_path = "%s://%s" % (target.src.storage.name, src_path)
 
-    print("[%s <- %s]: %d tasks in total" % (dst_path, src_path, n_finished))
-    print("[%s <- %s]: %d tasks successful" % (dst_path, src_path, n_total))
+    print("[%s <- %s]: %d tasks in total" % (dst_path, src_path, n_total))
+    print("[%s <- %s]: %d tasks successful" % (dst_path, src_path, n_finished))
     print("[%s <- %s]: %d tasks failed" % (dst_path, src_path, n_failed))
     print("[%s <- %s]: %s downloaded" % (dst_path, src_path, downloaded))
 

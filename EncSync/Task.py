@@ -36,12 +36,14 @@ class Task(Emitter):
                 return
 
             if self._parent is not None:
-                self._parent._total_children -= 1
+                with self._parent._lock:
+                    self._parent._total_children -= 1
 
             self._parent = value
 
-            if self._parent is not None:
-                self._parent._total_children += 1
+            if value is not None:
+                with value._lock:
+                    value._total_children += 1
 
     @property
     def total_children(self):

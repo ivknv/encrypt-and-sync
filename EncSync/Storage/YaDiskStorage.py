@@ -149,6 +149,10 @@ class YaDiskDownloadController(DownloadController):
         self.in_path = in_path
         self.yadisk = ynd
         self.timeout = timeout
+
+        if n_retries is None:
+            n_retries = yadisk.settings.DEFAULT_N_RETRIES
+    
         self.n_retries = n_retries
 
     def delay(self, delay, check_interval=0.25, tolerance=0.001):
@@ -237,6 +241,10 @@ class YaDiskUploadController(UploadController):
         self.yadisk = ynd
         self.out_path = out_path
         self.timeout = timeout
+
+        if n_retries is None:
+            n_retries = yadisk.settings.DEFAULT_N_RETRIES
+
         self.n_retries = n_retries
 
     def work(self):
