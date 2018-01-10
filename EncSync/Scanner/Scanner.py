@@ -22,9 +22,6 @@ class Scanner(Worker):
 
         self.cur_target = None
 
-        self.tasks = []
-        self.tasks_lock = threading.Lock()
-
         self.add_event("next_target")
         self.add_event("error")
 
@@ -96,20 +93,6 @@ class Scanner(Worker):
                 target = self.targets.pop(0)
                 self.emit_event("next_target", target)
                 return target
-
-    def add_task(self, task):
-        with self.tasks_lock:
-            self.tasks.append(task)
-
-        for w in self.get_worker_list():
-            w.set_dirty()
-
-    def get_next_task(self):
-        with self.tasks_lock:
-            try:
-                return self.tasks.pop(0)
-            except IndexError:
-                pass
 
     def work(self):
         assert(self.n_workers >= 1)

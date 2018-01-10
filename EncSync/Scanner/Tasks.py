@@ -159,7 +159,7 @@ class AsyncDecryptedScanTask(ScanTask):
                 return False
 
             if s.type == "d":
-                worker.add_task(AsyncDecryptedScanTask(target, s))
+                self.parent.add_task(AsyncDecryptedScanTask(target, s))
 
         del scan_result
 
@@ -218,7 +218,7 @@ class AsyncEncryptedScanTask(ScanTask):
                 return False
 
             if original.type == "d":
-                worker.add_task(AsyncEncryptedScanTask(target, original))
+                self.parent.add_task(AsyncEncryptedScanTask(target, original))
 
         if self.stop_condition(worker):
             return False

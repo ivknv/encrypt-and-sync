@@ -40,10 +40,10 @@ class ScanWorker(Waiter):
                 "path": cur_path}
 
     def get_next_task(self):
-        return self.parent.get_next_task()
+        return self.cur_target.get_next_task()
 
     def add_task(self, task):
-        self.parent.add_task(task)
+        self.cur_target.add_task(task)
 
     def stop_condition(self):
         target = self.cur_target

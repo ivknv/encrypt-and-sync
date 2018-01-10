@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import threading
+
 from ..Task import Task
 from ..FileList import FileList, DuplicateList
 from ..Scannable import DecryptedScannable, EncryptedScannable
@@ -29,9 +31,26 @@ class ScanTarget(Task):
         self.shared_flist = FileList(name, storage.name, scanner.directory)
         self.shared_duplist = DuplicateList(storage.name, scanner.directory)
 
+        self.tasks = []
+        self.task_lock = threading.Lock()
+
         self.add_event("next_node")
         self.add_event("duplicates_found")
         self.add_event("scan_finished")
+
+    def get_next_task(self):
+        with self.task_lock:
+            try:
+                return self.tasks.pop(0)
+            except IndexError:
+                pass
+
+    def add_task(self, task):
+        with self.task_lock:
+            self.tasks.append(task)
+
+        for w in self.scanner.get_worker_list():
+            w.set_dirty()
 
     def stop_condition(self):
         if self.scanner.stop_condition():
@@ -84,7 +103,7 @@ class ScanTarget(Task):
             else:
                 task = DecryptedScanTask(self, scannable)
 
-            self.scanner.add_task(task)
+            self.add_task(task)
 
     def complete(self, worker):
         if self.stop_condition():
@@ -115,7 +134,7 @@ class ScanTarget(Task):
                                            self.scanner, self)
                 self.scanner.wait_workers()
                 self.scanner.stop_workers()
-            elif self.scanner.tasks:
+            elif self.tasks:
                 self.scanner.start_worker(ScanWorker, self.scanner, self)
 
             if self.stop_condition():
