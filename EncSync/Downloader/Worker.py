@@ -21,15 +21,6 @@ class DownloaderWorker(Worker):
     def stop_condition(self):
         return self.stopped or self.parent.stopped
 
-    def stop(self):
-        Worker.stop(self)
-
-        if self.cur_task.download_controller is not None:
-            self.cur_task.download_controller.stop()
-
-        if self.cur_task.upload_controller is not None:
-            self.cur_task.upload_controller.stop()
-
     def get_info(self):
         if self.cur_task is not None:
             try:
