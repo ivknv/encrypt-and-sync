@@ -53,7 +53,7 @@ class ScanTarget(Task):
             w.set_dirty()
 
     def stop_condition(self):
-        if self.scanner.stop_condition():
+        if self.stopped or self.scanner.stop_condition():
             return True
 
         return self.status not in (None, "pending")

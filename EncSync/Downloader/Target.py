@@ -31,7 +31,7 @@ class DownloadTarget(Task):
         self.task_lock = threading.Lock()
 
     def stop_condition(self):
-        if self.downloader.stopped:
+        if self.stopped or self.downloader.stopped:
             return True
 
         return self.status not in (None, "pending")

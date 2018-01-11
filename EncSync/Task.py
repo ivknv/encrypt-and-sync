@@ -17,13 +17,19 @@ class Task(Emitter):
         self._expected_total_children = 0
         self._total_children = 0
         self._progress = Counter()
+        self.stopped = False
 
         self._lock = threading.RLock()
 
         self.add_event("status_changed")
+        self.add_event("stop")
 
     def __del__(self):
         self.parent = None
+
+    def stop(self):
+        self.stopped = True
+        self.emit_event("stop")
 
     @property
     def parent(self):

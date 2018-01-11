@@ -83,6 +83,15 @@ class Synchronizer(Worker):
         for worker in self.get_worker_list():
             worker.speed_limit = self.speed_limit
 
+    def stop(self):
+        Worker.stop(self)
+
+        # Intentional assignment for thread safety
+        target = self.cur_target
+
+        if target is not None:
+            target.stop()
+
     def work(self):
         assert(self.n_workers >= 1)
 

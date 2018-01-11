@@ -54,21 +54,17 @@ class DownloadTask(Task):
 
         self.worker = None
 
-        def on_status_changed(event):
-            if self.status != "pending":
-                if self.upload_controller is not None:
-                    self.upload_controller.stop()
-
-                if self.download_controller is not None:
-                    self.download_controller.stop()
-
-        status_receiver = Receiver()
-        status_receiver.add_callback("status_changed", on_status_changed)
-
-        self.add_receiver(status_receiver)
-
         self.add_event("downloaded_changed")
         self.add_event("uploaded_changed")
+
+    def stop(self):
+        Task.stop(self)
+
+        if self.upload_controller is not None:
+            self.upload_controller.stop()
+
+        if self.download_controller is not None:
+            self.download_controller.stop()
 
     @property
     def downloaded(self):
@@ -98,7 +94,7 @@ class DownloadTask(Task):
             self.emit_event("uploaded_changed")
 
     def stop_condition(self):
-        if self.worker.stopped:
+        if self.stopped or self.worker.stopped:
             return True
 
         if self.parent.stop_condition():

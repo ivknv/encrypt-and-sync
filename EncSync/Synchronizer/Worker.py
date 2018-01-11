@@ -24,10 +24,16 @@ class SyncWorker(Worker):
         return {}
 
     def stop_condition(self):
-        if self.stopped or self.parent.stopped:
-            return True
+        return self.stopped or self.parent.stopped
 
-        return self.cur_task is not None and self.cur_task.stop_condition()
+    def stop(self):
+        Worker.stop(self)
+
+        # Intentional assignment for thread safety
+        task = self.cur_task
+
+        if task is not None:
+            task.stop()
 
     def work(self):
         while not self.stop_condition():

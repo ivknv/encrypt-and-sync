@@ -46,15 +46,16 @@ class ScanWorker(Waiter):
         self.cur_target.add_task(task)
 
     def stop_condition(self):
-        target = self.cur_target
+        return self.stopped or self.parent.stopped
 
-        if self.stopped or self.parent.stopped:
-            return True
+    def stop(self):
+        Waiter.stop(self)
 
-        if target is not None and target.status != "pending":
-            return True
+        # Intentional assignment for thread safety
+        task = self.cur_task
 
-        return False
+        if task is not None:
+            task.stop()
 
     def handle_task(self, task):
         try:

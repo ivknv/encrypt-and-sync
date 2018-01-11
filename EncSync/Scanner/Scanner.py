@@ -75,6 +75,15 @@ class Scanner(Worker):
     def stop_condition(self):
         return self.stopped
 
+    def stop(self):
+        Worker.stop(self)
+
+        # Intentional assignment for thread safety
+        target = self.cur_target
+
+        if target is not None:
+            target.stop()
+
     def wait_workers(self):
         workers = self.get_worker_list()
 

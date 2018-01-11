@@ -67,6 +67,15 @@ class DuplicateRemover(Worker):
     def add_new_target(self, storage_name, path):
         return self.add_target(self.make_target(storage_name, path))
 
+    def stop(self):
+        Worker.stop(self)
+
+        # Intentional assignment for thread safety
+        target = self.cur_target
+
+        if target is not None:
+            target.stop()
+
     def work(self):
         while not self.stopped:
             with self.targets_lock:

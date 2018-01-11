@@ -57,7 +57,7 @@ class SyncTarget(StagedTask):
         return self.progress["finished"] + self.progress["failed"]
 
     def stop_condition(self):
-        if self.synchronizer.stopped:
+        if self.stopped or self.synchronizer.stopped:
             return True
 
         return self.status not in (None, "pending")

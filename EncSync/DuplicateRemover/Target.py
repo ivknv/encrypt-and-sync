@@ -33,7 +33,7 @@ class DuplicateRemoverTarget(Task):
         self.add_event("autocommit_finished")
 
     def stop_condition(self):
-        if self.duprem.stopped:
+        if self.stopped or self.duprem.stopped:
             return True
 
         return self.status not in (None, "pending")

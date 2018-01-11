@@ -21,13 +21,16 @@ class DuplicateRemoverWorker(Worker):
         self.add_receiver(LogReceiver(logger))
 
     def stop_condition(self):
-        if self.stopped:
-            return True
+        return self.stopped or self.parent.stopped
 
-        if self.target is not None:
-            return self.target.status not in (None, "pending")
+    def stop(self):
+        Worker.stop(self)
 
-        return False
+        # Intentional assignment for thread safety
+        task = self.cur_task
+
+        if task is not None:
+            task.stop()
 
     def work(self):
         while not self.stop_condition():

@@ -7,7 +7,8 @@ from ..Task import Task
 from .. import Paths
 from ..Scannable import scan_files
 
-__all__ = ["ScanTask"]
+__all__ = ["ScanTask", "DecryptedScanTask", "EncryptedScanTask",
+           "AsyncDecryptedScanTask", "AsyncDecryptedScanTask"]
 
 class ScanTask(Task):
     def __init__(self, target, scannable=None):
@@ -25,7 +26,7 @@ class ScanTask(Task):
         self.add_event("duplicates_found")
 
     def stop_condition(self, worker):
-        if worker.stopped:
+        if self.stopped or worker.stopped:
             return True
 
         if self.status not in (None, "pending"):
