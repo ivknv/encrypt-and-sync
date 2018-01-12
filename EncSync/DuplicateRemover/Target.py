@@ -87,7 +87,7 @@ class DuplicateRemoverTarget(Task):
             if self.stop_condition():
                 return True
 
-            self.total_children = copy_duplist.get_children_count(self.path)
+            self.expected_total_children = copy_duplist.get_children_count(self.path)
             self.duplicates = copy_duplist.find_children(self.path)
 
             if self.status == "pending" and self.total_children == 0:

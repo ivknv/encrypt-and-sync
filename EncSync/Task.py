@@ -14,7 +14,7 @@ class Task(Emitter):
 
         self._status = None
         self._parent = None
-        self._expected_total_children = 0
+        self.expected_total_children = 0
         self._total_children = 0
         self._progress = Counter()
         self.stopped = False
@@ -54,12 +54,7 @@ class Task(Emitter):
     @property
     def total_children(self):
         with self._lock:
-            return max(self._expected_total_children, self._total_children)
-
-    @total_children.setter
-    def total_children(self, value):
-        with self._lock:
-            self._expected_total_children = value
+            return max(self.expected_total_children, self._total_children)
 
     @property
     def status(self):

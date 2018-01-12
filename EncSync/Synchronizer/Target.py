@@ -106,7 +106,7 @@ class SyncTarget(StagedTask):
                 diff_count = self.difflist.get_difference_count(self.name)
                 n_done = self.get_n_done()
 
-                self.total_children = diff_count + n_done
+                self.expected_total_children = diff_count + n_done
         except Exception as e:
             self.emit_event("diffs_failed")
             raise e

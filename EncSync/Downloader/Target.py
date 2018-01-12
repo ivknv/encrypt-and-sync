@@ -57,7 +57,7 @@ class DownloadTarget(Task):
             raise NotFoundInDBError(msg, self.src_path)
 
         self.type = node["type"]
-        self.total_children = 0
+        self.expected_total_children = 0
 
         try:
             dst_type = self.dst.get_meta(self.dst_path)["type"]
@@ -83,7 +83,7 @@ class DownloadTarget(Task):
                 filename = Paths.split(new_task.src_path)[1]
                 new_task.dst_path = Paths.join(new_task.dst_path, filename)
 
-            self.total_children += 1
+            self.expected_total_children += 1
 
             yield new_task
             return
@@ -112,7 +112,7 @@ class DownloadTarget(Task):
             if new_task.type == "f" and self.dst.is_encrypted(new_task.dst_path):
                 new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
 
-            self.total_children += 1
+            self.expected_total_children += 1
 
             yield new_task
 
