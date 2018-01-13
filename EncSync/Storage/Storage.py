@@ -34,7 +34,8 @@ class Storage(object):
                       {"name":     <filename>
                        "type":     <"file" or "dir">,
                        "modified": <modified date, timestamp in UTC, `int` or `float`>,
-                       "size":     <file size, `int`, 0 if not a file>}
+                       "size":     <file size, `int`, 0 if not a file>,
+                       "link":     <real path or None>}
                       It doesn't have to be exactly the same, it can have any extra keys,
                       this is just the minimum.
         """

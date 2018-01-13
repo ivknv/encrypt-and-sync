@@ -86,9 +86,7 @@ class LocalStorage(Storage):
         filename = os.path.split(path)[1]
 
         s = os.lstat(path)
-
-        if stat.S_ISLNK(s.st_mode):
-            s = os.stat(path)
+        real_path = None
 
         if stat.S_ISREG(s.st_mode):
             resource_type = "file"
@@ -104,7 +102,12 @@ class LocalStorage(Storage):
                 return {"type":     None,
                         "name":     filename,
                         "modified": 0,
-                        "size":     0}
+                        "size":     0,
+                        "link":     real_path}
+
+            if stat.S_ISLNK(s.st_mode):
+                s = os.stat(path)
+                real_path = Paths.from_sys(os.path.realpath(path))
 
             resource_type = "dir"
             size = 0
@@ -113,15 +116,19 @@ class LocalStorage(Storage):
             return {"type":     None,
                     "name":     filename,
                     "modified": 0,
-                    "size":     0}
+                    "size":     0,
+                    "link":     real_path}
 
         return {"type":     resource_type,
                 "name":     filename,
                 "modified": modified,
-                "size":     size}
+                "size":     size,
+                "link":     real_path}
 
     def listdir(self, path, *args, **kwargs):
         for entry in os.scandir(Paths.to_sys(path)):
+            real_path = None
+            
             if entry.is_file():
                 resource_type = "file"
                 size = entry.stat().st_size
@@ -135,6 +142,9 @@ class LocalStorage(Storage):
                 if _is_reparse_point(entry.stat()):
                     continue
 
+                if entry.is_symlink():
+                    real_path = Paths.from_sys(os.path.realpath(entry.path))
+
                 resource_type = "dir"
                 size = 0
                 modified = 0
@@ -144,7 +154,8 @@ class LocalStorage(Storage):
             yield {"type":     resource_type,
                    "name":     entry.name,
                    "modified": modified,
-                   "size":     size}
+                   "size":     size,
+                   "link":     real_path}
 
     def mkdir(self, path, *args, **kwargs):
         os.mkdir(Paths.to_sys(path))

@@ -32,7 +32,8 @@ def _yadisk_meta_to_dict(meta):
     return {"type":     meta.type,
             "name":     meta.name,
             "modified": modified,
-            "size":     meta.size if meta.type != "dir" else 0}
+            "size":     meta.size if meta.type != "dir" else 0,
+            "link":     None}
 
 class ControlledSpeedLimiter(SpeedLimiter):
     def __init__(self, controller, *args, **kwargs):

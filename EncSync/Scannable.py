@@ -139,6 +139,10 @@ class DecryptedScannable(BaseScannable):
                     if meta["type"] == "dir":
                         path = Paths.dir_normalize(path)
 
+                        if meta["link"] is not None:
+                            if Paths.contains(meta["link"], path):
+                                continue
+
                     meta["size"] = pad_size(meta["size"])
 
                     if PathMatch.match(path, allowed_paths):
@@ -211,6 +215,10 @@ class EncryptedScannable(BaseScannable):
 
                     if meta["type"] == "dir":
                         enc_path = Paths.dir_normalize(enc_path)
+
+                        if meta["link"] is not None:
+                            if Paths.contains(meta["link"], enc_path):
+                                continue
 
                     meta["size"] = max((meta["size"] or 0) - MIN_ENC_SIZE, 0)
 
