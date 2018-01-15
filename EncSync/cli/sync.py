@@ -432,7 +432,8 @@ def do_sync(env, names):
                                 n_scan_workers,
                                 enable_journal=not no_journal)
 
-    synchronizer.set_speed_limit(encsync.upload_limit)
+    synchronizer.upload_limit = encsync.upload_limit
+    synchronizer.download_limit = encsync.download_limit
 
     with GenericSignalManager(synchronizer):
         synchronizer_receiver = SynchronizerReceiver(env, synchronizer)

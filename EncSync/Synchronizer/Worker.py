@@ -12,7 +12,6 @@ class SyncWorker(Worker):
         Worker.__init__(self, parent)
 
         self.encsync = parent.encsync
-        self.speed_limit = parent.speed_limit
         self.cur_task = None
 
         self.add_event("next_task")

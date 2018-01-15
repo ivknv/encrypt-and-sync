@@ -152,6 +152,8 @@ class LimitedFile(object):
 
 class YaDiskDownloadController(DownloadController):
     def __init__(self, ynd, in_path, out_file, limit=float("inf"), timeout=None, n_retries=None):
+        self.speed_limiter = ControlledSpeedLimiter(self, limit)
+
         DownloadController.__init__(self, out_file, limit)
 
         self.in_path = in_path
@@ -160,16 +162,13 @@ class YaDiskDownloadController(DownloadController):
     
         self.n_retries = n_retries
 
-    def delay(self, delay, check_interval=0.25, tolerance=0.001):
-        t1 = time.time()
+    @property
+    def limit(self):
+        return self.speed_limiter.limit
 
-        left_to_sleep = delay - (time.time() - t1)
-
-        while not self.stopped and left_to_sleep > tolerance:
-            time.sleep(min(left_to_sleep, check_interval))
-
-        if self.stopped:
-            raise ControllerInterrupt
+    @limit.setter
+    def limit(self, value):
+        self.speed_limiter.limit = value
 
     def work(self):
         if self.stopped:
@@ -184,8 +183,6 @@ class YaDiskDownloadController(DownloadController):
         except RetriableYaDiskError as e:
             raise TemporaryStorageError(str(e))
 
-        speed_limiter = ControlledSpeedLimiter(self, self.limit)
-
         def attempt():
             if self.stopped:
                 raise ControllerInterrupt
@@ -198,8 +195,8 @@ class YaDiskDownloadController(DownloadController):
             if response.status_code != 200:
                 raise yadisk.utils.get_exception(response)
 
-            speed_limiter.begin()
-            speed_limiter.quantity = 0
+            self.speed_limiter.begin()
+            self.speed_limiter.quantity = 0
 
             for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
                 if self.stopped:
@@ -211,12 +208,12 @@ class YaDiskDownloadController(DownloadController):
                 self.out_file.write(chunk)
                 l = len(chunk)
                 self.downloaded += l
-                speed_limiter.quantity += l
+                self.speed_limiter.quantity += l
 
                 if self.stopped:
                     raise ControllerInterrupt
 
-                speed_limiter.delay()
+                self.speed_limiter.delay()
 
                 if self.stopped:
                     raise ControllerInterrupt
@@ -233,6 +230,14 @@ class YaDiskUploadController(UploadController):
         self.timeout = timeout
 
         self.n_retries = n_retries
+
+    @property
+    def limit(self):
+        return self.in_file.limit
+
+    @limit.setter
+    def limit(self, value):
+        self.in_file.limit = value
 
     def work(self):
         if self.stopped:
@@ -297,16 +302,18 @@ class YaDiskStorage(Storage):
         except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
-    def upload(self, in_file, out_path, timeout=None, n_retries=None):
-        limit = self.encsync.upload_limit
+    def upload(self, in_file, out_path, timeout=None, n_retries=None, limit=None):
+        if limit is None:
+            limit = self.encsync.upload_limit
 
         controller = YaDiskUploadController(self.yadisk, in_file, out_path,
                                             limit, timeout, n_retries)
 
         return controller
 
-    def download(self, in_path, out_file, timeout=None, n_retries=None):
-        limit = self.encsync.download_limit
+    def download(self, in_path, out_file, timeout=None, n_retries=None, limit=None):
+        if limit is None:
+            limit = self.encsync.download_limit
 
         controller = YaDiskDownloadController(self.yadisk, in_path, out_file,
                                               limit, timeout, n_retries)

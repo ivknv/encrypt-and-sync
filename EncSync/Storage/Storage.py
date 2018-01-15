@@ -77,7 +77,8 @@ class Storage(object):
 
         raise NotImplementedError
 
-    def upload(self, in_file, out_path, timeout=float("inf"), n_retries=0):
+    def upload(self, in_file, out_path,
+               timeout=float("inf"), n_retries=0, limit=float("inf")):
         """
             Upload a new file at `out_path`.
 
@@ -85,13 +86,15 @@ class Storage(object):
             :param out_path: destination path
             :param timeout: `int` or `float`, timeout for the operation
             :param n_retries: `int`, maximum number of retries
+            :param limit: `float`, speed limit (bytes per second)
 
             :returns: `UploadController`
         """
 
         raise NotImplementedError
 
-    def download(self, in_path, out_file, timeout=float("inf"), n_retries=0):
+    def download(self, in_path, out_file,
+                 timeout=float("inf"), n_retries=0, limit=float("inf")):
         """
             Download `in_path` into `out_file`.
 
@@ -99,6 +102,7 @@ class Storage(object):
             :param out_file: file-like object to download into
             :param timeout: `int` or `float`, timeout for the operation
             :param n_retries: `int`, maximum number of retries
+            :param limit: `float`, speed limit (bytes per second)
 
             :param: `DownloadController`
         """

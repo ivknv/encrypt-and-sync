@@ -46,6 +46,9 @@ class SyncTask(Task):
         self._uploaded = 0
         self._downloaded = 0
 
+        self.upload_limit = float("inf") # Bytes per second
+        self.download_limit = float("inf") # Bytes per second
+
         self.flist1 = target.shared_flist1
         self.flist2 = target.shared_flist2
 
@@ -91,10 +94,34 @@ class SyncTask(Task):
 
 class UploadTask(SyncTask):
     def __init__(self, *args, **kwargs):
-        SyncTask.__init__(self, *args, **kwargs)
-
         self.upload_controller = None
         self.download_controller = None
+        self._upload_limit = float("inf")
+        self._download_limit = float("inf")
+
+        SyncTask.__init__(self, *args, **kwargs)
+
+    @property
+    def upload_limit(self):
+        return self._upload_limit
+
+    @upload_limit.setter
+    def upload_limit(self, value):
+        self._upload_limit = value
+
+        if self.upload_controller is not None:
+            self.upload_controller.limit = self.upload_limit
+
+    @property
+    def download_limit(self):
+        return self._download_limit
+
+    @download_limit.setter
+    def download_limit(self, value):
+        self._download_limit = value
+
+        if self.download_controller is not None:
+            self.download_controller.limit = self.download_limit
 
     def stop(self):
         SyncTask.stop(self)
@@ -144,6 +171,7 @@ class UploadTask(SyncTask):
 
         self.download_controller = next(download_generator)
         if self.download_controller is not None:
+            self.download_controller.limit = self.download_limit
             self.download_controller.add_receiver(DownloadControllerReceiver(self))
 
         temp_file = next(download_generator)
@@ -152,6 +180,7 @@ class UploadTask(SyncTask):
             self.size = get_file_size(temp_file)
             controller, ivs = self.dst.upload(temp_file, self.path, timeout=timeout)
             self.upload_controller = controller
+            self.upload_controller.upload_limit = self.upload_limit
             controller.add_receiver(UploadControllerReceiver(self))
 
             if self.stop_condition():
