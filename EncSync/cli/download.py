@@ -206,7 +206,8 @@ def download(env, paths):
     n_workers = env.get("n_workers", encsync.download_threads)
 
     downloader = Downloader(encsync, env["db_dir"], n_workers)
-    downloader.set_speed_limit(encsync.download_limit)
+    downloader.upload_limit = encsync.upload_limit
+    downloader.download_limit = encsync.download_limit
 
     with GenericSignalManager(downloader):
         downloader_receiver = DownloaderReceiver(downloader)

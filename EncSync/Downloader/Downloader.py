@@ -21,7 +21,8 @@ class Downloader(Worker):
         self.directory = directory
 
         self.targets_lock = threading.Lock()
-        self.speed_limit = float("inf") # Bytes per second
+        self._upload_limit = float("inf") # Bytes per second
+        self._download_limit = float("inf") # Bytes per second
 
         self.cur_target = None
 
@@ -30,6 +31,34 @@ class Downloader(Worker):
         self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
+
+    @property
+    def upload_limit(self):
+        return self._upload_limit
+
+    @upload_limit.setter
+    def upload_limit(self, value):
+        self._upload_limit = value
+
+        for target in self.get_targets() + [self.cur_target]:
+            if target is None:
+                continue
+
+            target.upload_limit = value
+
+    @property
+    def download_limit(self):
+        return self._download_limit
+
+    @download_limit.setter
+    def download_limit(self, value):
+        self._download_limit = value
+
+        for target in self.get_targets() + [self.cur_target]:
+            if target is None:
+                continue
+
+            target.download_limit = value
 
     def change_status(self, status):
         for i in self.get_targets() + [self.cur_target]:
@@ -71,12 +100,6 @@ class Downloader(Worker):
             self.targets.append(target)
 
         return target
-
-    def set_speed_limit(self, limit):
-        self.speed_limit = limit / float(self.n_workers)
-
-        for worker in self.get_worker_list():
-            worker.speed_limit = self.speed_limit
 
     def stop(self):
         Worker.stop(self)

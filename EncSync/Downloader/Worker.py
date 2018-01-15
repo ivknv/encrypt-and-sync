@@ -10,7 +10,6 @@ __all__ = ["DownloaderWorker"]
 class DownloaderWorker(Worker):
     def __init__(self, downloader):
         Worker.__init__(self, downloader)
-        self.speed_limit = downloader.speed_limit
         self.cur_task = None
 
         self.add_event("next_task")

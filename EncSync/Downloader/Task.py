@@ -52,10 +52,35 @@ class DownloadTask(Task):
         self.upload_controller = None
         self.download_controller = None
 
+        self._upload_limit = target.upload_limit
+        self._download_limit = target.download_limit
+
         self.worker = None
 
         self.add_event("downloaded_changed")
         self.add_event("uploaded_changed")
+
+    @property
+    def upload_limit(self):
+        return self._upload_limit
+
+    @upload_limit.setter
+    def upload_limit(self, value):
+        self._upload_limit = value
+
+        if self.upload_controller is not None:
+            self.upload_controller.limit = value
+
+    @property
+    def download_limit(self):
+        return self._download_limit
+
+    @download_limit.setter
+    def download_limit(self, value):
+        self._download_limit = value
+
+        if self.download_controller is not None:
+            self.download_controller.limit = value
 
     def stop(self):
         Task.stop(self)
@@ -192,6 +217,7 @@ class DownloadTask(Task):
 
         self.download_controller = next(download_generator)
         if self.download_controller is not None:
+            self.download_controller.limit = self.download_limit
             self.download_controller.add_receiver(DownloadControllerReceiver(self))
 
         if self.stop_condition():
@@ -207,6 +233,7 @@ class DownloadTask(Task):
                 self.upload_size = get_file_size(tmpfile)
 
             self.upload_controller, ivs = self.dst.upload(tmpfile, self.dst_path)
+            self.upload_controller.limit = self.upload_limit
 
             if self.stop_condition():
                 return

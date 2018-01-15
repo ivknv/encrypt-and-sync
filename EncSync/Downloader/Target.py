@@ -30,6 +30,9 @@ class DownloadTarget(Task):
         self.tasks = []
         self.task_lock = threading.Lock()
 
+        self.upload_limit = downloader.upload_limit
+        self.download_limit = downloader.download_limit
+
     def stop_condition(self):
         if self.stopped or self.downloader.stopped:
             return True
@@ -85,6 +88,9 @@ class DownloadTarget(Task):
 
             self.expected_total_children += 1
 
+            new_task.upload_limit = self.upload_limit
+            new_task.download_limit = self.download_limit
+
             yield new_task
             return
 
@@ -113,6 +119,9 @@ class DownloadTarget(Task):
                 new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
 
             self.expected_total_children += 1
+
+            new_task.upload_limit = self.upload_limit
+            new_task.download_limit = self.download_limit
 
             yield new_task
 
