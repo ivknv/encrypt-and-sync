@@ -36,8 +36,8 @@ class SyncTarget(StagedTask):
         self.tasks = []
         self.task_lock = threading.Lock()
 
-        self._upload_limit = self.synchronizer.upload_limit
-        self._download_limit = self.synchronizer.download_limit
+        self.upload_limit = self.synchronizer.upload_limit
+        self.download_limit = self.synchronizer.download_limit
 
         self.add_event("integrity_check")
         self.add_event("integrity_check_finished")
@@ -55,22 +55,6 @@ class SyncTarget(StagedTask):
         self.set_stage("dirs",  self.init_dirs,  self.finalize_dirs)
         self.set_stage("files", self.init_files, self.finalize_files)
         self.set_stage("check", self.init_check, self.finalize_check)
-
-    @property
-    def upload_limit(self):
-        return self._upload_limit
-
-    @upload_limit.setter
-    def upload_limit(self, value):
-        self._upload_limit = value
-
-    @property
-    def download_limit(self):
-        return self._download_limit
-
-    @download_limit.setter
-    def download_limit(self, value):
-        self._download_limit = value
 
     def get_n_done(self):
         return self.progress["finished"] + self.progress["failed"]
