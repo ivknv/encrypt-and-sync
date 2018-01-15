@@ -2,11 +2,11 @@
 
 import time
 
-import requests.exceptions
+from requests.exceptions import RequestException
 import yadisk.settings
-import yadisk.exceptions
-from yadisk.exceptions import UnknownYaDiskError, PathNotFoundError
-from yadisk.exceptions import InternalServerError, UnavailableError
+from yadisk.exceptions import PathNotFoundError, DirectoryExistsError
+from yadisk.exceptions import RetriableYaDiskError
+import yadisk.utils
 
 from ..constants import YADISK_APP_ID, YADISK_APP_SECRET
 
@@ -157,9 +157,6 @@ class YaDiskDownloadController(DownloadController):
         self.in_path = in_path
         self.yadisk = ynd
         self.timeout = timeout
-
-        if n_retries is None:
-            n_retries = yadisk.settings.DEFAULT_N_RETRIES
     
         self.n_retries = n_retries
 
@@ -184,56 +181,47 @@ class YaDiskDownloadController(DownloadController):
                                                  n_retries=self.n_retries)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except RetriableYaDiskError as e:
             raise TemporaryStorageError(str(e))
-
-        n_retries = self.n_retries or yadisk.settings.DEFAULT_N_RETRIES
 
         speed_limiter = ControlledSpeedLimiter(self, self.limit)
 
-        for i in range(n_retries):
+        def attempt():
             if self.stopped:
                 raise ControllerInterrupt
 
-            try:
-                response = self.yadisk.make_session().get(link, stream=True, timeout=self.timeout)
+            response = self.yadisk.make_session().get(link, stream=True, timeout=self.timeout)
+
+            if self.stopped:
+                raise ControllerInterrupt
+
+            if response.status_code != 200:
+                raise yadisk.utils.get_exception(response)
+
+            speed_limiter.begin()
+            speed_limiter.quantity = 0
+
+            for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                if self.stopped:
+                    raise ControllerInterrupt
+
+                if not chunk:
+                    continue
+
+                self.out_file.write(chunk)
+                l = len(chunk)
+                self.downloaded += l
+                speed_limiter.quantity += l
 
                 if self.stopped:
                     raise ControllerInterrupt
 
-                if response.status_code in RETRY_CODES:
-                    continue
+                speed_limiter.delay()
 
-                speed_limiter.begin()
-                speed_limiter.quantity = 0
+                if self.stopped:
+                    raise ControllerInterrupt
 
-                for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
-                    if self.stopped:
-                        raise ControllerInterrupt
-
-                    if not chunk:
-                        continue
-
-                    self.out_file.write(chunk)
-                    l = len(chunk)
-                    self.downloaded += l
-                    speed_limiter.quantity += l
-
-                    if self.stopped:
-                        raise ControllerInterrupt
-
-                    speed_limiter.delay()
-
-                    if self.stopped:
-                        raise ControllerInterrupt
-
-                break
-            except requests.exceptions.RequestException as e:
-                if i == self.n_retries - 1:
-                    raise TemporaryStorageError(str(e))
-
-            if i == self.n_retries - 1:
-                raise TemporaryStorageError
+        yadisk.utils.auto_retry(attempt, self.n_retries, 0.0)
 
 class YaDiskUploadController(UploadController):
     def __init__(self, ynd, in_file, out_path, limit=float("inf"), timeout=None, n_retries=None):
@@ -243,9 +231,6 @@ class YaDiskUploadController(UploadController):
         self.yadisk = ynd
         self.out_path = out_path
         self.timeout = timeout
-
-        if n_retries is None:
-            n_retries = yadisk.settings.DEFAULT_N_RETRIES
 
         self.n_retries = n_retries
 
@@ -258,7 +243,7 @@ class YaDiskUploadController(UploadController):
                                timeout=self.timeout, n_retries=self.n_retries)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
 class YaDiskStorage(Storage):
@@ -278,7 +263,7 @@ class YaDiskStorage(Storage):
             meta = self.yadisk.get_meta(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
         return _yadisk_meta_to_dict(meta)
@@ -291,7 +276,7 @@ class YaDiskStorage(Storage):
                 yield _yadisk_meta_to_dict(i)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
     def mkdir(self, path, timeout=None, n_retries=None):
@@ -299,9 +284,9 @@ class YaDiskStorage(Storage):
             self.yadisk.mkdir(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
-        except yadisk.exceptions.DirectoryExistsError as e:
+        except DirectoryExistsError as e:
             raise FileExistsError(str(e))
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
     def remove(self, path, timeout=None, n_retries=None):
@@ -309,7 +294,7 @@ class YaDiskStorage(Storage):
             self.yadisk.remove(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
     def upload(self, in_file, out_path, timeout=None, n_retries=None):
@@ -331,17 +316,17 @@ class YaDiskStorage(Storage):
     def is_file(self, path, timeout=None, n_retries=None):
         try:
             return self.yadisk.is_file(path, timeout=timeout, n_retries=n_retries)
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
     def is_dir(self, path, timeout=None, n_retries=None):
         try:
             return self.yadisk.is_dir(path, timeout=timeout, n_retries=n_retries)
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
     def exists(self, path, timeout=None, n_retries=None):
         try:
             return self.yadisk.exists(path, timeout=timeout, n_retries=n_retries)
-        except (UnknownYaDiskError, InternalServerError, UnavailableError) as e:
+        except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
