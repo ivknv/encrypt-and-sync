@@ -264,6 +264,9 @@ class YaDiskStorage(Storage):
         self.yadisk = yadisk.YaDisk(YADISK_APP_ID, YADISK_APP_SECRET, token)
 
     def get_meta(self, path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         try:
             meta = self.yadisk.get_meta(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
@@ -274,6 +277,9 @@ class YaDiskStorage(Storage):
         return _yadisk_meta_to_dict(meta)
 
     def listdir(self, path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         try:
             contents = self.yadisk.listdir(path, timeout=timeout, n_retries=n_retries)
 
@@ -285,6 +291,9 @@ class YaDiskStorage(Storage):
             raise TemporaryStorageError(str(e))
 
     def mkdir(self, path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         try:
             self.yadisk.mkdir(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
@@ -295,6 +304,9 @@ class YaDiskStorage(Storage):
             raise TemporaryStorageError(str(e))
 
     def remove(self, path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         try:
             self.yadisk.remove(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
@@ -306,6 +318,9 @@ class YaDiskStorage(Storage):
         if limit is None:
             limit = self.encsync.upload_limit
 
+        if timeout is None:
+            timeout = self.encsync.upload_timeout
+
         controller = YaDiskUploadController(self.yadisk, in_file, out_path,
                                             limit, timeout, n_retries)
 
@@ -315,24 +330,36 @@ class YaDiskStorage(Storage):
         if limit is None:
             limit = self.encsync.download_limit
 
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         controller = YaDiskDownloadController(self.yadisk, in_path, out_file,
                                               limit, timeout, n_retries)
 
         return controller
 
     def is_file(self, path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         try:
             return self.yadisk.is_file(path, timeout=timeout, n_retries=n_retries)
         except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
     def is_dir(self, path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         try:
             return self.yadisk.is_dir(path, timeout=timeout, n_retries=n_retries)
         except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
     def exists(self, path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.encsync.timeout
+
         try:
             return self.yadisk.exists(path, timeout=timeout, n_retries=n_retries)
         except (RetriableYaDiskError, RequestException) as e:

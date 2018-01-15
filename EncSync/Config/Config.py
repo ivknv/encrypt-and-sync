@@ -8,6 +8,8 @@ from ..EncScript.Exceptions import EncScriptError, ASTConversionError, Evaluatio
 from .Exceptions import InvalidConfigError
 from .ConfigProgram import ConfigProgram
 
+__all__ = ["Config"]
+
 class Config(object):
     def __init__(self):
         self.sync_threads = 1
@@ -15,9 +17,22 @@ class Config(object):
         self.download_threads = 1
         self.upload_limit = float("inf")
         self.download_limit = float("inf")
+        self.timeout = (15.0, 30.0)
+        self._upload_timeout = None
 
         self.targets = {}
         self.allowed_paths = []
+
+    @property
+    def upload_timeout(self):
+        if self._upload_timeout is not None:
+            return self._upload_timeout
+
+        return self.timeout
+
+    @upload_timeout.setter
+    def upload_timeout(self, value):
+        self._upload_timeout = value
 
     @staticmethod
     def load(path_or_file):

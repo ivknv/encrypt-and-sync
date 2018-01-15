@@ -7,7 +7,6 @@ from ..Task import Task
 from ..Encryption import pad_size
 from ..common import get_file_size
 from ..Storage.Exceptions import ControllerInterrupt
-from ..constants import DEFAULT_UPLOAD_TIMEOUT
 from .. import Paths
 
 __all__ = ["SyncTask", "UploadTask", "MkdirTask", "RmTask"]
@@ -45,6 +44,8 @@ class SyncTask(Task):
         self.size = 0
         self._uploaded = 0
         self._downloaded = 0
+
+        self.encsync = target.encsync
 
         self.upload_limit = float("inf") # Bytes per second
         self.download_limit = float("inf") # Bytes per second
@@ -151,7 +152,7 @@ class UploadTask(SyncTask):
             self.status = "finished"
             return True
 
-        timeout = DEFAULT_UPLOAD_TIMEOUT
+        timeout = self.encsync.upload_timeout
 
         if new_size >= 700 * 1024**2:
             if not isinstance(timeout, (tuple, list)):
@@ -171,6 +172,7 @@ class UploadTask(SyncTask):
 
         self.download_controller = next(download_generator)
         if self.download_controller is not None:
+            self.download_controller.timeout = self.encsync.timeout
             self.download_controller.limit = self.download_limit
             self.download_controller.add_receiver(DownloadControllerReceiver(self))
 

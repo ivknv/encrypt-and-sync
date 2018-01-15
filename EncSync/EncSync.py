@@ -46,11 +46,24 @@ class EncSync(object):
 
         self.upload_limit = float("inf")
         self.download_limit = float("inf")
+        self.timeout = (15.0, 30.0)
+        self._upload_timeout = None
         self.sync_threads = 1
         self.download_threads = 1
         self.scan_threads = 1
         self.allowed_paths = [] # Compiled
         self._allowed_paths = [] # Uncompiled
+
+    @property
+    def upload_timeout(self):
+        if self._upload_timeout is not None:
+            return self._upload_timeout
+
+        return self.timeout
+
+    @upload_timeout.setter
+    def upload_timeout(self, value):
+        self._upload_timeout = value
 
     def identify_target(self, storage_name, path, dir_type=None):
         best_match = None
@@ -102,6 +115,8 @@ class EncSync(object):
         config.targets          = self.targets
         config.download_limit   = self.download_limit
         config.upload_limit     = self.upload_limit
+        config.timeout          = self.timeout
+        config.upload_timeout   = self.upload_timeout
         config.sync_threads     = self.sync_threads
         config.scan_threads     = self.scan_threads
         config.download_threads = self.download_threads
@@ -173,6 +188,8 @@ class EncSync(object):
         self.targets = config.targets
         self.download_limit = config.download_limit
         self.upload_limit = config.upload_limit
+        self.timeout = config.timeout
+        self.upload_timeout = config.upload_timeout
         self.sync_threads = config.sync_threads
         self.download_threads = config.download_threads
         self.scan_threads = config.scan_threads

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import yadisk.settings
-
 from ...EncScript import Command
 from ...EncScript.Exceptions import EvaluationError
 
@@ -25,12 +23,12 @@ class ConnectTimeoutCommand(Command):
         if connect_timeout == float("inf"):
             connect_timeout = None
 
-        if not isinstance(yadisk.settings.DEFAULT_TIMEOUT, (tuple, list)):
-            read_timeout = yadisk.settings.DEFAULT_TIMEOUT
+        if not isinstance(config.timeout, (tuple, list)):
+            read_timeout = config.timeout
         else:
-            read_timeout = yadisk.settings.DEFAULT_TIMEOUT[1]
+            read_timeout = config.timeout[1]
 
-        yadisk.settings.DEFAULT_TIMEOUT = (connect_timeout, read_timeout)
+        config.timeout = (connect_timeout, read_timeout)
 
         return 0
 
@@ -51,12 +49,12 @@ class ReadTimeoutCommand(Command):
         if read_timeout == float("inf"):
             read_timeout = None
 
-        if not isinstance(yadisk.settings.DEFAULT_TIMEOUT, (tuple, list)):
-            connect_timeout = yadisk.settings.DEFAULT_TIMEOUT
+        if not isinstance(config.timeout, (tuple, list)):
+            connect_timeout = config.timeout
         else:
-            connect_timeout = yadisk.settings.DEFAULT_TIMEOUT[0]
+            connect_timeout = config.timeout[0]
 
-        yadisk.settings.DEFAULT_TIMEOUT = (connect_timeout, read_timeout)
+        config.timeout = (connect_timeout, read_timeout)
 
         return 0
 
@@ -77,12 +75,12 @@ class UploadConnectTimeoutCommand(Command):
         if connect_timeout == float("inf"):
             connect_timeout = None
 
-        if not isinstance(yadisk.settings.DEFAULT_UPLOAD_TIMEOUT, (tuple, list)):
-            read_timeout = yadisk.settings.DEFAULT_UPLOAD_TIMEOUT
+        if not isinstance(config.upload_timeout, (tuple, list)):
+            read_timeout = config.upload_timeout
         else:
-            read_timeout = yadisk.settings.DEFAULT_UPLOAD_TIMEOUT[1]
+            read_timeout = config.upload_timeout[1]
 
-        yadisk.settings.DEFAULT_UPLOAD_TIMEOUT = (connect_timeout, read_timeout)
+        config.upload_timeout = (connect_timeout, read_timeout)
 
         return 0
 
@@ -103,11 +101,11 @@ class UploadReadTimeoutCommand(Command):
         if read_timeout == float("inf"):
             read_timeout = None
 
-        if not isinstance(yadisk.settings.DEFAULT_UPLOAD_TIMEOUT, (tuple, list)):
-            connect_timeout = yadisk.settings.DEFAULT_UPLOAD_TIMEOUT
+        if not isinstance(config.upload_timeout, (tuple, list)):
+            connect_timeout = config.upload_timeout
         else:
-            connect_timeout = yadisk.settings.DEFAULT_UPLOAD_TIMEOUT[0]
+            connect_timeout = config.upload_timeout[0]
 
-        yadisk.settings.DEFAULT_UPLOAD_TIMEOUT = (connect_timeout, read_timeout)
+        config.upload_timeout = (connect_timeout, read_timeout)
 
         return 0
