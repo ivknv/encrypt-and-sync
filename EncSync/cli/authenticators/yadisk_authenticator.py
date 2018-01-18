@@ -19,7 +19,28 @@ def authenticate_yadisk(env):
                       encsync.encrypted_data.get("yadisk_token", ""))
 
     try:
-        if env.get("no_auth_check", False) or y.check_token(n_retries=1):
+        token_valid = env.get("no_auth_check", False)
+
+        if not token_valid:
+            token_valid = y.check_token(n_retries=1)
+            refresh_token = encsync.encrypted_data.get("yadisk_refresh_token", "")
+
+            if not token_valid and refresh_token:
+                try:
+                    y.token = ""
+                    response = y.refresh_token(refresh_token)
+                except yadisk.exceptions.UnauthorizedError as e:
+                    pass
+                else:
+                    token = response.access_token
+                    refresh_token = response.refresh_token
+
+                    encsync.encrypted_data["yadisk_token"] = token
+                    encsync.encrypted_data["yadisk_refresh_token"] = refresh_token
+
+                    token_valid = True
+
+        if token_valid:
             encsync.storages["yadisk"] = YaDiskStorage(encsync)
             return 0
     except YaDiskError as e:
@@ -27,6 +48,9 @@ def authenticate_yadisk(env):
         return 1
 
     try:
+        token = None
+        refresh_token = None
+
         while True:
             print("Go to the following URL: %s" % y.get_code_url())
             code = input("Confirmation code: ")
@@ -39,9 +63,11 @@ def authenticate_yadisk(env):
                 continue
 
             token = response.access_token
+            refresh_token = response.refresh_token
             break
 
         encsync.encrypted_data["yadisk_token"] = token
+        encsync.encrypted_data["yadisk_refresh_token"] = refresh_token
 
         encsync.storages["yadisk"] = YaDiskStorage(encsync)
 
