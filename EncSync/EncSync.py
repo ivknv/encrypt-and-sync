@@ -48,6 +48,7 @@ class EncSync(object):
         self.download_limit = float("inf")
         self.timeout = (15.0, 30.0)
         self._upload_timeout = None
+        self.n_retries = 5
         self.sync_threads = 1
         self.download_threads = 1
         self.scan_threads = 1
@@ -117,6 +118,7 @@ class EncSync(object):
         config.upload_limit     = self.upload_limit
         config.timeout          = self.timeout
         config.upload_timeout   = self.upload_timeout
+        config.n_retries        = self.n_retries
         config.sync_threads     = self.sync_threads
         config.scan_threads     = self.scan_threads
         config.download_threads = self.download_threads
@@ -190,6 +192,7 @@ class EncSync(object):
         self.upload_limit = config.upload_limit
         self.timeout = config.timeout
         self.upload_timeout = config.upload_timeout
+        self.n_retries = config.n_retries
         self.sync_threads = config.sync_threads
         self.download_threads = config.download_threads
         self.scan_threads = config.scan_threads

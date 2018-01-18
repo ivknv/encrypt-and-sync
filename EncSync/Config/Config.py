@@ -19,6 +19,7 @@ class Config(object):
         self.download_limit = float("inf")
         self.timeout = (15.0, 30.0)
         self._upload_timeout = None
+        self.n_retries = 5
 
         self.targets = {}
         self.allowed_paths = []

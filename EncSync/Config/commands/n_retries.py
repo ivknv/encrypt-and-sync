@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import yadisk.settings
-
 from ...EncScript import Command
 from ...EncScript.Exceptions import EvaluationError
 
@@ -20,6 +18,6 @@ class NRetriesCommand(Command):
         except ValueError:
             raise EvaluationError(self, "Expected a non-negative integer")
 
-        yadisk.settings.DEFAULT_N_RETRIES = n_retries
+        config.n_retries = n_retries
 
         return 0

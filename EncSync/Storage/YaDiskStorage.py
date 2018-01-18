@@ -267,6 +267,9 @@ class YaDiskStorage(Storage):
         if timeout is None:
             timeout = self.encsync.timeout
 
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
+
         try:
             meta = self.yadisk.get_meta(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
@@ -279,6 +282,9 @@ class YaDiskStorage(Storage):
     def listdir(self, path, timeout=None, n_retries=None):
         if timeout is None:
             timeout = self.encsync.timeout
+
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
 
         try:
             contents = self.yadisk.listdir(path, timeout=timeout, n_retries=n_retries)
@@ -294,6 +300,9 @@ class YaDiskStorage(Storage):
         if timeout is None:
             timeout = self.encsync.timeout
 
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
+
         try:
             self.yadisk.mkdir(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
@@ -307,6 +316,9 @@ class YaDiskStorage(Storage):
         if timeout is None:
             timeout = self.encsync.timeout
 
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
+
         try:
             self.yadisk.remove(path, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
@@ -317,6 +329,9 @@ class YaDiskStorage(Storage):
     def upload(self, in_file, out_path, timeout=None, n_retries=None, limit=None):
         if limit is None:
             limit = self.encsync.upload_limit
+
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
 
         if timeout is None:
             timeout = self.encsync.upload_timeout
@@ -330,6 +345,9 @@ class YaDiskStorage(Storage):
         if limit is None:
             limit = self.encsync.download_limit
 
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
+
         if timeout is None:
             timeout = self.encsync.timeout
 
@@ -342,6 +360,9 @@ class YaDiskStorage(Storage):
         if timeout is None:
             timeout = self.encsync.timeout
 
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
+
         try:
             return self.yadisk.is_file(path, timeout=timeout, n_retries=n_retries)
         except (RetriableYaDiskError, RequestException) as e:
@@ -351,6 +372,9 @@ class YaDiskStorage(Storage):
         if timeout is None:
             timeout = self.encsync.timeout
 
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
+
         try:
             return self.yadisk.is_dir(path, timeout=timeout, n_retries=n_retries)
         except (RetriableYaDiskError, RequestException) as e:
@@ -359,6 +383,9 @@ class YaDiskStorage(Storage):
     def exists(self, path, timeout=None, n_retries=None):
         if timeout is None:
             timeout = self.encsync.timeout
+
+        if n_retries is None:
+            n_retries = self.encsync.n_retries
 
         try:
             return self.yadisk.exists(path, timeout=timeout, n_retries=n_retries)
