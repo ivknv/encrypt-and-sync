@@ -27,7 +27,6 @@ def authenticate_yadisk(env):
 
             if not token_valid and refresh_token:
                 try:
-                    y.token = ""
                     response = y.refresh_token(refresh_token)
                 except yadisk.exceptions.UnauthorizedError as e:
                     pass
