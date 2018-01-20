@@ -5,7 +5,7 @@ import time
 from requests.exceptions import RequestException
 import yadisk.settings
 from yadisk.exceptions import PathNotFoundError, DirectoryExistsError
-from yadisk.exceptions import RetriableYaDiskError
+from yadisk.exceptions import RetriableYaDiskError, WrongResourceTypeError
 import yadisk.utils
 
 from ..constants import YADISK_APP_ID, YADISK_APP_SECRET
@@ -293,6 +293,8 @@ class YaDiskStorage(Storage):
                 yield _yadisk_meta_to_dict(i)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
+        except WrongResourceTypeError as e:
+            raise NotADirectoryError(str(e))
         except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
