@@ -31,12 +31,16 @@ class LsCommand(Command):
                 storage = console.get_storage(path_type)
 
             try:
-                contents = sorted(storage.listdir(path), key=lambda x: x["name"])
+                contents = [i["name"]
+                            for i in sorted(storage.listdir(path),
+                                            key=lambda x: x["name"])]
+            except NotADirectoryError:
+                contents = [Paths.dir_denormalize(Paths.split(path)[1])]
             except IOError as e:
                 show_error("I/O error: %s" % (e,))
                 return 1
 
-            for meta in contents:
-                print(meta["name"])
+            for name in contents:
+                print(name)
 
         return 0
