@@ -227,7 +227,7 @@ class Tokenizer(object):
         else:
             self.cur_token.type = Token.Type.WORD
 
-            if self.escape and char.char in ("'", '"', "$", "\n"):
+            if self.escape and char.char in ("\\", "'", '"', "$", "\n"):
                 self.cur_token.string += "\\"
 
             self.cur_token.string += char.char
@@ -286,7 +286,7 @@ class Tokenizer(object):
         else:
             self.cur_token.type = Token.Type.WORD
 
-            if self.escape and char.char in ("'", '"', "$", "\n"):
+            if self.escape and char.char in ("\\", "'", '"', "$", "\n"):
                 self.cur_token.string += "\\"
 
             self.cur_token.string += char.char

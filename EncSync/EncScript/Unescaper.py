@@ -107,7 +107,9 @@ class Unescaper(object):
                     yield "$"
 
                     escape = True
+                    state = State.INITIAL
                 else:
+                    state = State.INITIAL
                     yield "$"
                     yield char
             elif state == State.QUOTES:
