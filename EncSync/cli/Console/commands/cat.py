@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import sys
 
 from ....EncScript import Command
 
@@ -33,6 +34,6 @@ class CatCommand(Command):
             f = next(generator)
 
             for line in f:
-                print(line.decode("utf8"), end="")
+                sys.stdout.buffer.write(line)
 
         return 0
