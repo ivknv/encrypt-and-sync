@@ -12,6 +12,4 @@ from .scan import *
 from .sync import *
 from .diffs import *
 from .duplicates import *
-from .src_scan import *
-from .dst_scan import *
 from .remove_duplicates import *

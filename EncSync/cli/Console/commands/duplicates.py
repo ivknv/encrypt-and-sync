@@ -15,7 +15,8 @@ class DuplicatesCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Show duplicates",
                                          prog=self.args[0])
-        parser.add_argument("dirs", nargs="+")
+        parser.add_argument("dirs", nargs="+",
+                            help="List of paths to show duplicates for")
 
         ns = parser.parse_args(self.args[1:])
 

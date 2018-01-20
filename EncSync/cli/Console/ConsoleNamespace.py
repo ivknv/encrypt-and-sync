@@ -4,6 +4,8 @@
 from ...EncScript import Namespace
 from . import commands
 
+__all__ = ["ConsoleNamespace"]
+
 class ConsoleNamespace(Namespace):
     def __init__(self, parent=None):
         Namespace.__init__(self, parent)
@@ -19,6 +21,4 @@ class ConsoleNamespace(Namespace):
         self["sync"]       = commands.SyncCommand
         self["diffs"]      = commands.DiffsCommand
         self["duplicates"] = commands.DuplicatesCommand
-        self["src-scan"]   = commands.SrcScanCommand
-        self["dst-scan"]   = commands.DstScanCommand
         self["rmdup"]      = commands.RemoveDuplicatesCommand

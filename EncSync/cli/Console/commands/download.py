@@ -13,10 +13,11 @@ __all__ = ["DownloadCommand"]
 
 class DownloadCommand(Command):
     def evaluate(self, console):
-        parser = argparse.ArgumentParser(description="Download a file from a storage",
+        parser = argparse.ArgumentParser(description="Download files/directories",
                                          prog=self.args[0])
-        parser.add_argument("paths", nargs="+")
-        parser.add_argument("--n-workers", "-w", type=positive_int)
+        parser.add_argument("paths", nargs="+", help="List of paths to download")
+        parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
+                            help="Number of workers to use")
 
         ns = parser.parse_args(self.args[1:])
         paths = []

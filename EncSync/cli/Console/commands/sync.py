@@ -12,17 +12,24 @@ __all__ = ["SyncCommand"]
 
 class SyncCommand(Command):
     def evaluate(self, console):
-        parser = argparse.ArgumentParser(description="Sync directories",
+        parser = argparse.ArgumentParser(description="Sync targets",
                                          prog=self.args[0])
-        parser.add_argument("targets", nargs="*")
-        parser.add_argument("-a", "--all", action="store_true")
-        parser.add_argument("--n-workers", "-w", type=positive_int)
-        parser.add_argument("--ask", action="store_true")
-        parser.add_argument("--choose-targets", action="store_true")
-        parser.add_argument("--no-scan", action="store_true")
-        parser.add_argument("--no-diffs", action="store_true")
-        parser.add_argument("--no-journal", action="store_true")
-        parser.add_argument("-I", "--integrity-check", action="store_true")
+        parser.add_argument("targets", nargs="*", help="List of targets to sync")
+        parser.add_argument("-a", "--all", action="store_true",
+                            help="Sync all targets")
+        parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
+                            help="Number of workers to use")
+        parser.add_argument("--ask", action="store_true",
+                            help="Ask for user's action in certain cases")
+        parser.add_argument("--choose-targets", action="store_true",
+                            help="Choose which targets to sync")
+        parser.add_argument("--no-scan", action="store_true", help="Disable scan")
+        parser.add_argument("--no-diffs", action="store_true",
+                            help="Don't show the list of differences")
+        parser.add_argument("--no-journal", action="store_true",
+                            help="Disable SQLite3 journaling")
+        parser.add_argument("-I", "--integrity-check", action="store_true",
+                            help="Enable integrity check")
 
         ns = parser.parse_args(self.args[1:])
 

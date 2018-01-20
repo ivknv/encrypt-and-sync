@@ -11,9 +11,9 @@ __all__ = ["DiffsCommand"]
 
 class DiffsCommand(Command):
     def evaluate(self, console):
-        parser = argparse.ArgumentParser(description="Show differences",
+        parser = argparse.ArgumentParser(description="Show differences between directories",
                                          prog=self.args[0])
-        parser.add_argument("target")
+        parser.add_argument("target", help="Target to show differences for")
 
         ns = parser.parse_args(self.args[1:])
         env = Environment(console.env)

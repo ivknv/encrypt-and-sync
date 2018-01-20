@@ -7,11 +7,14 @@ from .... import Paths
 from ....EncScript import Command
 from ...common import show_error, recognize_path
 
+__all__ = ["LsCommand"]
+
 class LsCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="List directory contents",
                                          prog=self.args[0])
-        parser.add_argument("paths", default=[console.cwd], nargs="*")
+        parser.add_argument("paths", default=[console.cwd], nargs="*",
+                            help="Paths to list contents for")
 
         ns = parser.parse_args(self.args[1:])
 

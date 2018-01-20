@@ -14,7 +14,7 @@ class CatCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Concatenate files to stdout",
                                          prog=self.args[0])
-        parser.add_argument("paths", nargs="+")
+        parser.add_argument("paths", nargs="+", help="List of files to concatenate")
 
         ns = parser.parse_args(self.args[1:])
 
