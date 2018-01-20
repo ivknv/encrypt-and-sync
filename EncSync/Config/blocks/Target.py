@@ -19,6 +19,18 @@ def prepare_local_path(path):
 def prepare_remote_path(path):
     return Paths.dir_normalize(Paths.join_properly("/", path))
 
+def recognize_path(path, default="local"):
+    before, div, after = path.partition("://")
+
+    if not div:
+        return (before, default)
+
+    sub_map = {"disk": "yadisk"}
+
+    before = sub_map.get(before, before)
+
+    return (after, before)
+
 class TargetBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
         ConfigBlock.__init__(self, args, body, parent_namespace)
@@ -60,29 +72,26 @@ class TargetNamespace(object):
     def __getitem__(self, key):
         if key == "encrypted":
             return EncryptedCommand
-        elif key in ("from", "to"):
+        elif key in ("src", "dst"):
             return DirCommand
 
         raise KeyError("Unknown command/block: %r" % (key,))
 
 class DirCommand(Command):
     def evaluate(self, config, target, *args, **kwargs):
-        if len(self.args) != 3:
-            raise EvaluationError(self, "Expected 2 arguments")
+        if len(self.args) != 2:
+            raise EvaluationError(self, "Expected 1 argument")
 
-        name, path = self.args[1:]
+        dir_type, path = self.args
 
-        if self.args[0] == "from":
-            dir_type = "src"
-        else:
-            dir_type = "dst"
+        path, path_type = recognize_path(path)
 
-        if name == "local":
+        if path_type == "local":
             path = prepare_local_path(path)
         else:
             path = prepare_remote_path(path)
 
-        directory = {"name": name,
+        directory = {"name": path_type,
                      "path": path,
                      "encrypted": False,
                      "filename_encoding": "base64"}

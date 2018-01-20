@@ -30,11 +30,15 @@ upload-read-timeout 60
 
 # Specify targets
 # Target name can contain digits, characters of english alphabet, '+', '-', '_' and '.'
-# Filename encoding can be omitted.
+# src specifies the source directory
+# dst specifies the destination directory
+# A path that starts with local:// is a local one
+# A path that starts with disk:// or yadisk:// is a Yandex.Disk path
+# encrypted enables encryption (can be omitted)
 # target preferred-target-name {
-#     local /path/to/local/dir
-#     remote /path/to/remote/dir
-#     filename-encoding base64
+#     src local://path/to/local/dir
+#     dst yadisk://path/to/yadisk/dir
+#     encrypted dst
 # }
 
 # List of patterns to exclude when performing local scan
