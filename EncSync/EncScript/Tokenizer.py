@@ -110,6 +110,12 @@ class Tokenizer(object):
                                State.FINAL:      self._handle_final}
 
     def end(self, output):
+        if self.escape:
+            self.escape = False
+
+            if self.cur_token.type == Token.Type.UNDEFINED:
+                self.cur_token.type = Token.Type.WORD
+            self.cur_token.string += "\\"
         self._push_token(output)
 
         self.cur_token.type = Token.Type.END

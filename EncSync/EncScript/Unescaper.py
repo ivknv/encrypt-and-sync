@@ -183,6 +183,8 @@ class Unescaper(object):
 
         if state == State.DOLLAR:
             yield "$"
+        elif escape:
+            yield "\\"
 
 def unescape_word(word):
     return "".join(Unescaper(word).unescape_word())
