@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import traceback
 
 use_readline = False
 
@@ -133,8 +134,8 @@ class Console(object):
                         tokenizer.next_char("\n", output)
                 except (KeyboardInterrupt, EOFError) as e:
                     raise e
-                except BaseException as e:
-                    show_error("Error: %s" % e)
+                except Exception:
+                    traceback.print_exc()
                     self.exit_code = 1
 
                     tokenizer.line_num += 1
