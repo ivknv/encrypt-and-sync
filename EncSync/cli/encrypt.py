@@ -6,6 +6,8 @@ import os
 from .common import show_error
 from . import common
 
+__all__ = ["encrypt", "encrypt_path"]
+
 READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 
 def encrypt(env, paths):
@@ -54,7 +56,7 @@ def encrypt(env, paths):
 
     return 0
 
-def encrypt_filename(env, paths, prefix, encoding):
+def encrypt_path(env, paths, prefix, encoding):
     encsync, ret = common.make_encsync(env)
 
     if encsync is None:
