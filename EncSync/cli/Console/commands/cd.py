@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 
 from ....EncScript import Command
 from .... import Paths
@@ -47,5 +48,8 @@ class CdCommand(Command):
             console.change_storage(path_type, new_path)
         else:
             console.cwd, console.pwd = new_path, console.cwd
+
+        if path_type == "local":
+            os.chdir(Paths.to_sys(console.cwd))
 
         return 0
