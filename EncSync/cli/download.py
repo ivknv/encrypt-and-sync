@@ -58,7 +58,9 @@ class DownloaderReceiver(EventHandler):
         print("Downloader: finished")
 
     def on_next_target(self, event, target):
-        print("Next target: [%s <- %s]" % (target.dst_path, target.src_path))
+        src_path = "%s://%s" % (target.src.storage.name, target.src_path)
+        dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
+        print("Next target: [%s <- %s]" % (dst_path, src_path))
 
     def on_worker_starting(self, event, worker):
         worker.add_receiver(self.worker_receiver)
@@ -79,11 +81,10 @@ class DownloaderReceiver(EventHandler):
     def on_not_found_error(self, exc):
         target = self.downloader.cur_target
 
-        dst_path, src_path = target.dst_path, target.src_path
-        dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-        src_path = "%s://%s" % (target.src.storage.name, src_path)
+        dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
+        src_path = "%s://%s" % (target.src.storage.name, target.src_path)
 
-        print("[%s <- %s]: error: %s" % (target.dst_path, target.src_path, exc))
+        print("[%s <- %s]: error: %s" % (dst_path, src_path, exc))
 
     def on_exception(self, exception):
         traceback.print_exc()
@@ -97,9 +98,8 @@ class TargetReceiver(EventHandler):
     def on_status_changed(self, event):
         target = event["emitter"]
 
-        dst_path, src_path = target.dst_path, target.src_path
-        dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-        src_path = "%s://%s" % (target.src.storage.name, src_path)
+        dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
+        src_path = "%s://%s" % (target.src.storage.name, target.src_path)
         status = target.status
 
         if status != "pending":
