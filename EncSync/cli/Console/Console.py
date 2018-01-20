@@ -17,6 +17,7 @@ except ImportError:
         pass
 
 from ...EncScript import Parser, Tokenizer, ast2program
+from ...EncScript.Exceptions import EncScriptError
 from ...EncryptedStorage import EncryptedStorage
 from ... import Paths
 from .. import common
@@ -134,8 +135,11 @@ class Console(object):
                         tokenizer.next_char("\n", output)
                 except (KeyboardInterrupt, EOFError) as e:
                     raise e
-                except Exception:
-                    traceback.print_exc()
+                except Exception as e:
+                    if isinstance(e, EncScriptError):
+                        show_error("EncScriptError: %s" % (e,))
+                    else:
+                        traceback.print_exc()
                     self.exit_code = 1
 
                     tokenizer.line_num += 1

@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 __all__ = ["EncScriptError", "TokenizerError", "ParserError", "UnexpectedCharacterError",
-           "ASTConversionError", "EvaluationError"]
+           "ASTConversionError", "UnknownCommandError", "NotACommandError",
+           "UnknownBlockError", "NotABlockError", "EvaluationError"]
 
 class EncScriptError(Exception):
     pass
@@ -44,6 +45,18 @@ class ASTConversionError(EncScriptError):
     def __init__(self, ast, msg=""):
         EncScriptError.__init__(self, msg)
         self.ast = ast
+
+class UnknownCommandError(ASTConversionError):
+    pass
+
+class NotACommandError(ASTConversionError):
+    pass
+
+class UnknownBlockError(ASTConversionError):
+    pass
+
+class NotABlockError(ASTConversionError):
+    pass
 
 class EvaluationError(EncScriptError):
     def __init__(self, node, msg=""):

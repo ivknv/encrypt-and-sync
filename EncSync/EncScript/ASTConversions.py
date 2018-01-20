@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .Exceptions import ASTConversionError
+from .Exceptions import UnknownCommandError, NotACommandError
+from .Exceptions import UnknownBlockError, NotABlockError
 from .Parser import AST
 from .SysCommand import SysCommand
 from .AndOperator import AndOperator
@@ -49,14 +50,14 @@ def ast2command(ast, namespace):
             try:
                 command_type = namespace[args[0]]
             except KeyError:
-                raise ASTConversionError(ast, "Unknown command: %r" % args[0])
+                raise UnknownCommandError(ast, "Unknown command: %r" % args[0])
 
             command = command_type(args)
             command.line_num = ast.line_num
             command.char_num = ast.char_num
 
             if not isinstance(command, Command):
-                raise ASTConversionError(ast, "%r is not a command" % args[0])
+                raise NotACommandError(ast, "%r is not a command" % args[0])
 
             operator.A = command
         elif child.type == AST.Type.COMMAND:
@@ -70,10 +71,10 @@ def ast2command(ast, namespace):
     try:
         command_type = namespace[args[0]]
     except KeyError:
-        raise ASTConversionError(ast, "Unknown command: %r" % args[0])
+        raise UnknownCommandError(ast, "Unknown command: %r" % args[0])
 
     if not issubclass(command_type, Command):
-        raise ASTConversionError(ast, "%r is not a command" % args[0])
+        raise NotACommandError(ast, "%r is not a command" % args[0])
 
     command = command_type(args)
     command.line_num = ast.line_num
@@ -107,10 +108,10 @@ def ast2block(ast, namespace):
             try:
                 block_type = namespace[""]
             except KeyError:
-                raise ASTConversionError(ast, "Unknown block: ''")
+                raise UnknownBlockError(ast, "Unknown block: ''")
 
             if not issubclass(block_type, Block):
-                raise ASTConversionError(ast, "'' is not a block")
+                raise NotABlockError(ast, "'' is not a block")
 
             args.append("")
 
@@ -122,10 +123,10 @@ def ast2block(ast, namespace):
                 try:
                     block_type = namespace[child.token.string]
                 except KeyError:
-                    raise ASTConversionError(ast, "Unknown block: %r" % child.token.string)
+                    raise UnknownBlockError(ast, "Unknown block: %r" % child.token.string)
 
                 if not issubclass(block_type, Block):
-                    raise ASTConversionError(ast, "%r is not a block" % child.token.string)
+                    raise NotABlockError(ast, "%r is not a block" % child.token.string)
 
                 block = block_type(args, body, namespace)
                 block.line_num = ast.line_num
