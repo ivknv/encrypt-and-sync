@@ -213,7 +213,7 @@ def parse_args(args):
                              help="Enable integrity check")
     sync_parser.add_argument("--no-scan", action="store_true", help="Disable scan")
     sync_parser.add_argument("--no-diffs", action="store_true",
-                             help="Don't show the list differences")
+                             help="Don't show the list of differences")
     sync_parser.add_argument("-a", "--all", action="store_true",
                              help="Sync all targets")
     sync_parser.add_argument("--ask", action="store_true",
