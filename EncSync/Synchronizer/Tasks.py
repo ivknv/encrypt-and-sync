@@ -243,7 +243,6 @@ class MkdirTask(SyncTask):
 
 class RmTask(SyncTask):
     def complete(self, worker):
-        print("compl")
         if self.stop_condition():
             return True
 
