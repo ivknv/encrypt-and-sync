@@ -46,4 +46,4 @@ class ScanCommand(Command):
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers
 
-        return do_scan(env, ns.names)
+        return do_scan(env, ns.targets)
