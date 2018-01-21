@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import unittest
 from EncSync import Paths
@@ -83,7 +84,7 @@ class PathsTestCase(unittest.TestCase):
         if is_win():
             root = Paths.from_sys_sep(os.path.realpath("/"))
 
-            self.assertEqual(Paths.explicit("/a/b/c"), root + "/a/b/c")
+            self.assertEqual(Paths.explicit("/a/b/c"), root + "a/b/c")
             self.assertEqual(Paths.explicit("b/c"), "b/c")
             self.assertEqual(Paths.explicit(""), root)
             self.assertEqual(Paths.explicit("/"), root)
