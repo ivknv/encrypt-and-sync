@@ -14,7 +14,7 @@ __all__ = ["TargetBlock"]
 KNOWN_FILENAME_ENCODINGS = ("base64", "base41")
 
 def prepare_local_path(path):
-    return Paths.sys_explicit(os.path.abspath(os.path.expanduser(path)))
+    return Paths.from_sys(os.path.abspath(os.path.expanduser(path)))
 
 def prepare_remote_path(path):
     return Paths.dir_normalize(Paths.join_properly("/", path))

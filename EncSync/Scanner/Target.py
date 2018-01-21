@@ -82,7 +82,7 @@ class ScanTarget(Task):
             return
 
         if self.storage.name == "local":
-            path = Paths.from_sys(self.path)
+            path = self.path
 
             if scannable.type == "d":
                 path = Paths.dir_normalize(path)

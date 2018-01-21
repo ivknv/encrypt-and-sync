@@ -269,31 +269,6 @@ def split(path, sep=None):
 
     return (sep if not res[0] else res[0], res[1])
 
-def to_sys(path, orig_sep=None):
-    """
-        Convert `path` to a system path.
-
-        :param path: path to convert
-        :param orig_sep: original separator
-
-        :returns: `str` or `bytes`
-    """
-
-    preferred_type = get_preferred_type([path, orig_sep])
-
-    if orig_sep is None:
-        orig_sep = get_default_sep(preferred_type)
-
-    if path is None:
-        path = preferred_type()
-
-    sys_sep = os.path.sep
-
-    if isinstance(path, bytes):
-        sys_sep = sys_sep.encode()
-
-    return path.replace(orig_sep, sys_sep)
-
 def path_map(path, f, sep=None):
     """
         Apply `f` to every path fragment separated by `sep` and then return the resulting path.
@@ -316,6 +291,30 @@ def path_map(path, f, sep=None):
     return join(*tuple(f(i) for i in path.split(sep)), sep=sep)
 
 if sys.platform.startswith("win"):
+    def to_sys(path, orig_sep=None):
+        preferred_type = get_preferred_type([path, orig_sep])
+
+        if orig_sep is None:
+            orig_sep = get_default_sep(preferred_type)
+
+        if path is None:
+            path = preferred_type()
+
+        sys_sep = os.path.sep
+
+        if isinstance(path, bytes):
+            sys_sep = sys_sep.encode()
+
+        if path[0:1] == orig_sep and _is_drive_letter(path[1:2]):
+            drive_letter = path[1:2]
+
+            if issubclass(preferred_type, bytes):
+                path = join(drive_letter + b":", path[3:], sep=orig_sep)
+            else:
+                path = join(drive_letter + ":", path[3:], sep=orig_sep)
+
+        return path.replace(orig_sep, sys_sep)
+
     def from_sys(path, target_sep=None):
         """
             Convert from system path.
@@ -344,6 +343,14 @@ if sys.platform.startswith("win"):
 
         return path
 
+    def _is_drive_letter(l):
+        letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+        try:
+            return l in letters
+        except TypeError:
+            return l in letters.encode("utf8")
+
     def explicit(path, sep=None):
         """
             Makes absolute paths start with a drive letter on Windows.
@@ -366,13 +373,42 @@ if sys.platform.startswith("win"):
         if path.startswith(sep) or not path:
             root = "/"
             if issubclass(preferred_type, bytes):
-                root = root.encode()
+                root = root.encode("utf8")
 
-            sys_drive_path = from_sys(os.path.realpath(root))
-            path = join(sys_drive_path, path, sep=sep)
+            drive_letter = os.path.abspath(root)[0:1]
+            path = join(sep, drive_letter, path, sep=sep)
+        elif _is_drive_letter(path[0:1]) and path[1:2] in (":", b":"):
+            drive_letter = path[0:1]
+
+            path = join(sep, drive_letter, path[3:])
 
         return path
 else:
+    def to_sys(path, orig_sep=None):
+        """
+            Convert `path` to a system path.
+
+            :param path: path to convert
+            :param orig_sep: original separator
+
+            :returns: `str` or `bytes`
+        """
+
+        preferred_type = get_preferred_type([path, orig_sep])
+
+        if orig_sep is None:
+            orig_sep = get_default_sep(preferred_type)
+
+        if path is None:
+            path = preferred_type()
+
+        sys_sep = os.path.sep
+
+        if isinstance(path, bytes):
+            sys_sep = sys_sep.encode()
+
+        return path.replace(orig_sep, sys_sep)
+
     def from_sys(path, target_sep=None):
         """
             Convert from system path.

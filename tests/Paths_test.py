@@ -82,14 +82,36 @@ class PathsTestCase(unittest.TestCase):
 
     def test_explicit(self):
         if is_win():
-            root = Paths.from_sys_sep(os.path.realpath("/"))
+            drive_letter = os.path.abspath("/")[0]
 
-            self.assertEqual(Paths.explicit("/a/b/c"), root + "a/b/c")
+            self.assertEqual(Paths.explicit("/a/b/c"), "/%s/a/b/c" % (drive_letter,))
             self.assertEqual(Paths.explicit("b/c"), "b/c")
-            self.assertEqual(Paths.explicit(""), root)
-            self.assertEqual(Paths.explicit("/"), root)
+            self.assertEqual(Paths.explicit(""), "/%s/" % (drive_letter,))
+            self.assertEqual(Paths.explicit("/"), "/%s/" % (drive_letter,))
+            self.assertEqual(Paths.explicit("C:/a/b/c"), "/C/a/b/c")
+            self.assertEqual(Paths.explicit("D:/c/d/e/"), "/D/c/d/e/")
         else:
             self.assertEqual(Paths.explicit("/a/b/c"), "/a/b/c")
             self.assertEqual(Paths.explicit("/"), "/")
             self.assertEqual(Paths.explicit("b/c"), "b/c")
             self.assertEqual(Paths.explicit(""), "/")
+
+    def test_from_sys(self):
+        if not is_win():
+            return
+
+        drive_letter = os.path.abspath("/")[0]
+
+        self.assertEqual(Paths.from_sys(r"C:\a\b\c"), "/C/a/b/c")
+        self.assertEqual(Paths.from_sys(r"Z:\a\b\c"), "/Z/a/b/c")
+        self.assertEqual(Paths.from_sys("C:/a/b/c"), "/C/a/b/c")
+        self.assertEqual(Paths.from_sys("/a/b/c"), "/%s/a/b/c" % (drive_letter,))
+        self.assertEqual(Paths.from_sys(r"/a\b/c"), "/%s/a/b/c" % (drive_letter,))
+
+    def test_to_sys(self):
+        if not is_win():
+            return
+
+        self.assertEqual(Paths.to_sys("/C/a/b/c"), r"C:\a\b\c")
+        self.assertEqual(Paths.to_sys("/D/a/b/c"), r"D:\a\b\c")
+        self.assertEqual(Paths.to_sys("/Z/c/d/e/"), "Z:\\c\\d\\e\\")
