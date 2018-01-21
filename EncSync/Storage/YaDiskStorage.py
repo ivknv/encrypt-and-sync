@@ -195,6 +195,8 @@ class YaDiskDownloadController(DownloadController):
             if response.status_code != 200:
                 raise yadisk.utils.get_exception(response)
 
+            self.size = response.headers["Content-Length"]
+
             self.speed_limiter.begin()
             self.speed_limiter.quantity = 0
 
