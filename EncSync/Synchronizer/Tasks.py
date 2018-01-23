@@ -134,81 +134,85 @@ class UploadTask(SyncTask):
             self.download_controller.stop()
 
     def complete(self, worker):
-        if self.stop_condition():
-            return True
-
-        self.status = "pending"
-
-        src_path = Paths.join(self.src.prefix, self.path)
-        dst_path = Paths.join(self.dst.prefix, self.path)
-
         try:
-            meta = self.src.get_meta(self.path)
-            new_size = pad_size(meta["size"])
-        except FileNotFoundError:
-            self.flist1.remove_node(src_path)
-            self.autocommit()
-
-            self.status = "finished"
-            return True
-
-        timeout = self.encsync.upload_timeout
-
-        if new_size >= 700 * 1024**2:
-            if not isinstance(timeout, (tuple, list)):
-                connect_timeout = read_timeout = timeout
-            else:
-                connect_timeout, read_timeout = timeout
-
-            new_read_timeout = 300.0
-
-            if read_timeout < new_read_timeout:
-                timeout = (connect_timeout, new_read_timeout)
-
-        if self.dst.encrypted:
-            download_generator = self.src.get_encrypted_file(self.path)
-        else:
-            download_generator = self.src.get_file(self.path)
-
-        self.download_controller = next(download_generator)
-        if self.download_controller is not None:
-            self.download_controller.timeout = self.encsync.timeout
-            self.download_controller.limit = self.download_limit
-            self.download_controller.add_receiver(DownloadControllerReceiver(self))
-
-        temp_file = next(download_generator)
-
-        if self.status == "pending":
-            self.size = get_file_size(temp_file)
-            controller, ivs = self.dst.upload(temp_file, self.path, timeout=timeout)
-            self.upload_controller = controller
-            self.upload_controller.upload_limit = self.upload_limit
-            controller.add_receiver(UploadControllerReceiver(self))
-
             if self.stop_condition():
                 return True
 
+            self.status = "pending"
+
+            src_path = Paths.join(self.src.prefix, self.path)
+            dst_path = Paths.join(self.dst.prefix, self.path)
+
             try:
-                controller.work()
-            except ControllerInterrupt:
+                meta = self.src.get_meta(self.path)
+                new_size = pad_size(meta["size"])
+            except FileNotFoundError:
+                self.flist1.remove_node(src_path)
+                self.autocommit()
+
+                self.status = "finished"
                 return True
 
-            self.flist1.update_size(src_path, new_size)
-        else:
+            timeout = self.encsync.upload_timeout
+
+            if new_size >= 700 * 1024**2:
+                if not isinstance(timeout, (tuple, list)):
+                    connect_timeout = read_timeout = timeout
+                else:
+                    connect_timeout, read_timeout = timeout
+
+                new_read_timeout = 300.0
+
+                if read_timeout < new_read_timeout:
+                    timeout = (connect_timeout, new_read_timeout)
+
+            if self.dst.encrypted:
+                download_generator = self.src.get_encrypted_file(self.path)
+            else:
+                download_generator = self.src.get_file(self.path)
+
+            self.download_controller = next(download_generator)
+            if self.download_controller is not None:
+                self.download_controller.timeout = self.encsync.timeout
+                self.download_controller.limit = self.download_limit
+                self.download_controller.add_receiver(DownloadControllerReceiver(self))
+
+            temp_file = next(download_generator)
+
+            if self.status == "pending":
+                self.size = get_file_size(temp_file)
+                controller, ivs = self.dst.upload(temp_file, self.path, timeout=timeout)
+                self.upload_controller = controller
+                self.upload_controller.upload_limit = self.upload_limit
+                controller.add_receiver(UploadControllerReceiver(self))
+
+                if self.stop_condition():
+                    return True
+
+                try:
+                    controller.work()
+                except ControllerInterrupt:
+                    return True
+
+                self.flist1.update_size(src_path, new_size)
+            else:
+                return True
+
+            newnode = {"type":        "f",
+                       "path":        dst_path,
+                       "padded_size": new_size,
+                       "modified":    time.mktime(time.gmtime()),
+                       "IVs":         ivs}
+
+            self.flist2.insert_node(newnode)
+            self.autocommit()
+
+            self.status = "finished"
+
             return True
-
-        newnode = {"type":        "f",
-                   "path":        dst_path,
-                   "padded_size": new_size,
-                   "modified":    time.mktime(time.gmtime()),
-                   "IVs":         ivs}
-
-        self.flist2.insert_node(newnode)
-        self.autocommit()
-
-        self.status = "finished"
-
-        return True
+        finally:
+            self.upload_controller = None
+            self.download_controller = None
 
 class MkdirTask(SyncTask):
     def complete(self, worker):

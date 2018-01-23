@@ -14,16 +14,17 @@ class RemoteTargetStorage(TargetStorage):
         if self.encrypted:
             path = self.encrypt_path(path)
 
-            tmp_file = tempfile.TemporaryFile("w+b")
+            with tempfile.TemporaryFile("w+b") as tmp_file:
+                controller = self.storage.download(path, tmp_file)
+                yield controller
 
-            controller = self.storage.download(path, tmp_file)
-            yield controller
+                controller.work()
 
-            controller.work()
+                tmp_file.seek(0)
 
-            tmp_file.seek(0)
+                result = self.encsync.temp_decrypt(tmp_file)
 
-            yield self.encsync.temp_decrypt(tmp_file)
+            yield result
         else:
             tmp_file = tempfile.TemporaryFile("w+b")
         
@@ -53,13 +54,14 @@ class RemoteTargetStorage(TargetStorage):
 
             yield tmp_file
         else:
-            tmp_file = tempfile.TemporaryFile("w+b")
+            with tempfile.TemporaryFile("w+b") as tmp_file:
+                controller = self.storage.download(path, tmp_file)
+                yield controller
 
-            controller = self.storage.download(path, tmp_file)
-            yield controller
+                controller.work()
 
-            controller.work()
+                tmp_file.seek(0)
 
-            tmp_file.seek(0)
+                result = self.encsync.temp_encrypt(tmp_file)
 
-            yield self.encsync.temp_encrypt(tmp_file)
+            yield result
