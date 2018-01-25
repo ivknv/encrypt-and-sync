@@ -161,7 +161,13 @@ class LocalStorage(Storage):
         os.mkdir(Paths.to_sys(path))
 
     def remove(self, path, *args, **kwargs):
-        shutil.rmtree(Paths.to_sys(path))
+        path = Paths.to_sys(path)
+
+        try:
+            shutil.rmtree(path)
+        except NotADirectoryError:
+            # os.remove() raises PermissionError when path is a directory
+            os.remove(path)
 
     def upload(self, in_file, out_path, *args, **kwargs):
         out_path = Paths.to_sys(out_path)
