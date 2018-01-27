@@ -1,4 +1,5 @@
 .*.sw[a-z]
+.sw[a-z]
 *~
 *.py[co]
 *.log
