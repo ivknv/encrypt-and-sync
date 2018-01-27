@@ -137,6 +137,9 @@ class ScanTarget(Task):
             elif self.tasks:
                 self.scanner.start_worker(ScanWorker, self.scanner, self)
 
+            self.scanner.wait_workers()
+            self.scanner.stop_workers()
+
             if self.stop_condition():
                 self.scanner.stop_workers()
                 self.scanner.join_workers()
