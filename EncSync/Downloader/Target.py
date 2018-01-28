@@ -27,7 +27,7 @@ class DownloadTarget(Task):
         self.size = 0
         self.downloaded = 0
 
-        self.tasks = []
+        self.tasks = None
         self.task_lock = threading.Lock()
 
         self.upload_limit = downloader.upload_limit
@@ -42,95 +42,68 @@ class DownloadTarget(Task):
     def get_next_task(self):
         with self.task_lock:
             try:
-                return self.tasks.pop(0)
-            except IndexError:
+                return next(self.tasks)
+            except StopIteration:
                 pass
 
-    def get_tasks(self):
-        flist = FileList(self.name, self.src.storage.name, self.downloader.directory)
-        flist.create()
+    def node_to_task(self, node, dst_type):
+        new_task = DownloadTask(self)
 
-        nodes = flist.find_node_children(self.src_path)
+        new_task.type = node["type"]
+        new_task.modified = node["modified"]
+        new_task.src = self.src
+        new_task.dst = self.dst
+        new_task.src_path = node["path"]
+        new_task.dst_path = self.dst_path
 
-        try:
-            node = next(nodes)
-        except StopIteration:
-            # Fail if not found
-            msg = "Path wasn't found in the database: %r" % (self.src_path,)
-            raise NotFoundInDBError(msg, self.src_path)
+        if self.type == "f" and dst_type == "d":
+            filename = Paths.split(new_task.src_path)[1]
+            new_task.dst_path = Paths.join(new_task.dst_path, filename)
+        elif dst_type == "d" or self.type == "d":
+            suffix = Paths.cut_prefix(node["path"], self.src_path)
+            new_task.dst_path = Paths.join(new_task.dst_path, suffix)
 
-        self.type = node["type"]
-        self.expected_total_children = 0
+        if new_task.type == "f" and self.src.is_encrypted(new_task.src_path):
+            new_task.download_size = node["padded_size"] + MIN_ENC_SIZE
+            
+        if new_task.type == "f" and self.dst.is_encrypted(new_task.dst_path):
+            new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
 
+        new_task.upload_limit = self.upload_limit
+        new_task.download_limit = self.download_limit
+
+        return new_task
+
+    def task_generator(self, filelist):
         try:
             dst_type = self.dst.get_meta(self.dst_path)["type"]
         except FileNotFoundError:
             dst_type = None
 
-        if self.type == "f":
-            new_task = DownloadTask(self)
-            new_task.type = "f"
-            new_task.modified = node["modified"]
-            new_task.src = self.src
-            new_task.dst = self.dst
-            new_task.src_path = node["path"]
-            new_task.dst_path = self.dst_path
-
-            if self.src.is_encrypted(new_task.src_path):
-                new_task.download_size = node["padded_size"] + MIN_ENC_SIZE
-
-            if self.dst.is_encrypted(new_task.dst_path):
-                new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
-
-            if dst_type == "d":
-                filename = Paths.split(new_task.src_path)[1]
-                new_task.dst_path = Paths.join(new_task.dst_path, filename)
-
-            self.expected_total_children += 1
-
-            new_task.upload_limit = self.upload_limit
-            new_task.download_limit = self.download_limit
-
-            yield new_task
-            return
+        nodes = filelist.find_node_children(self.src_path)
 
         for node in nodes:
-            if self.stop_condition():
-                return
+            yield self.node_to_task(node, dst_type)
 
-            new_task = DownloadTask(self)
+    def set_tasks(self):
+        flist = FileList(self.name, self.src.storage.name, self.downloader.directory)
+        flist.create()
 
-            new_task.type = node["type"]
-            new_task.modified = node["modified"]
-            new_task.src = self.src
-            new_task.dst = self.dst
-            new_task.src_path = node["path"]
-            new_task.dst_path = self.dst_path
+        root_node = flist.find_node(self.src_path)
 
-            # Set destination path
-            if dst_type == "d" or self.type == "d":
-                suffix = Paths.cut_prefix(node["path"], self.src_path)
-                new_task.dst_path = Paths.join(new_task.dst_path, suffix)
+        if root_node["type"] is None:
+            msg = "Path wasn't found in the database: %r" % (self.src_path,)
+            raise NotFoundInDBError(msg, self.src_path)
 
-            if new_task.type == "f" and self.src.is_encrypted(new_task.src_path):
-                new_task.download_size = node["padded_size"] + MIN_ENC_SIZE
-                
-            if new_task.type == "f" and self.dst.is_encrypted(new_task.dst_path):
-                new_task.upload_size = node["padded_size"] + MIN_ENC_SIZE
+        self.type = root_node["type"]
+        self.expected_total_children = flist.get_file_count(self.src_path)
 
-            self.expected_total_children += 1
-
-            new_task.upload_limit = self.upload_limit
-            new_task.download_limit = self.download_limit
-
-            yield new_task
+        self.tasks = self.task_generator(flist)
 
     def complete(self, worker):
         if self.total_children == 0:
-            with self.task_lock:
-                self.tasks.clear()
-                self.tasks.extend(self.get_tasks())
-
+            self.set_tasks()
+            
         if self.stop_condition():
             return True
 
@@ -140,6 +113,10 @@ class DownloadTarget(Task):
                                       DownloaderWorker, self.downloader)
         self.downloader.join_workers()
 
-        self.status = "finished"
+        if self.stop_condition():
+            return True
+
+        if self.status in (None, "pending"):
+            self.status = "finished"
 
         return True

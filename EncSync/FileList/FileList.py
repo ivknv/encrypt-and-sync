@@ -110,9 +110,9 @@ class FileList(BaseFileList):
 
             return self.connection.fetchone()[0] == 0
 
-    def get_file_count(self, parent_dir="/"):
-        parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
-        parent_dir = escape_glob(parent_dir)
+    def get_file_count(self, path="/"):
+        parent_dir = prepare_path(Paths.dir_normalize(path))
+        parent_dir = escape_glob(path)
 
         with self.connection:
             self.connection.execute("SELECT COUNT(*) FROM filelist WHERE path GLOB ?",
