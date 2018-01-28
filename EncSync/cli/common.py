@@ -32,8 +32,9 @@ def positive_int(arg):
     raise argparse.ArgumentTypeError("%r is not a positive integer" % arg)
 
 def get_finished_percent(target):
+    n = target.progress["finished"] + target.progress["skipped"]
     try:
-        return float(target.progress["finished"]) / target.total_children * 100.0
+        return float(n) / target.total_children * 100.0
     except ZeroDivisionError:
         return 100.0
 

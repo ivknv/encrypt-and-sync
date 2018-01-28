@@ -132,6 +132,8 @@ class DownloadTask(Task):
 
         p = "/"
 
+        created = False
+
         for i in path.split("/"):
             if not i:
                 continue
@@ -141,7 +143,11 @@ class DownloadTask(Task):
             try:
                 self.dst.mkdir(p)
             except (FileExistsError, PermissionError):
-                pass
+                created = False
+            else:
+                created = True
+
+        return created
 
     def check_if_download(self):
         try:
@@ -166,7 +172,7 @@ class DownloadTask(Task):
             return
 
         if not self.check_if_download():
-            self.status = "finished"
+            self.status = "skipped"
             return
 
         if self.stop_condition():
@@ -224,11 +230,13 @@ class DownloadTask(Task):
         self.status = "pending"
 
         if self.type == "d":
-            self.recursive_mkdir(self.dst_path)
+            if not self.recursive_mkdir(self.dst_path):
+                self.status = "skipped"
         else:
             self.download_file()
 
         if self.stop_condition():
             return True
 
-        self.status = "finished"
+        if self.status in ("pending", None):
+            self.status = "finished"
