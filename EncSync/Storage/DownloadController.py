@@ -12,7 +12,7 @@ class DownloadController(Emitter):
         self.limit = limit
         self._downloaded = 0
         self.stopped = False
-
+        self.size = None
         self.add_event("downloaded_changed")
 
     @property
@@ -27,6 +27,9 @@ class DownloadController(Emitter):
 
     def stop(self):
         self.stopped = True
+
+    def begin(self):
+        raise NotImplementedError
 
     def work(self):
         raise NotImplementedError

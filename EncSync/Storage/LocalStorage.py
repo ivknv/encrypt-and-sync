@@ -6,7 +6,7 @@ import stat
 import time
 
 from .. import Paths
-from ..common import is_windows
+from ..common import is_windows, get_file_size
 
 from .Storage import Storage
 from .Exceptions import ControllerInterrupt
@@ -30,9 +30,18 @@ class LocalDownloadController(DownloadController):
 
         self.in_path = in_path
 
+    def begin(self):
+        if self.size is None:
+            self.size = get_file_size(self.in_path)
+
     def work(self):
         if self.stopped:
             raise ControllerInterrupt
+
+        self.begin()
+
+        if self.stopped:
+            raise ControlledInterrupt
 
         with open(self.in_path, "rb") as in_file:
             while True:

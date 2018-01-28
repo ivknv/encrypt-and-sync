@@ -152,35 +152,10 @@ class DownloadTask(Task):
         if not meta["type"]:
             return True
 
-        size1 = meta["size"] or 0
         modified1 = meta["modified"] or 0
-
-        size2 = self.download_size
         modified2 = self.modified
 
-        if self.src.is_encrypted(self.src_path):
-            if not self.dst.is_encrypted(self.dst_path):
-                size2 = max(size2 - MIN_ENC_SIZE, 0)
-                size1 = pad_size(size1)
-        elif self.dst.is_encrypted(self.dst_path):
-            size1 = max(size1 - MIN_ENC_SIZE, 0)
-            size2 = pad_size(size2)
-
-        return size1 != size2 or modified1 < modified2
-
-    def get_download_size(self):
-        if self.src.is_encrypted(self.src_path):
-            flist = FileList(self.parent.name,
-                             self.src.storage.name,
-                             self.parent.downloader.directory)
-
-            node = flist.find_node(self.src_path)
-            if node["padded_size"]:
-                return node["padded_size"] + MIN_ENC_SIZE
-
-            return self.download_size
-        else:
-            return self.src.get_meta(self.src_path)["size"] or 0
+        return modified1 < modified2
 
     def download_file(self):
         if self.dst.is_dir(self.dst_path):
@@ -189,14 +164,6 @@ class DownloadTask(Task):
 
         if self.stop_condition():
             return
-
-        if not self.src.is_encrypted(self.src_path):
-            # In this case the size was not determined yet
-            try:
-                self.download_size = self.get_download_size()
-            except FileNotFoundError:
-                self.status = "failed"
-                return
 
         if not self.check_if_download():
             self.status = "finished"
@@ -219,6 +186,9 @@ class DownloadTask(Task):
         if self.download_controller is not None:
             self.download_controller.limit = self.download_limit
             self.download_controller.add_receiver(DownloadControllerReceiver(self))
+
+            self.download_controller.begin()
+            self.download_size = self.download_controller.size
 
         if self.stop_condition():
             return

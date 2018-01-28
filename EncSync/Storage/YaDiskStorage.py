@@ -157,9 +157,10 @@ class YaDiskDownloadController(DownloadController):
         DownloadController.__init__(self, out_file, limit)
 
         self.in_path = in_path
+        self.link = None
+        self.response = None
         self.yadisk = ynd
         self.timeout = timeout
-    
         self.n_retries = n_retries
 
     @property
@@ -170,37 +171,53 @@ class YaDiskDownloadController(DownloadController):
     def limit(self, value):
         self.speed_limiter.limit = value
 
-    def work(self):
+    def begin(self, enable_retries=True):
         if self.stopped:
             raise ControllerInterrupt
 
-        try:
-            link = self.yadisk.get_download_link(self.in_path,
-                                                 timeout=self.timeout,
-                                                 n_retries=self.n_retries)
-        except PathNotFoundError as e:
-            raise FileNotFoundError(str(e))
-        except RetriableYaDiskError as e:
-            raise TemporaryStorageError(str(e))
+        if self.link is None:
+            try:
+                self.link = self.yadisk.get_download_link(self.in_path,
+                                                          timeout=self.timeout,
+                                                          n_retries=self.n_retries)
+            except PathNotFoundError as e:
+                raise FileNotFoundError(str(e))
+            except RetriableYaDiskError as e:
+                raise TemporaryStorageError(str(e))
+
+        if self.stopped:
+            raise ControllerInterrupt
+
+        def attempt():
+            self.response = self.yadisk.make_session().get(self.link, stream=True,
+                                                           timeout=self.timeout)
+
+            if self.response.status_code != 200:
+                self.response = None
+                raise yadisk.utils.get_exception(response)
+
+            self.size = float(self.response.headers.get("Content-Length", "0"))
+
+        n_retries = self.n_retries if enable_retries else 0
+        yadisk.utils.auto_retry(attempt, n_retries, 0.0)
+
+    def work(self):
+        if self.stopped:
+            raise ControllerInterrupt
 
         def attempt():
             if self.stopped:
                 raise ControllerInterrupt
 
-            response = self.yadisk.make_session().get(link, stream=True, timeout=self.timeout)
+            self.begin(False)
 
             if self.stopped:
                 raise ControllerInterrupt
 
-            if response.status_code != 200:
-                raise yadisk.utils.get_exception(response)
-
-            self.size = response.headers["Content-Length"]
-
             self.speed_limiter.begin()
             self.speed_limiter.quantity = 0
 
-            for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+            for chunk in self.response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
                 if self.stopped:
                     raise ControllerInterrupt
 
@@ -219,6 +236,8 @@ class YaDiskDownloadController(DownloadController):
 
                 if self.stopped:
                     raise ControllerInterrupt
+
+            self.response = None
 
         yadisk.utils.auto_retry(attempt, self.n_retries, 0.0)
 
