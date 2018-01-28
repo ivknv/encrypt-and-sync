@@ -20,7 +20,6 @@ __all__ = ["YaDiskStorage"]
 
 MIN_READ_SIZE = 512 * 1024 # Bytes
 DOWNLOAD_CHUNK_SIZE = 16384
-RETRY_CODES = {500, 502, 503, 504}
 
 def _yadisk_meta_to_dict(meta):
     try:
