@@ -41,7 +41,7 @@ class LocalDownloadController(DownloadController):
         self.begin()
 
         if self.stopped:
-            raise ControlledInterrupt
+            raise ControllerInterrupt
 
         with open(self.in_path, "rb") as in_file:
             while True:
