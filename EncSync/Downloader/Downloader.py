@@ -70,17 +70,10 @@ class Downloader(Worker):
             return list(self.targets)
 
     def make_target(self, src_storage_name, src_path, dst_storage_name, dst_path):
-        encsync_target, dir_type = self.encsync.identify_target(src_storage_name,
-                                                                src_path)
-
-        if encsync_target is None:
-            raise ValueError("%r doesn't belong to any targets" % (src_path,))
-
         src = EncryptedStorage(self.encsync, src_storage_name, self.directory)
         dst = EncryptedStorage(self.encsync, dst_storage_name, self.directory)
 
         target = DownloadTarget(self)
-        target.name = encsync_target["name"]
         target.src = src
         target.dst = dst
         target.src_path = src_path

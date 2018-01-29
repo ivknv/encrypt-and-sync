@@ -32,13 +32,20 @@ def positive_int(arg):
     raise argparse.ArgumentTypeError("%r is not a positive integer" % arg)
 
 def get_finished_percent(target):
+    if target.expected_total_children == -1:
+        return 0.0
+
     n = target.progress["finished"] + target.progress["skipped"]
+
     try:
         return float(n) / target.total_children * 100.0
     except ZeroDivisionError:
         return 100.0
 
 def get_failed_percent(target):
+    if target.expected_total_children == -1:
+        return 0.0
+
     try:
         return float(target.progress["failed"]) / target.total_children * 100.0
     except ZeroDivisionError:
@@ -57,6 +64,9 @@ def get_progress_str(task):
         path = task.src_path
     else:
         path = task.path
+
+    if target.expected_total_children == -1:
+        return "[N/A][%s]" % (path,)
 
     return "[%6.2f%%:%6.2f%%][%s]" % (finished_percent, failed_percent, path)
 

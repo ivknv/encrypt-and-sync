@@ -7,7 +7,8 @@ from .common import normalize_node
 from .Storage.Exceptions import TemporaryStorageError
 from . import PathMatch
 
-__all__ = ["BaseScannable", "DecryptedScannable", "EncryptedScannable"]
+__all__ = ["BaseScannable", "DecryptedScannable", "EncryptedScannable",
+           "scan_files"]
 
 class BaseScannable(object):
     def __init__(self, storage, path=None, type=None, modified=0, size=0):

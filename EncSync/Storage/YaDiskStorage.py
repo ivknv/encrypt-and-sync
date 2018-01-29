@@ -18,7 +18,6 @@ from .UploadController import UploadController
 
 __all__ = ["YaDiskStorage"]
 
-MIN_READ_SIZE = 512 * 1024 # Bytes
 DOWNLOAD_CHUNK_SIZE = 16384
 
 def _yadisk_meta_to_dict(meta):
@@ -99,7 +98,7 @@ class LimitedFile(object):
 
         return line
 
-    def read(self, size=-1, min_size=MIN_READ_SIZE):
+    def read(self, size=-1):
         amount_read = 0
 
         content = b""
@@ -117,7 +116,6 @@ class LimitedFile(object):
             # Just any non-empty string
             cur_content = b"1"
         else:
-            size = max(min_size, size)
             amount_to_read = min(self.limit, size)
             condition = lambda: amount_read < size
 

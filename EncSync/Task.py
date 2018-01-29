@@ -24,8 +24,8 @@ class Task(Emitter):
         self.add_event("status_changed")
         self.add_event("stop")
 
-    def __del__(self):
-        self.parent = None
+    #def __del__(self):
+    #    self.parent = None
 
     def stop(self):
         self.stopped = True

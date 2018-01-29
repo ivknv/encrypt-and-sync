@@ -6,6 +6,7 @@ import threading
 from ..Task import Task
 from ..Encryption import MIN_ENC_SIZE
 from ..FileList import FileList
+from ..Scannable import DecryptedScannable, scan_files
 from .. import Paths
 from .Worker import DownloaderWorker
 from .Task import DownloadTask
@@ -19,7 +20,7 @@ class DownloadTarget(Task):
 
         self.type = None
         self.downloader = downloader
-        self.name = ""
+        self.encsync = downloader.encsync
         self.src = None
         self.dst = None
         self.src_path = ""
@@ -74,31 +75,63 @@ class DownloadTarget(Task):
 
         return new_task
 
-    def task_generator(self, filelist):
+    def task_generator(self, nodes):
         try:
             dst_type = self.dst.get_meta(self.dst_path)["type"]
         except FileNotFoundError:
             dst_type = None
 
-        nodes = filelist.find_node_children(self.src_path)
-
         for node in nodes:
             yield self.node_to_task(node, dst_type)
 
     def set_tasks(self):
-        flist = FileList(self.name, self.src.storage.name, self.downloader.directory)
-        flist.create()
+        encsync_target, dir_type = self.encsync.identify_target(self.src.storage.name,
+                                                                self.src_path)
 
-        root_node = flist.find_node(self.src_path)
+        if encsync_target is None:
+            self.expected_total_children = -1
+            scannable = DecryptedScannable(self.src.storage, self.src_path)
+            scannable.identify()
 
-        if root_node["type"] is None:
-            msg = "Path wasn't found in the database: %r" % (self.src_path,)
-            raise NotFoundInDBError(msg, self.src_path)
+            self.type = scannable.type
 
-        self.type = root_node["type"]
-        self.expected_total_children = flist.get_file_count(self.src_path)
+            nodes = (i[1] for i in scan_files(scannable))
+            nodes = (j for i in ([scannable.to_node()], nodes) for j in i)
+        else:
+            target_name = encsync_target["name"]
+            flist = FileList(target_name, self.src.storage.name,
+                             self.downloader.directory)
+            flist.create()
 
-        self.tasks = self.task_generator(flist)
+            root_node = flist.find_node(self.src_path)
+
+            if root_node["type"] is not None:
+                self.type = root_node["type"]
+                self.expected_total_children = flist.get_file_count(self.src_path)
+
+                nodes = flist.find_node_children(self.src_path)
+            else:
+                self.expected_total_children = -1
+
+                if self.src.is_encrypted(self.src_path):
+                    dir_name = encsync_target[dir_type]["name"]
+                    target_storage = self.src.get_target_storage(target_name,
+                                                                 dir_name)
+
+                    prefix = encsync_target[dir_type]["path"]
+                    enc_path = target_storage.encrypt_path(self.src_path)[0]
+                    filename_encoding = target_storage.filename_encoding
+
+                    scannable = EncryptedScannable(self.src.storage,
+                                                   prefix, enc_path,
+                                                   filename_encoding=filename_encoding)
+                else:
+                    scannable = DecryptedScannable(self.src.storage, self.src_path)
+
+                nodes = (i[1] for i in scan_files(scannable))
+                nodes = (j for i in ([scannable.to_node()], nodes) for j in i)
+
+        self.tasks = self.task_generator(nodes)
 
     def complete(self, worker):
         if self.total_children == 0:
