@@ -183,23 +183,23 @@ class DownloadTask(Task):
         if self.stop_condition():
             return
 
-        if self.dst.is_encrypted(self.dst_path):
-            download_generator = self.src.get_encrypted_file(self.src_path)
-        else:
-            download_generator = self.src.get_file(self.src_path)
-
-        self.download_controller = next(download_generator)
-        if self.download_controller is not None:
-            self.download_controller.limit = self.download_limit
-            self.download_controller.add_receiver(DownloadControllerReceiver(self))
-
-            self.download_controller.begin()
-            self.download_size = self.download_controller.size
-
-        if self.stop_condition():
-            return
-
         try:
+            if self.dst.is_encrypted(self.dst_path):
+                download_generator = self.src.get_encrypted_file(self.src_path)
+            else:
+                download_generator = self.src.get_file(self.src_path)
+
+            self.download_controller = next(download_generator)
+            if self.download_controller is not None:
+                self.download_controller.limit = self.download_limit
+                self.download_controller.add_receiver(DownloadControllerReceiver(self))
+
+                self.download_controller.begin()
+                self.download_size = self.download_controller.size
+
+            if self.stop_condition():
+                return
+
             tmpfile = next(download_generator)
 
             if self.download_controller is None:
