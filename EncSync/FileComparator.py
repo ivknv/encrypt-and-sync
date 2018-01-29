@@ -34,6 +34,9 @@ class FileComparator(object):
         self.prefix1 = Paths.dir_normalize(Paths.join_properly("/", target_src))
         self.prefix2 = Paths.dir_normalize(Paths.join_properly("/", target_dst))
 
+        self.dir_name1 = self.target["src"]["name"]
+        self.dir_name2 = self.target["dst"]["name"]
+
         self.nodes1 = flist1.select_all_nodes()
         self.nodes2 = flist2.select_all_nodes()
 
@@ -136,8 +139,17 @@ class FileComparator(object):
                 self.padded_size2 = self.node2["padded_size"]
 
             if self.path1 is not None and self.target is not None:
-                if not PathMatch.match(self.node1["path"], self.target["allowed_paths"]):
+                allowed_paths = self.target["allowed_paths"].get(self.dir_name1, [])
+
+                if not PathMatch.match(self.node1["path"], allowed_paths):
                     self.node1 = try_next(self.it1)
+                    continue
+
+            if self.path2 is not None and self.target is not None:
+                allowed_paths = self.target["allowed_paths"].get(self.dir_name2, [])
+
+                if not PathMatch.match(self.node2["path"], allowed_paths):
+                    self.node1 = try_next(self.it2)
                     continue
 
             if self.is_removed():

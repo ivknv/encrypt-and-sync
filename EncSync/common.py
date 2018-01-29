@@ -63,3 +63,16 @@ def get_file_size(file_or_path):
     file_or_path.seek(fpos)
 
     return size
+
+def recognize_path(path, default="local"):
+    before, div, after = path.partition("://")
+
+    if not div:
+        return (before, default)
+
+    sub_map = {"disk": "yadisk"}
+
+    before = sub_map.get(before, before)
+
+    return (after, before)
+

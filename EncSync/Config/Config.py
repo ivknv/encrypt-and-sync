@@ -22,7 +22,7 @@ class Config(object):
         self.n_retries = 5
 
         self.targets = {}
-        self.allowed_paths = []
+        self.allowed_paths = {}
 
     @property
     def upload_timeout(self):

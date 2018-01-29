@@ -81,14 +81,15 @@ class ScanTarget(Task):
         if self.stop_condition():
             return
 
-        if self.storage.name == "local":
-            path = self.path
+        path = self.path
 
-            if scannable.type == "d":
-                path = Paths.dir_normalize(path)
+        if scannable.type == "d":
+            path = Paths.dir_normalize(path)
 
-            if not PathMatch.match(path, self.encsync.allowed_paths):
-                return
+        allowed_paths = self.encsync.allowed_paths.get(self.storage.name, [])
+
+        if not PathMatch.match(path, allowed_paths):
+            return
 
         if scannable.type is not None:
             self.shared_flist.insert_node(scannable.to_node())

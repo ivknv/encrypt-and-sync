@@ -3,7 +3,7 @@
 import os
 
 from ... import Paths
-from ...common import validate_target_name
+from ...common import validate_target_name, recognize_path
 from ...EncScript import Command
 from ...EncScript.Exceptions import EvaluationError
 
@@ -19,18 +19,6 @@ def prepare_local_path(path):
 def prepare_remote_path(path):
     return Paths.dir_normalize(Paths.join_properly("/", path))
 
-def recognize_path(path, default="local"):
-    before, div, after = path.partition("://")
-
-    if not div:
-        return (before, default)
-
-    sub_map = {"disk": "yadisk"}
-
-    before = sub_map.get(before, before)
-
-    return (after, before)
-
 class TargetBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
         ConfigBlock.__init__(self, args, body, parent_namespace)
@@ -39,7 +27,7 @@ class TargetBlock(ConfigBlock):
                        "src": {},
                        "dst": {},
                        "filename_encoding": "base64",
-                       "allowed_paths": []}
+                       "allowed_paths": {}}
 
     def begin(self, config, *args, **kwargs):
         if len(self.args) != 2:

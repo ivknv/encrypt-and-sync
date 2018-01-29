@@ -52,8 +52,8 @@ class EncSync(object):
         self.sync_threads = 1
         self.download_threads = 1
         self.scan_threads = 1
-        self.allowed_paths = [] # Compiled
-        self._allowed_paths = [] # Uncompiled
+        self.allowed_paths = {} # Compiled
+        self._allowed_paths = {} # Uncompiled
 
     @property
     def upload_timeout(self):
@@ -197,11 +197,17 @@ class EncSync(object):
         self.download_threads = config.download_threads
         self.scan_threads = config.scan_threads
         self._allowed_paths = config.allowed_paths
-        self.allowed_paths = PathMatch.compile_patterns(self._allowed_paths)
+        self.allowed_paths = {}
+
+        for k, v in self._allowed_paths.items():
+            self.allowed_paths[k] = PathMatch.compile_patterns(v)
 
         for target in self.targets.values():
             target["_allowed_paths"] = target["allowed_paths"]
-            target["allowed_paths"]  = PathMatch.compile_patterns(target["_allowed_paths"])
+
+            for k, v in target["_allowed_paths"].items():
+                target["allowed_paths"][k] = PathMatch.compile_patterns(v)
+
 
             for k in ("src", "dst"):
                 path = target[k]["path"]

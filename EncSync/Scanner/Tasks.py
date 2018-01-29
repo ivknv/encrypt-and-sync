@@ -42,11 +42,7 @@ class DecryptedScanTask(ScanTask):
         target = self.parent
 
         self.status = "pending"
-
-        if target.storage.name == "local":
-            allowed_paths = self.encsync.allowed_paths
-        else:
-            allowed_paths = None
+        allowed_paths = self.encsync.allowed_paths.get(target.storage.name, [])
 
         files = scan_files(self.scannable, allowed_paths)
 
@@ -75,10 +71,7 @@ class EncryptedScanTask(ScanTask):
 
         self.status = "pending"
 
-        if target.storage.name == "local":
-            allowed_paths = self.encsync.allowed_paths
-        else:
-            allowed_paths = None
+        allowed_paths = self.encsync.allowed_paths(target.storage.name, [])
 
         while not self.stop_condition(worker):
             try:
@@ -142,10 +135,7 @@ class AsyncDecryptedScanTask(ScanTask):
         self.status = "pending"
         self.cur_path = scannable.path
 
-        if target.storage.name == "local":
-            allowed_paths = self.encsync.allowed_paths
-        else:
-            allowed_paths = None
+        allowed_paths = self.encsync.allowed_paths.get(target.storage.name, [])
 
         scan_result = scannable.scan(allowed_paths)
 
@@ -177,10 +167,7 @@ class AsyncEncryptedScanTask(ScanTask):
         scannable = self.scannable
         self.status = "pending"
 
-        if target.storage.name == "local":
-            allowed_paths = self.encsync.allowed_paths
-        else:
-            allowed_paths = None
+        allowed_paths = self.encsync.allowed_paths.get(target.storage.name, [])
 
         self.cur_path = scannable.path
 

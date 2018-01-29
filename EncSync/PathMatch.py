@@ -4,6 +4,8 @@
 import fnmatch
 import re
 
+__all__ = ["compile_patterns", "match"]
+
 def compile_patterns(patterns):
     return [[lst_type, [re.compile(fnmatch.translate(i)) for i in lst]]
             for lst_type, lst in patterns]
