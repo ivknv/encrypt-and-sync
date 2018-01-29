@@ -6,7 +6,7 @@ import threading
 from ..Task import Task
 from ..Encryption import MIN_ENC_SIZE
 from ..FileList import FileList
-from ..Scannable import DecryptedScannable, scan_files
+from ..Scannable import EncryptedScannable, DecryptedScannable, scan_files
 from .. import Paths
 from .Worker import DownloaderWorker
 from .Task import DownloadTask
