@@ -11,6 +11,7 @@ from . import Paths
 from .Config import Config
 from . import PathMatch
 from .common import get_file_size
+from .constants import TEMP_ENCRYPT_BUFFER_LIMIT, CONFIG_TEST
 
 __all__ = ["EncSync", "EncSyncError", "InvalidEncryptedDataError",
            "WrongMasterKeyError"]
@@ -19,10 +20,6 @@ try:
     JSONDecodeError = json.JSONDecodeError
 except AttributeError:
     JSONDecodeError = ValueError
-
-CONFIG_TEST = b"TEST STRING\n"
-
-TEMP_ENCRYPT_BUFFER_LIMIT = 80 * 1024**2 # In bytes
 
 class EncSyncError(Exception):
     pass
