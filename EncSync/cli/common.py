@@ -3,7 +3,6 @@
 
 import argparse
 from getpass import getpass
-import hashlib
 import json
 import sys
 import os

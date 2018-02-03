@@ -10,7 +10,6 @@ from ..Scannable import EncryptedScannable, DecryptedScannable, scan_files
 from .. import Paths
 from .Worker import DownloaderWorker
 from .Task import DownloadTask
-from .Exceptions import NotFoundInDBError
 
 __all__ = ["DownloadTarget"]
 

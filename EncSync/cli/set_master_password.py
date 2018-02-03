@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashlib
-
 from ..Config import Config
 from ..Config.Exceptions import InvalidEncryptedDataError
 from .common import ask_master_password, authenticate, show_error

@@ -75,8 +75,8 @@ class DownloaderReceiver(EventHandler):
         dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
         src_path = "%s://%s" % (target.src.storage.name, src_path)
 
-        print("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
-                                             exc.error_type, exc))
+        show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
+                                                  exc.error_type, exc))
 
     def on_not_found_error(self, exc):
         target = self.downloader.cur_target
@@ -84,7 +84,7 @@ class DownloaderReceiver(EventHandler):
         dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
         src_path = "%s://%s" % (target.src.storage.name, target.src_path)
 
-        print("[%s <- %s]: error: %s" % (dst_path, src_path, exc))
+        show_error("[%s <- %s]: error: %s" % (dst_path, src_path, exc))
 
     def on_exception(self, exception):
         traceback.print_exc()
@@ -134,7 +134,7 @@ class WorkerReceiver(EventHandler):
 
     def on_disk_error(self, exc, worker):
         progress_str = get_progress_str(worker.cur_task)
-        print("%s: error: %s: %s" % (progress_str, exc.error_type, exc))
+        show_error("%s: error: %s: %s" % (progress_str, exc.error_type, exc))
 
     def on_exception(self, exc, worker):
         traceback.print_exc()

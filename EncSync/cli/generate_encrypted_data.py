@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashlib
 import os
 from .common import ask_master_password, show_error
 from ..Config import Config

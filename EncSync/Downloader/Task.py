@@ -3,8 +3,6 @@
 
 from ..Task import Task
 from ..Event.Receiver import Receiver
-from ..Encryption import pad_size, MIN_ENC_SIZE
-from ..FileList import FileList
 from ..common import get_file_size
 from ..Storage.Exceptions import ControllerInterrupt
 from .. import Paths
