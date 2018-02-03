@@ -9,7 +9,7 @@ from yadisk.exceptions import YaDiskError
 from .. import Paths
 from ..Downloader import Downloader
 from ..Downloader.Exceptions import NotFoundInDBError
-from ..Event.EventHandler import EventHandler
+from ..Event.Receiver import Receiver
 
 from . import common
 from .common import show_error, get_progress_str, make_size_readable
@@ -31,9 +31,9 @@ def print_target_totals(target):
     print("[%s <- %s]: %d tasks failed" % (dst_path, src_path, n_failed))
     print("[%s <- %s]: %s downloaded" % (dst_path, src_path, downloaded))
 
-class DownloaderReceiver(EventHandler):
+class DownloaderReceiver(Receiver):
     def __init__(self, downloader):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
 
@@ -89,9 +89,9 @@ class DownloaderReceiver(EventHandler):
     def on_exception(self, exception):
         traceback.print_exc()
 
-class TargetReceiver(EventHandler):
+class TargetReceiver(Receiver):
     def __init__(self):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.add_callback("status_changed", self.on_status_changed)
 
@@ -108,9 +108,9 @@ class TargetReceiver(EventHandler):
         if status in ("finished", "failed",):
             print_target_totals(target)
 
-class WorkerReceiver(EventHandler):
+class WorkerReceiver(Receiver):
     def __init__(self):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.task_receiver = TaskReceiver()
 
@@ -139,9 +139,9 @@ class WorkerReceiver(EventHandler):
     def on_exception(self, exc, worker):
         traceback.print_exc()
 
-class TaskReceiver(EventHandler):
+class TaskReceiver(Receiver):
     def __init__(self):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.add_callback("status_changed", self.on_status_changed)
         self.add_callback("downloaded_changed", self.on_downloaded_changed)

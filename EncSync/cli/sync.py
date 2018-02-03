@@ -13,7 +13,7 @@ from .remove_duplicates import DuplicateRemoverReceiver
 from ..Synchronizer import Synchronizer
 from ..Scanner import Scanner
 from ..DuplicateRemover import DuplicateRemover
-from ..Event.EventHandler import EventHandler
+from ..Event.Receiver import Receiver
 from ..FileList import DuplicateList
 from ..DiffList import DiffList
 from .SignalManagers import GenericSignalManager
@@ -164,9 +164,9 @@ def print_target_totals(target):
     print("[%s]: %d tasks successful" % (target.name, n_finished))
     print("[%s]: %d tasks failed" % (target.name, n_failed))
 
-class SynchronizerReceiver(EventHandler):
+class SynchronizerReceiver(Receiver):
     def __init__(self, env, synchronizer):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
         self.target_receiver = TargetReceiver(env)
@@ -211,9 +211,9 @@ class SynchronizerReceiver(EventHandler):
     def on_exception(self, exc, synchronizer):
         traceback.print_exc()
 
-class TargetReceiver(EventHandler):
+class TargetReceiver(Receiver):
     def __init__(self, env):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.env = env
 
@@ -304,9 +304,9 @@ class TargetReceiver(EventHandler):
 
         print("[%s]: exited stage %r" % (target.name, stage))
 
-class WorkerReceiver(EventHandler):
+class WorkerReceiver(Receiver):
     def __init__(self):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.task_receiver = TaskReceiver()
 
@@ -358,9 +358,9 @@ class WorkerReceiver(EventHandler):
     def on_exception(self, exc, worker):
         traceback.print_exc()
 
-class TaskReceiver(EventHandler):
+class TaskReceiver(Receiver):
     def __init__(self):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.add_callback("uploaded_changed", self.on_uploaded_changed)
         self.add_callback("status_changed", self.on_status_changed)

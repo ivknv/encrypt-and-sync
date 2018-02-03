@@ -4,16 +4,16 @@
 import sys
 import time
 
-from ..Event.EventHandler import EventHandler
+from ..Event.Emitter import Emitter
 
 if sys.platform.startswith("win"):
     DEFAULT_JOIN_INTERVAL = 1
 else:
     DEFAULT_JOIN_INTERVAL = None
 
-class WorkerBase(EventHandler):
+class WorkerBase(Emitter):
     def __init__(self, parent=None):
-        EventHandler.__init__(self)
+        Emitter.__init__(self)
 
         self.parent = parent
         self.stopped = False

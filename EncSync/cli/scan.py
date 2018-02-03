@@ -7,7 +7,7 @@ import traceback
 from yadisk.exceptions import YaDiskError
 
 from ..Scanner import Scanner
-from ..Event.EventHandler import EventHandler
+from ..Event.Receiver import Receiver
 from ..FileList import FileList, DuplicateList
 from ..ExceptionManager import ExceptionManager
 from .SignalManagers import GenericSignalManager
@@ -72,9 +72,9 @@ def print_target_totals(env, target):
 
     print("[%s:%s]: %d duplicate(s)" % (target.name, target.type, n_duplicates))
 
-class ScannerReceiver(EventHandler):
+class ScannerReceiver(Receiver):
     def __init__(self, env, scanner):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.worker_receiver = WorkerReceiver()
         self.target_receiver = TargetReceiver(env)
@@ -116,9 +116,9 @@ class ScannerReceiver(EventHandler):
     def on_exception(self, exc, scanner):
         traceback.print_exc()
 
-class TargetReceiver(EventHandler):
+class TargetReceiver(Receiver):
     def __init__(self, env):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.env = env
 
@@ -138,9 +138,9 @@ class TargetReceiver(EventHandler):
     def on_duplicates_found(self, event, duplicates):
         print("Found %d duplicate(s) of %s" % (len(duplicates) - 1, duplicates[0].path))
 
-class WorkerReceiver(EventHandler):
+class WorkerReceiver(Receiver):
     def __init__(self):
-        EventHandler.__init__(self)
+        Receiver.__init__(self)
 
         self.add_callback("next_node", self.on_next_node)
         self.add_callback("error", self.on_error)
