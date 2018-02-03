@@ -150,7 +150,7 @@ class UploadTask(SyncTask):
                 self.flist1.remove_node(src_path)
                 self.autocommit()
 
-                self.status = "finished"
+                self.status = "skipped"
                 return True
 
             timeout = self.config.upload_timeout
@@ -227,7 +227,7 @@ class MkdirTask(SyncTask):
             self.flist1.remove_node(src_path)
             self.autocommit()
 
-            self.status = "finished"
+            self.status = "skipped"
             return True
 
         ivs = self.dst.mkdir(self.path)
