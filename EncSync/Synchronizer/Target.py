@@ -30,7 +30,7 @@ class SyncTarget(StagedTask):
 
         self.shared_flist1 = None
         self.shared_flist2 = None
-        self.difflist = DiffList(self.config, self.synchronizer.directory)
+        self.difflist = DiffList(self.synchronizer.directory)
         self.differences = None
 
         self.tasks = []

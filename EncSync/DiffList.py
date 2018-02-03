@@ -6,7 +6,7 @@ import os
 from . import CDB
 
 class DiffList(object):
-    def __init__(self, config, directory=None, *args, **kwargs):
+    def __init__(self, directory=None, *args, **kwargs):
         if directory is None:
             path = "encsync_diffs.db"
         else:

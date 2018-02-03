@@ -51,8 +51,8 @@ def select_duplicates(env, target_storage):
 
     return duplist.find_children(target_storage.prefix)
 
-def print_diffs(env, config, target):
-    difflist = DiffList(config, env["db_dir"])
+def print_diffs(env, target):
+    difflist = DiffList(env["db_dir"])
     name = target.name
 
     n_duplicates = 0
@@ -91,7 +91,7 @@ def ask_continue():
 
     return values[answer]
 
-def view_diffs(env, config, target):
+def view_diffs(env, target):
     funcs = {"r":  view_rm_diffs,       "d":  view_dirs_diffs,
              "f":  view_new_file_diffs, "u":  view_update_diffs,
              "du": view_duplicates}
@@ -102,12 +102,12 @@ def view_diffs(env, config, target):
         answer = input(s).lower()
 
         if answer in funcs.keys():
-            funcs[answer](env, config, target)
+            funcs[answer](env, target)
         elif answer == "s":
             break
 
-def view_rm_diffs(env, config, target):
-    difflist = DiffList(config, env["db_dir"])
+def view_rm_diffs(env, target):
+    difflist = DiffList(env["db_dir"])
 
     diffs = difflist.select_rm_differences(target.name)
 
@@ -115,8 +115,8 @@ def view_rm_diffs(env, config, target):
     for diff in diffs:
         print("  %s %s" % (diff["node_type"], diff["path"]))
 
-def view_dirs_diffs(env, config, target):
-    difflist = DiffList(config, env["db_dir"])
+def view_dirs_diffs(env, target):
+    difflist = DiffList(env["db_dir"])
 
     diffs = difflist.select_dirs_differences(target.name)
 
@@ -124,8 +124,8 @@ def view_dirs_diffs(env, config, target):
     for diff in diffs:
         print("  %s" % (diff["path"],))
 
-def view_new_file_diffs(env, config, target):
-    difflist = DiffList(config, env["db_dir"])
+def view_new_file_diffs(env, target):
+    difflist = DiffList(env["db_dir"])
 
     diffs = difflist.select_new_file_differences(target.name)
 
@@ -133,8 +133,8 @@ def view_new_file_diffs(env, config, target):
     for diff in diffs:
         print("  %s" % (diff["path"],))
 
-def view_update_diffs(env, config, target):
-    difflist = DiffList(config, env["db_dir"])
+def view_update_diffs(env, target):
+    difflist = DiffList(env["db_dir"])
 
     diffs = difflist.select_update_differences(target.name)
 
@@ -142,7 +142,7 @@ def view_update_diffs(env, config, target):
     for diff in diffs:
         print("  %s" % (diff["path"],))
 
-def view_duplicates(env, config, target):
+def view_duplicates(env, target):
     if target.src.encrypted:
         duplicates = select_duplicates(env, target.src)
 
@@ -280,7 +280,7 @@ class TargetReceiver(EventHandler):
 
         if stage == "scan":
             if target.status == "pending":
-                print_diffs(self.env, target.config, target)
+                print_diffs(self.env, target)
 
                 ask = self.env.get("ask", False)
                 no_diffs = self.env.get("no_diffs", False)
@@ -289,7 +289,7 @@ class TargetReceiver(EventHandler):
                     action = ask_continue()
 
                     while action == "view":
-                        view_diffs(self.env, target.config, target)
+                        view_diffs(self.env, target)
                         action = ask_continue()
 
                     if action == "stop":
