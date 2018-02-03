@@ -8,8 +8,9 @@ import json
 import sys
 import os
 
-from ..EncSync import EncSync, InvalidEncryptedDataError
-from ..Config.Exceptions import InvalidConfigError
+from ..Config import Config
+from ..Config.utils import check_master_key
+from ..Config.Exceptions import InvalidConfigError, InvalidEncryptedDataError
 from ..Downloader import DownloadTask
 from ..Synchronizer import SyncTask
 from ..DuplicateRemover import DuplicateRemoverTask
@@ -137,10 +138,10 @@ def prepare_remote_path(path, cwd="/"):
 
 def authenticate(env, enc_data_path, master_password=None):
     if not os.path.exists(enc_data_path):
-        show_error("Error: file not found: %r" % enc_data_path)
+        show_error("Error: file not found: %r" % (enc_data_path,))
         return None, 1
     elif os.path.isdir(enc_data_path):
-        show_error("Error: %r is a directory" % enc_data_path)
+        show_error("Error: %r is a directory" % (enc_data_path,))
         return None, 1
 
     if master_password is None:
@@ -152,19 +153,19 @@ def authenticate(env, enc_data_path, master_password=None):
             return None, 130
 
     while True:
-        key = hashlib.sha256(master_password.encode("utf8")).digest()
+        key = Config.encode_key(master_password)
 
         try:
-            if EncSync.check_master_key(key, enc_data_path):
+            if check_master_key(key, enc_data_path):
                 env["master_password_sha256"] = key
                 return master_password, 0
             else:
                 show_error("Wrong master password. Try again")
         except FileNotFoundError:
-            show_error("Error: file not found: %r" % enc_data_path)
+            show_error("Error: file not found: %r" % (enc_data_path,))
             return None, 1
         except IsADirectoryError:
-            show_error("Error: %r is a directory" % enc_data_path)
+            show_error("Error: %r is a directory" % (enc_data_path,))
             return None, 1
         except DecryptionError as e:
             show_error("Error: failed to decrypt file %r: %s" % (enc_data_path, e))
@@ -181,10 +182,10 @@ def ask_master_password(msg="Master password: "):
     except (KeyboardInterrupt, EOFError):
         return
 
-def make_encsync(env, enc_data_path=None, config_path=None, master_password=None):
-    encsync = env.get("encsync", None)
-    if encsync is not None:
-        return encsync, 0
+def make_config(env, enc_data_path=None, config_path=None, master_password=None):
+    config = env.get("config", None)
+    if config is not None:
+        return config, 0
 
     if config_path is None:
         config_path = env["config_path"]
@@ -197,24 +198,22 @@ def make_encsync(env, enc_data_path=None, config_path=None, master_password=None
     if master_password is None:
         return None, ret
 
-    encsync = EncSync(master_password)
     try:
-        config = EncSync.load_config(config_path)
-        encsync.set_config(config)
+        config = Config.load(config_path)
+        config.master_password = master_password
     except InvalidConfigError as e:
-        show_error("Error: invalid configuration: %s" % e)
+        show_error("Error: invalid configuration: %s" % (e,))
         return None, 1
 
     try:
-        enc_data = EncSync.load_encrypted_data(enc_data_path, encsync.master_key)
-        encsync.set_encrypted_data(enc_data)
+        config.load_encrypted_data(enc_data_path)
     except InvalidEncryptedDataError:
         show_error("Error: invalid encrypted data")
         return None, 1
 
-    env["encsync"] = encsync
+    env["config"] = config
 
-    return encsync, 0
+    return config, 0
 
 def show_error(msg):
     print(msg, file=sys.stderr)
@@ -234,10 +233,10 @@ def create_encsync_dirs(env):
     return 0
 
 def cleanup_filelists(env):
-    encsync = env["encsync"]
+    config = env["config"]
     files = os.listdir(env["db_dir"])
 
-    target_names = set(encsync.targets.keys())
+    target_names = set(config.targets.keys())
 
     suffixes = ("-local-filelist.db", "-yadisk-filelist.db",
                 "-local-duplicates.db", "-yadisk-duplicates.db")

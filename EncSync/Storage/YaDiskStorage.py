@@ -274,19 +274,19 @@ class YaDiskStorage(Storage):
     case_sensitive = True
     parallelizable = True
 
-    def __init__(self, encsync):
-        Storage.__init__(self, encsync)
+    def __init__(self, config):
+        Storage.__init__(self, config)
 
-        token = encsync.encrypted_data.get("yadisk_token", "")
+        token = config.encrypted_data.get("yadisk_token", "")
 
         self.yadisk = yadisk.YaDisk(YADISK_APP_ID, YADISK_APP_SECRET, token)
 
     def get_meta(self, path, timeout=None, n_retries=None):
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         try:
             meta = self.yadisk.get_meta(path, timeout=timeout, n_retries=n_retries)
@@ -299,10 +299,10 @@ class YaDiskStorage(Storage):
 
     def listdir(self, path, timeout=None, n_retries=None):
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         try:
             contents = self.yadisk.listdir(path, timeout=timeout, n_retries=n_retries)
@@ -318,10 +318,10 @@ class YaDiskStorage(Storage):
 
     def mkdir(self, path, timeout=None, n_retries=None):
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         try:
             self.yadisk.mkdir(path, timeout=timeout, n_retries=n_retries)
@@ -334,10 +334,10 @@ class YaDiskStorage(Storage):
 
     def remove(self, path, timeout=None, n_retries=None):
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         try:
             self.yadisk.remove(path, timeout=timeout, n_retries=n_retries)
@@ -348,13 +348,13 @@ class YaDiskStorage(Storage):
 
     def upload(self, in_file, out_path, timeout=None, n_retries=None, limit=None):
         if limit is None:
-            limit = self.encsync.upload_limit
+            limit = self.config.upload_limit
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         if timeout is None:
-            timeout = self.encsync.upload_timeout
+            timeout = self.config.upload_timeout
 
         controller = YaDiskUploadController(self.yadisk, in_file, out_path,
                                             limit, timeout, n_retries)
@@ -363,13 +363,13 @@ class YaDiskStorage(Storage):
 
     def download(self, in_path, out_file, timeout=None, n_retries=None, limit=None):
         if limit is None:
-            limit = self.encsync.download_limit
+            limit = self.config.download_limit
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         controller = YaDiskDownloadController(self.yadisk, in_path, out_file,
                                               limit, timeout, n_retries)
@@ -378,10 +378,10 @@ class YaDiskStorage(Storage):
 
     def is_file(self, path, timeout=None, n_retries=None):
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         try:
             return self.yadisk.is_file(path, timeout=timeout, n_retries=n_retries)
@@ -390,10 +390,10 @@ class YaDiskStorage(Storage):
 
     def is_dir(self, path, timeout=None, n_retries=None):
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         try:
             return self.yadisk.is_dir(path, timeout=timeout, n_retries=n_retries)
@@ -402,10 +402,10 @@ class YaDiskStorage(Storage):
 
     def exists(self, path, timeout=None, n_retries=None):
         if timeout is None:
-            timeout = self.encsync.timeout
+            timeout = self.config.timeout
 
         if n_retries is None:
-            n_retries = self.encsync.n_retries
+            n_retries = self.config.n_retries
 
         try:
             return self.yadisk.exists(path, timeout=timeout, n_retries=n_retries)

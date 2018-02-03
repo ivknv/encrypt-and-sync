@@ -25,15 +25,17 @@ from ..common import show_error
 from ..Environment import Environment
 from .ConsoleProgram import ConsoleProgram
 
+__all__ = ["Console", "run_console"]
+
 class Console(object):
-    def __init__(self, encsync, env):
+    def __init__(self, config, env):
         self.storages = {}
         self.cwd = Paths.from_sys(os.getcwd())
         self.pwd = self.cwd
         self.env = env
         self.exit_code = 0
         self.quit = False
-        self.encsync = encsync
+        self.config = config
         self.cur_storage = self.get_storage("local")
         self.previous_storage = self.cur_storage
 
@@ -58,7 +60,7 @@ class Console(object):
             return self.storages[name]
         except KeyError:
             directory = self.env["db_dir"]
-            storage = EncryptedStorage(self.encsync, name, directory)
+            storage = EncryptedStorage(self.config, name, directory)
             self.storages[name] = storage
             return storage
 
@@ -157,15 +159,15 @@ class Console(object):
         return self.exit_code
 
 def run_console(env):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     if use_readline:
         readline.parse_and_bind("tab: complete")
 
-    console = Console(encsync, Environment(env))
+    console = Console(config, Environment(env))
     console.env.parent = env
 
     return console.input_loop()

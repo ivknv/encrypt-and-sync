@@ -45,7 +45,7 @@ class SyncTask(Task):
         self._uploaded = 0
         self._downloaded = 0
 
-        self.encsync = target.encsync
+        self.config = target.config
 
         self.upload_limit = float("inf") # Bytes per second
         self.download_limit = float("inf") # Bytes per second
@@ -153,7 +153,7 @@ class UploadTask(SyncTask):
                 self.status = "finished"
                 return True
 
-            timeout = self.encsync.upload_timeout
+            timeout = self.config.upload_timeout
 
             if new_size >= 700 * 1024**2:
                 if not isinstance(timeout, (tuple, list)):
@@ -173,7 +173,7 @@ class UploadTask(SyncTask):
 
             self.download_controller = next(download_generator)
             if self.download_controller is not None:
-                self.download_controller.timeout = self.encsync.timeout
+                self.download_controller.timeout = self.config.timeout
                 self.download_controller.limit = self.download_limit
                 self.download_controller.add_receiver(DownloadControllerReceiver(self))
 

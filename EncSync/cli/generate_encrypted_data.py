@@ -4,26 +4,27 @@
 import hashlib
 import os
 from .common import ask_master_password, show_error
-from ..EncSync import EncSync
+from ..Config import Config
 
-def make_encrypted_data(env, path):
+__all__ = ["generate_encrypted_data"]
+
+def generate_encrypted_data(env, path):
     if os.path.isdir(path):
         show_error("Error: %r is a directory" % path)
         return 1
 
-    while True:
-        key = ask_master_password("Enter a new key: ")
+    config = Config()
 
-        if key is None:
+    while True:
+        plain_key = ask_master_password("Enter a new key: ")
+
+        if plain_key is None:
             return 130
 
         confirm = ask_master_password("Confirm key: ")
 
-        if confirm == key:
+        if confirm == plain_key:
             break
-
-    enc_data = {"key":            key,
-                "yandexAppToken": ""}
 
     while True:
         master_password = ask_master_password("New master password: ")
@@ -36,15 +37,16 @@ def make_encrypted_data(env, path):
         if confirm == master_password:
             break
 
-    key = hashlib.sha256(master_password.encode("utf8")).digest()
+    config.master_password = master_password
+    config.plain_key = plain_key
 
     try:
-        EncSync.store_encrypted_data(enc_data, path, key)
+        config.store_encrypted_data(path)
     except FileNotFoundError:
-        show_error("Error: no such file or directory: %r" % path)
+        show_error("Error: no such file or directory: %r" % (path,))
         return 1
     except IsADirectoryError:
-        show_error("Error: %r is a directory" % path)
+        show_error("Error: %r is a directory" % (path,))
         return 1
 
     return 0

@@ -19,7 +19,7 @@ class ScanTask(Task):
 
         self.flist = target.shared_flist
         self.duplist = target.shared_duplist
-        self.encsync = target.encsync
+        self.config = target.config
         self.cur_path = None
 
         self.add_event("interrupt")
@@ -42,7 +42,7 @@ class DecryptedScanTask(ScanTask):
         target = self.parent
 
         self.status = "pending"
-        allowed_paths = self.encsync.allowed_paths.get(target.storage.name, [])
+        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
 
         files = scan_files(self.scannable, allowed_paths)
 
@@ -71,7 +71,7 @@ class EncryptedScanTask(ScanTask):
 
         self.status = "pending"
 
-        allowed_paths = self.encsync.allowed_paths(target.storage.name, [])
+        allowed_paths = self.config.allowed_paths(target.storage.name, [])
 
         while not self.stop_condition(worker):
             try:
@@ -135,7 +135,7 @@ class AsyncDecryptedScanTask(ScanTask):
         self.status = "pending"
         self.cur_path = scannable.path
 
-        allowed_paths = self.encsync.allowed_paths.get(target.storage.name, [])
+        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
 
         scan_result = scannable.scan(allowed_paths)
 
@@ -167,7 +167,7 @@ class AsyncEncryptedScanTask(ScanTask):
         scannable = self.scannable
         self.status = "pending"
 
-        allowed_paths = self.encsync.allowed_paths.get(target.storage.name, [])
+        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
 
         self.cur_path = scannable.path
 

@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ..EncSync import EncSync, InvalidEncryptedDataError
+from ..Config import Config
+from ..Config.Exceptions import InvalidEncryptedDataError
 from .common import ask_master_password, authenticate, show_error
+
+__all__ = ["set_key"]
 
 def set_key(env):
     master_password, ret = authenticate(env, env["enc_data_path"])
@@ -10,8 +13,9 @@ def set_key(env):
     if master_password is None:
         return ret
 
-    master_key = env["master_password_sha256"]
-
+    config = Config()
+    config.master_password = master_password
+    
     while True:
         key = ask_master_password("New key: ")
 
@@ -24,18 +28,18 @@ def set_key(env):
             break
 
     try:
-        enc_data = EncSync.load_encrypted_data(env["enc_data_path"], master_key)
-        enc_data["key"] = key
+        config.load_encrypted_data(env["enc_data_path"])
+        config.key = key
 
-        EncSync.store_encrypted_data(enc_data, env["enc_data_path"], master_key)
+        config.store_encrypted_data(env["enc_data_path"])
     except InvalidEncryptedDataError:
         show_error("Error: invalid encrypted data")
         return 1
     except FileNotFoundError:
-        show_error("Error: no such file or directory: %r" % env["enc_data_path"])
+        show_error("Error: no such file or directory: %r" % (env["enc_data_path"],))
         return 1
     except IsADirectoryError:
-        show_error("Error: %r is a directory" % env["enc_data_path"])
+        show_error("Error: %r is a directory" % (env["enc_data_path"],))
         return 1
 
     return 0

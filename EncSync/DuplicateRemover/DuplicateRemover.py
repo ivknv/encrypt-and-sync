@@ -11,10 +11,10 @@ from .Target import DuplicateRemoverTarget
 __all__ = ["DuplicateRemover"]
 
 class DuplicateRemover(Worker):
-    def __init__(self, encsync, directory, n_workers=2, enable_journal=True):
+    def __init__(self, config, directory, n_workers=2, enable_journal=True):
         Worker.__init__(self)
 
-        self.encsync = encsync
+        self.config = config
         self.directory = directory
         self.n_workers = n_workers
         self.enable_journal = enable_journal
@@ -41,20 +41,20 @@ class DuplicateRemover(Worker):
         path = Paths.join_properly("/", path)
         target = DuplicateRemoverTarget(self)
         target.path = path
-        target.storage = self.encsync.storages[storage_name]
+        target.storage = self.config.storages[storage_name]
 
-        encsync_target, dir_type = self.encsync.identify_target(storage_name, path)
+        config_target, dir_type = self.config.identify_target(storage_name, path)
 
-        if encsync_target is None:
+        if config_target is None:
             msg = "%r does not belong to any targets" % (storage_name + "://" + path,)
             raise ValueError(msg)
 
-        if not encsync_target[dir_type]["encrypted"]:
+        if not config_target[dir_type]["encrypted"]:
             raise ValueError("%r is not encrypted" % (storage_name + "://" + path,))
 
-        encoding = encsync_target[dir_type]["filename_encoding"]
+        encoding = config_target[dir_type]["filename_encoding"]
         target.filename_encoding = encoding
-        target.prefix = encsync_target[dir_type]["path"]
+        target.prefix = config_target[dir_type]["path"]
 
         return target
 

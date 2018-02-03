@@ -2,30 +2,29 @@
 
 from .authenticators import authenticate_yadisk
 
-from ..EncSync import EncSync
 from ..Storage import get_storage
 
-from .common import make_encsync
+from .common import make_config
 
 __all__ = ["authenticate_storages"]
 
 STORAGE_TABLE = {"yadisk": authenticate_yadisk}
 
 def authenticate_generic_storage(env, name):
-    encsync, ret = make_encsync(env)
+    config, ret = make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
-    encsync.storages[name] = get_storage(name)(encsync)
+    config.storages[name] = get_storage(name)(config)
 
 def authenticate_storages(env):
-    encsync, ret = make_encsync(env)
+    config, ret = make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
-    storages = {j for i in encsync.targets.values()
+    storages = {j for i in config.targets.values()
                   for j in (i["src"]["name"], i["dst"]["name"])}
 
     for name in storages:
@@ -39,7 +38,6 @@ def authenticate_storages(env):
         if ret:
             return ret
 
-        enc_data = encsync.make_encrypted_data()
-        EncSync.store_encrypted_data(enc_data, env["enc_data_path"], encsync.master_key)
+        config.store_encrypted_data(env["enc_data_path"])
 
     return 0

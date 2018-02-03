@@ -9,12 +9,12 @@ from .TargetStorage import get_target_storage
 __all__ = ["EncryptedStorage"]
 
 class EncryptedStorage(object):
-    def __init__(self, encsync, storage_name, directory=None):
-        self.encsync = encsync
+    def __init__(self, config, storage_name, directory=None):
+        self.config = config
         self.name = storage_name
         self.directory = directory
         self.target_storage_class = get_target_storage(storage_name)
-        self.storage = get_storage(storage_name)(self.encsync)
+        self.storage = get_storage(storage_name)(self.config)
         self.target_storages = {}
 
     def get_target_storage(self, target_name, dirname):
@@ -23,7 +23,7 @@ class EncryptedStorage(object):
         except KeyError:
             target_storage = self.target_storage_class(target_name,
                                                        dirname,
-                                                       self.encsync,
+                                                       self.config,
                                                        self.directory)
             self.target_storages[(target_name, dirname)] = target_storage
 
@@ -39,7 +39,7 @@ class EncryptedStorage(object):
 
     def identify_directory(self, path):
         path = Paths.join_properly("/", path)
-        best_match, best_dir = self.encsync.identify_target(self.name, path)
+        best_match, best_dir = self.config.identify_target(self.name, path)
 
         if best_dir is None or not best_match[best_dir]["encrypted"]:
             return None, None
@@ -109,7 +109,7 @@ class EncryptedStorage(object):
         if target is None:
             if self.storage.name == "local":
                 yield None
-                yield self.encsync.temp_encrypt(Paths.to_sys(path))
+                yield self.config.temp_encrypt(Paths.to_sys(path))
             else:
                 tmp_file = tempfile.TemporaryFile("w+b")
                 controller = self.storage.download(path, tmp_file)
@@ -117,7 +117,7 @@ class EncryptedStorage(object):
 
                 controller.work()
 
-                yield self.encsync.temp_encrypt(tmp_file)
+                yield self.config.temp_encrypt(tmp_file)
 
             return
 

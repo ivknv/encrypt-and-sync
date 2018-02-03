@@ -16,8 +16,8 @@ from .cli.authenticate_storages import authenticate_storages
 from .cli.encrypt import encrypt, encrypt_path
 from .cli.decrypt import decrypt, decrypt_path
 from .cli.show_duplicates import show_duplicates
-from .cli.make_config import make_config
-from .cli.make_encrypted_data import make_encrypted_data
+from .cli.generate_config import generate_config
+from .cli.generate_encrypted_data import generate_encrypted_data
 from .cli.Console import run_console
 from .cli.execute import execute, execute_script
 from .cli.set_key import set_key
@@ -92,10 +92,10 @@ def main(args=None):
     common.create_encsync_dirs(genv)
 
     if not os.path.exists(genv["config_path"]):
-        make_config(genv, genv["config_path"])
+        generate_config(genv, genv["config_path"])
 
     if not os.path.exists(genv["enc_data_path"]):
-        make_encrypted_data(genv, genv["enc_data_path"])
+        generate_encrypted_data(genv, genv["enc_data_path"])
 
     setup_logging(genv)
 
@@ -148,7 +148,7 @@ def main(args=None):
                                                     ns.filename_encoding),
                "duplicates": lambda: show_duplicates(env, ns.paths),
                "console": lambda: run_console(env),
-               "make_config": lambda: make_config(env, ns.path),
+               "make_config": lambda: generate_config(env, ns.path),
                "execute": lambda: execute(env, ns.expression),
                "execute_script": lambda: execute_script(env, ns.script),
                "set_key": lambda: set_key(env),

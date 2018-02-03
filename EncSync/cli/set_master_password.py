@@ -3,8 +3,11 @@
 
 import hashlib
 
-from ..EncSync import EncSync, InvalidEncryptedDataError
+from ..Config import Config
+from ..Config.Exceptions import InvalidEncryptedDataError
 from .common import ask_master_password, authenticate, show_error
+
+__all__ = ["set_master_password"]
 
 def set_master_password(env):
     cur_master_password, ret = authenticate(env, env["enc_data_path"])
@@ -12,18 +15,19 @@ def set_master_password(env):
     if cur_master_password is None:
         return ret
 
-    cur_master_key = env["master_password_sha256"]
+    config = Config()
+    config.master_password = cur_master_password
 
     try:
-        enc_data = EncSync.load_encrypted_data(env["enc_data_path"], cur_master_key)
+        config.load_encrypted_data(env["enc_data_path"])
     except InvalidEncryptedDataError:
         show_error("Error: invalid encrypted data")
         return 1
     except FileNotFoundError:
-        show_error("Error: no such file or directory: %r" % env["enc_data_path"])
+        show_error("Error: no such file or directory: %r" % (env["enc_data_path"],))
         return 1
     except IsADirectoryError:
-        show_error("Error: %r is a directory" % env["enc_data_path"])
+        show_error("Error: %r is a directory" % (env["enc_data_path"],))
         return 1
 
     while True:
@@ -37,15 +41,15 @@ def set_master_password(env):
         if confirm == new_master_password:
             break
 
-    new_master_key = hashlib.sha256(new_master_password.encode("utf8")).digest()
+    config.master_password = new_master_password
 
     try:
-        EncSync.store_encrypted_data(enc_data, env["enc_data_path"], new_master_key)
+        config.store_encrypted_data(env["enc_data_path"])
     except FileNotFoundError:
-        show_error("Error: no such file or directory: %r" % env["enc_data_path"])
+        show_error("Error: no such file or directory: %r" % (env["enc_data_path"],))
         return 1
     except IsADirectoryError:
-        show_error("Error: %r is a directory" % env["enc_data_path"])
+        show_error("Error: %r is a directory" % (env["enc_data_path"],))
         return 1
 
     return 0

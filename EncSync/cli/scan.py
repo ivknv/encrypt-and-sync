@@ -173,21 +173,21 @@ class WorkerReceiver(EventHandler):
         traceback.print_exc()
 
 def do_scan(env, names):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     common.cleanup_filelists(env)
 
-    n_workers = env.get("n_workers", encsync.scan_threads)
+    n_workers = env.get("n_workers", config.scan_threads)
     ask = env.get("ask", False)
     choose_targets = env.get("choose_targets", False)
 
     names = list(names)
 
     if env.get("all", False):
-        for name in sorted(encsync.targets.keys()):
+        for name in sorted(config.targets.keys()):
             if not env.get("dst_only", False):
                 names.append(name + ":src")
 
@@ -200,7 +200,7 @@ def do_scan(env, names):
 
     no_journal = env.get("no_journal", False)
 
-    scanner = Scanner(env["encsync"], env["db_dir"], n_workers,
+    scanner = Scanner(env["config"], env["db_dir"], n_workers,
                       enable_journal=not no_journal)
 
     with GenericSignalManager(scanner):

@@ -6,21 +6,21 @@ class Storage(object):
     """
         Implements storage API.
 
-        :param encsync: `EncSync` instance
+        :param config: `config` instance
 
         :cvar name: `str`, storage name
         :cvar case_sensitive: `bool`, determines whether the storage filenames are case sensitive
         :cvar parallelizable: `bool`, determines whether the storage supports parallel operations
                               (or at least if it's useful or not)
-        :ivar encsync: `EncSync` instance
+        :ivar config: `config` instance
     """
 
     name = None
     case_sensitive = True
     parallelizable = False
 
-    def __init__(self, encsync):
-        self.encsync = encsync
+    def __init__(self, config):
+        self.config = config
 
     def get_meta(self, path, timeout=float("inf"), n_retries=0):
         """

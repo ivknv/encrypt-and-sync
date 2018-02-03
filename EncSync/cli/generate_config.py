@@ -3,6 +3,8 @@
 
 from .common import show_error
 
+__all__ = ["generate_config"]
+
 DEFAULT_CONFIG = """\
 # Number of threads for synchronizer, scanner and downloader respectively
 sync-threads 2
@@ -56,7 +58,7 @@ include {
     # /path/to/local/dir2
 }"""
 
-def make_config(env, path):
+def generate_config(env, path):
     try:
         with open(path, "w") as f:
             f.write(DEFAULT_CONFIG)

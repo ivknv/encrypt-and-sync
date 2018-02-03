@@ -12,11 +12,11 @@ from ..TargetStorage import get_target_storage
 __all__ = ["Synchronizer"]
 
 class Synchronizer(Worker):
-    def __init__(self, encsync, directory, n_workers=2, n_scan_workers=2,
+    def __init__(self, config, directory, n_workers=2, n_scan_workers=2,
                  enable_journal=True):
         Worker.__init__(self)
 
-        self.encsync = encsync
+        self.config = config
         self.n_workers = n_workers
         self.n_scan_workers = n_scan_workers
         self.directory = directory
@@ -76,15 +76,15 @@ class Synchronizer(Worker):
 
     def make_target(self, name, enable_scan, skip_integrity_check=False):
         try:
-            encsync_target = self.encsync.targets[name]
+            config_target = self.config.targets[name]
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
-        src_name = encsync_target["src"]["name"]
-        dst_name = encsync_target["dst"]["name"]
+        src_name = config_target["src"]["name"]
+        dst_name = config_target["dst"]["name"]
 
-        src = get_target_storage(src_name)(name, "src", self.encsync, self.directory)
-        dst = get_target_storage(dst_name)(name, "dst", self.encsync, self.directory)
+        src = get_target_storage(src_name)(name, "src", self.config, self.directory)
+        dst = get_target_storage(dst_name)(name, "dst", self.config, self.directory)
         
         target = SyncTarget(self)
         target.name = name

@@ -3,27 +3,27 @@
 import yadisk
 from yadisk.exceptions import YaDiskError
 
-from ..common import show_error, make_encsync
+from ..common import show_error, make_config
 from ...Storage import YaDiskStorage
 from ...constants import YADISK_APP_ID, YADISK_APP_SECRET
 
 __all__ = ["authenticate_yadisk"]
 
 def authenticate_yadisk(env):
-    encsync, ret = make_encsync(env)
+    config, ret = make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     y = yadisk.YaDisk(YADISK_APP_ID, YADISK_APP_SECRET,
-                      encsync.encrypted_data.get("yadisk_token", ""))
+                      config.encrypted_data.get("yadisk_token", ""))
 
     try:
         token_valid = env.get("no_auth_check", False)
 
         if not token_valid:
             token_valid = y.check_token(n_retries=1)
-            refresh_token = encsync.encrypted_data.get("yadisk_refresh_token", "")
+            refresh_token = config.encrypted_data.get("yadisk_refresh_token", "")
 
             if not token_valid and refresh_token:
                 try:
@@ -34,13 +34,13 @@ def authenticate_yadisk(env):
                     token = response.access_token
                     refresh_token = response.refresh_token
 
-                    encsync.encrypted_data["yadisk_token"] = token
-                    encsync.encrypted_data["yadisk_refresh_token"] = refresh_token
+                    config.encrypted_data["yadisk_token"] = token
+                    config.encrypted_data["yadisk_refresh_token"] = refresh_token
 
                     token_valid = True
 
         if token_valid:
-            encsync.storages["yadisk"] = YaDiskStorage(encsync)
+            config.storages["yadisk"] = YaDiskStorage(config)
             return 0
     except YaDiskError as e:
         show_error("Yandex.Disk error: %s: %s" % (e.error_type, e))
@@ -65,10 +65,10 @@ def authenticate_yadisk(env):
             refresh_token = response.refresh_token
             break
 
-        encsync.encrypted_data["yadisk_token"] = token
-        encsync.encrypted_data["yadisk_refresh_token"] = refresh_token
+        config.encrypted_data["yadisk_token"] = token
+        config.encrypted_data["yadisk_refresh_token"] = refresh_token
 
-        encsync.storages["yadisk"] = YaDiskStorage(encsync)
+        config.storages["yadisk"] = YaDiskStorage(config)
 
         return 0
     except (KeyboardInterrupt, EOFError):

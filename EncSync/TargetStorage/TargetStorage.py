@@ -12,10 +12,10 @@ class TargetStorage(object):
 
         :param target_name: `str`, name of the target
         :param dirname: `str`, directory name ("src" or "dst")
-        :param encsync: an instance of `EncSync`
+        :param config: an instance of `config`
         :param directory: `str`, path to the directory with databases
 
-        :ivar encsync: an instance of `EncSync`
+        :ivar config: an instance of `config`
         :ivar target: `dict`, target information
         :ivar encrypted: `bool`, tells whether the source is encrypted or not
         :ivar dirname: `str`, directory name ("src" or "dst")
@@ -24,12 +24,12 @@ class TargetStorage(object):
         :ivar filename_encoding: `str`, filename encoding to use
     """
 
-    def __init__(self, target_name, dirname, encsync, directory=None, filelist=None):
-        self.encsync = encsync
-        self.target = encsync.targets[target_name]
+    def __init__(self, target_name, dirname, config, directory=None, filelist=None):
+        self.config = config
+        self.target = config.targets[target_name]
         self.dirname = dirname
         self.encrypted = self.target[dirname]["encrypted"]
-        self.storage = encsync.storages[self.target[dirname]["name"]]
+        self.storage = config.storages[self.target[dirname]["name"]]
         self.prefix = Paths.dir_normalize(self.target[dirname]["path"])
         self.filename_encoding = self.target[dirname]["filename_encoding"]
 
@@ -73,7 +73,7 @@ class TargetStorage(object):
         if ivs is None:
             ivs = self.get_ivs(full_path)
 
-        return self.encsync.encrypt_path(full_path, self.prefix, ivs, self.filename_encoding)
+        return self.config.encrypt_path(full_path, self.prefix, ivs, self.filename_encoding)
 
     def get_file(self, path):
         """
@@ -107,7 +107,7 @@ class TargetStorage(object):
 
         if self.encrypted:
             if Paths.dir_normalize(path) != self.prefix:
-                meta["name"] = self.encsync.decrypt_path(
+                meta["name"] = self.config.decrypt_path(
                     meta["name"],
                     filename_encoding=self.filename_encoding)[0]
 
@@ -123,8 +123,8 @@ class TargetStorage(object):
 
         if self.encrypted:
             for meta in result:
-                meta["name"] = self.encsync.decrypt_path(meta["name"],
-                                                         filename_encoding=self.filename_encoding)[0]
+                meta["name"] = self.config.decrypt_path(meta["name"],
+                                                        filename_encoding=self.filename_encoding)[0]
 
                 yield meta
         else:

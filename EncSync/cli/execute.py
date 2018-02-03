@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .common import make_encsync, show_error
+from .common import make_config, show_error
 
 from .Console import Console
 
 __all__ = ["execute", "execute_script"]
 
 def execute(env, s):
-    encsync, ret = make_encsync(env)
+    config, ret = make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
-    console = Console(encsync, env)
+    console = Console(config, env)
 
     return console.execute(s)
 

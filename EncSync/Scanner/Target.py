@@ -19,7 +19,7 @@ class ScanTarget(Task):
         Task.__init__(self)
 
         self.scanner = scanner
-        self.encsync = scanner.encsync
+        self.config = scanner.config
         self.type = None
         self.name = name
         self.storage = storage
@@ -86,7 +86,7 @@ class ScanTarget(Task):
         if scannable.type == "d":
             path = Paths.dir_normalize(path)
 
-        allowed_paths = self.encsync.allowed_paths.get(self.storage.name, [])
+        allowed_paths = self.config.allowed_paths.get(self.storage.name, [])
 
         if not PathMatch.match(path, allowed_paths):
             return

@@ -18,7 +18,7 @@ class DuplicateRemoverTarget(Task):
         Task.__init__(self)
 
         self.duprem = duprem
-        self.encsync = duprem.encsync
+        self.config = duprem.config
         self.path = None
         self.prefix = None
         self.storage = None

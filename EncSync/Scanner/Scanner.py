@@ -9,10 +9,10 @@ from ..Worker import Worker
 from ..LogReceiver import LogReceiver
 
 class Scanner(Worker):
-    def __init__(self, encsync, directory, n_workers=2, enable_journal=True):
+    def __init__(self, config, directory, n_workers=2, enable_journal=True):
         Worker.__init__(self)
 
-        self.encsync = encsync
+        self.config = config
         self.n_workers = n_workers
         self.directory = directory
         self.enable_journal = enable_journal
@@ -45,16 +45,16 @@ class Scanner(Worker):
             raise ValueError(msg)
 
         try:
-            encsync_target = self.encsync.targets[name]
+            config_target = self.config.targets[name]
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
-        target_dir = encsync_target[scan_type]
+        target_dir = config_target[scan_type]
 
         path = target_dir["path"]
         encrypted = target_dir["encrypted"]
         filename_encoding = target_dir["filename_encoding"]
-        storage = self.encsync.storages[target_dir["name"]]
+        storage = self.config.storages[target_dir["name"]]
 
         target = ScanTarget(self, name, storage)
         target.type = scan_type

@@ -12,12 +12,12 @@ def try_next(it, default=None):
         return default
 
 class FileComparator(object):
-    def __init__(self, encsync, name, directory=None):
-        self.encsync = encsync
+    def __init__(self, config, name, directory=None):
+        self.config = config
         self.name = name
 
         try:
-            self.target = encsync.targets[name]
+            self.target = config.targets[name]
         except KeyError:
             raise ValueError("Unknown target: %r" % (name,))
 
@@ -188,8 +188,8 @@ class FileComparator(object):
     def is_transitioned(self):
         return self.node1 and self.node2 and self.type1 != self.type2
 
-def compare_lists(encsync, name, directory=None):
-    comparator = FileComparator(encsync, name, directory)
+def compare_lists(config, name, directory=None):
+    comparator = FileComparator(config, name, directory)
 
     for i in comparator:
         for j in i:

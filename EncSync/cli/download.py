@@ -198,16 +198,16 @@ class TaskReceiver(EventHandler):
         print(progress_str + ": sent %6.2f%%" % uploaded_percent)
 
 def download(env, paths):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
-    n_workers = env.get("n_workers", encsync.download_threads)
+    n_workers = env.get("n_workers", config.download_threads)
 
-    downloader = Downloader(encsync, env["db_dir"], n_workers)
-    downloader.upload_limit = encsync.upload_limit
-    downloader.download_limit = encsync.download_limit
+    downloader = Downloader(config, env["db_dir"], n_workers)
+    downloader.upload_limit = config.upload_limit
+    downloader.download_limit = config.download_limit
 
     with GenericSignalManager(downloader):
         downloader_receiver = DownloaderReceiver(downloader)

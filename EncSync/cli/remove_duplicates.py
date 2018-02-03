@@ -193,9 +193,9 @@ class TaskReceiver(Receiver):
         print(progress_str + ": %s" % status)
 
 def remove_duplicates(env, paths):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     common.cleanup_filelists(env)
@@ -215,7 +215,7 @@ def remove_duplicates(env, paths):
         # Paths are from the configuration
         user_paths = False
 
-        for target in encsync.targets.values():
+        for target in config.targets.values():
             src_path = target["src"]["name"] + "://" + target["src"]["path"]
             dst_path = target["dst"]["name"] + "://" + target["dst"]["path"]
 
@@ -225,10 +225,10 @@ def remove_duplicates(env, paths):
             if not src_only:
                 paths.append(dst_path)
 
-    n_workers = env.get("n_workers", encsync.sync_threads)
+    n_workers = env.get("n_workers", config.sync_threads)
     no_journal = env.get("no_journal", False)
 
-    duprem = DuplicateRemover(encsync, env["db_dir"], n_workers, not no_journal)
+    duprem = DuplicateRemover(config, env["db_dir"], n_workers, not no_journal)
     targets = []
 
     with GenericSignalManager(duprem):

@@ -11,7 +11,6 @@ class SyncWorker(Worker):
     def __init__(self, parent):
         Worker.__init__(self, parent)
 
-        self.encsync = parent.encsync
         self.cur_task = None
 
         self.add_event("next_task")

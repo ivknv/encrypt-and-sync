@@ -12,10 +12,10 @@ from ..EncryptedStorage import EncryptedStorage
 __all__ = ["Downloader"]
 
 class Downloader(Worker):
-    def __init__(self, encsync, directory, n_workers=2):
+    def __init__(self, config, directory, n_workers=2):
         Worker.__init__(self)
 
-        self.encsync = encsync
+        self.config = config
         self.targets = []
         self.n_workers = n_workers
         self.directory = directory
@@ -70,8 +70,8 @@ class Downloader(Worker):
             return list(self.targets)
 
     def make_target(self, src_storage_name, src_path, dst_storage_name, dst_path):
-        src = EncryptedStorage(self.encsync, src_storage_name, self.directory)
-        dst = EncryptedStorage(self.encsync, dst_storage_name, self.directory)
+        src = EncryptedStorage(self.config, src_storage_name, self.directory)
+        dst = EncryptedStorage(self.config, dst_storage_name, self.directory)
 
         target = DownloadTarget(self)
         target.src = src

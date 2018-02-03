@@ -22,7 +22,7 @@ class RemoteTargetStorage(TargetStorage):
 
                 tmp_file.seek(0)
 
-                result = self.encsync.temp_decrypt(tmp_file)
+                result = self.config.temp_decrypt(tmp_file)
 
             yield result
         else:
@@ -62,6 +62,6 @@ class RemoteTargetStorage(TargetStorage):
 
                 tmp_file.seek(0)
 
-                result = self.encsync.temp_encrypt(tmp_file)
+                result = self.config.temp_encrypt(tmp_file)
 
             yield result

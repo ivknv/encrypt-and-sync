@@ -20,7 +20,7 @@ class DownloadTarget(Task):
 
         self.type = None
         self.downloader = downloader
-        self.encsync = downloader.encsync
+        self.config = downloader.config
         self.src = None
         self.dst = None
         self.src_path = ""
@@ -85,10 +85,10 @@ class DownloadTarget(Task):
             yield self.node_to_task(node, dst_type)
 
     def set_tasks(self):
-        encsync_target, dir_type = self.encsync.identify_target(self.src.storage.name,
+        config_target, dir_type = self.config.identify_target(self.src.storage.name,
                                                                 self.src_path)
 
-        if encsync_target is None:
+        if config_target is None:
             self.expected_total_children = -1
             scannable = DecryptedScannable(self.src.storage, self.src_path)
             scannable.identify()
@@ -98,7 +98,7 @@ class DownloadTarget(Task):
             nodes = (i[1] for i in scan_files(scannable))
             nodes = (j for i in ([scannable.to_node()], nodes) for j in i)
         else:
-            target_name = encsync_target["name"]
+            target_name = config_target["name"]
             flist = FileList(target_name, self.src.storage.name,
                              self.downloader.directory)
             flist.create()
@@ -114,11 +114,11 @@ class DownloadTarget(Task):
                 self.expected_total_children = -1
 
                 if self.src.is_encrypted(self.src_path):
-                    dir_name = encsync_target[dir_type]["name"]
+                    dir_name = config_target[dir_type]["name"]
                     target_storage = self.src.get_target_storage(target_name,
                                                                  dir_name)
 
-                    prefix = encsync_target[dir_type]["path"]
+                    prefix = config_target[dir_type]["path"]
                     enc_path = target_storage.encrypt_path(self.src_path)[0]
                     filename_encoding = target_storage.filename_encoding
 

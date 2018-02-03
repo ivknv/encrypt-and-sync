@@ -20,7 +20,7 @@ class SyncTarget(StagedTask):
         StagedTask.__init__(self)
 
         self.synchronizer = synchronizer
-        self.encsync = synchronizer.encsync
+        self.config = synchronizer.config
         self.src = None
         self.dst = None
         
@@ -30,7 +30,7 @@ class SyncTarget(StagedTask):
 
         self.shared_flist1 = None
         self.shared_flist2 = None
-        self.difflist = DiffList(self.encsync, self.synchronizer.directory)
+        self.difflist = DiffList(self.config, self.synchronizer.directory)
         self.differences = None
 
         self.tasks = []
@@ -85,7 +85,7 @@ class SyncTarget(StagedTask):
             raise e
 
     def get_differences(self):
-        return FileComparator.compare_lists(self.encsync,
+        return FileComparator.compare_lists(self.config,
                                             self.name,
                                             self.synchronizer.directory)
 
@@ -145,7 +145,7 @@ class SyncTarget(StagedTask):
             return task
 
     def do_scan(self, *scan_types, force=False):
-        scanner = Scanner(self.encsync,
+        scanner = Scanner(self.config,
                           self.synchronizer.directory,
                           self.synchronizer.n_scan_workers,
                           self.synchronizer.enable_journal)
@@ -193,7 +193,7 @@ class SyncTarget(StagedTask):
         self.build_diffs_table()
 
     def init_rmdup(self):
-        duprem = DuplicateRemover(self.encsync,
+        duprem = DuplicateRemover(self.config,
                                   self.synchronizer.directory,
                                   self.synchronizer.n_workers,
                                   self.synchronizer.enable_journal)

@@ -10,12 +10,12 @@ def print_diff(diff):
     print("%s %s %s" % (diff["type"], diff["node_type"], diff["path"]))
 
 def show_diffs(env, name):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
-    for diff in compare_lists(encsync, name, env["db_dir"]):
+    for diff in compare_lists(config, name, env["db_dir"]):
         print_diff(diff)
 
     return 0

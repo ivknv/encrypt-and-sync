@@ -11,9 +11,9 @@ __all__ = ["decrypt", "decrypt_path"]
 READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 
 def decrypt(env, paths):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     assert(len(paths) > 0)
@@ -27,7 +27,7 @@ def decrypt(env, paths):
             return 1
 
     for path in paths:
-        f = encsync.temp_decrypt(path)
+        f = config.temp_decrypt(path)
 
         if os.path.isdir(dest):
             out_path = os.path.join(dest, os.path.split(path)[1])
@@ -43,12 +43,12 @@ def decrypt(env, paths):
     return 0
 
 def decrypt_path(env, paths, prefix, encoding):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     for path in paths:
-        print(encsync.decrypt_path(path, prefix, filename_encoding=encoding)[0])
+        print(config.decrypt_path(path, prefix, filename_encoding=encoding)[0])
 
     return 0

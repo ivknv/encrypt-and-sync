@@ -51,8 +51,8 @@ def select_duplicates(env, target_storage):
 
     return duplist.find_children(target_storage.prefix)
 
-def print_diffs(env, encsync, target):
-    difflist = DiffList(encsync, env["db_dir"])
+def print_diffs(env, config, target):
+    difflist = DiffList(config, env["db_dir"])
     name = target.name
 
     n_duplicates = 0
@@ -91,7 +91,7 @@ def ask_continue():
 
     return values[answer]
 
-def view_diffs(env, encsync, target):
+def view_diffs(env, config, target):
     funcs = {"r":  view_rm_diffs,       "d":  view_dirs_diffs,
              "f":  view_new_file_diffs, "u":  view_update_diffs,
              "du": view_duplicates}
@@ -102,12 +102,12 @@ def view_diffs(env, encsync, target):
         answer = input(s).lower()
 
         if answer in funcs.keys():
-            funcs[answer](env, encsync, target)
+            funcs[answer](env, config, target)
         elif answer == "s":
             break
 
-def view_rm_diffs(env, encsync, target):
-    difflist = DiffList(encsync, env["db_dir"])
+def view_rm_diffs(env, config, target):
+    difflist = DiffList(config, env["db_dir"])
 
     diffs = difflist.select_rm_differences(target.name)
 
@@ -115,8 +115,8 @@ def view_rm_diffs(env, encsync, target):
     for diff in diffs:
         print("  %s %s" % (diff["node_type"], diff["path"]))
 
-def view_dirs_diffs(env, encsync, target):
-    difflist = DiffList(encsync, env["db_dir"])
+def view_dirs_diffs(env, config, target):
+    difflist = DiffList(config, env["db_dir"])
 
     diffs = difflist.select_dirs_differences(target.name)
 
@@ -124,8 +124,8 @@ def view_dirs_diffs(env, encsync, target):
     for diff in diffs:
         print("  %s" % (diff["path"],))
 
-def view_new_file_diffs(env, encsync, target):
-    difflist = DiffList(encsync, env["db_dir"])
+def view_new_file_diffs(env, config, target):
+    difflist = DiffList(config, env["db_dir"])
 
     diffs = difflist.select_new_file_differences(target.name)
 
@@ -133,8 +133,8 @@ def view_new_file_diffs(env, encsync, target):
     for diff in diffs:
         print("  %s" % (diff["path"],))
 
-def view_update_diffs(env, encsync, target):
-    difflist = DiffList(encsync, env["db_dir"])
+def view_update_diffs(env, config, target):
+    difflist = DiffList(config, env["db_dir"])
 
     diffs = difflist.select_update_differences(target.name)
 
@@ -142,7 +142,7 @@ def view_update_diffs(env, encsync, target):
     for diff in diffs:
         print("  %s" % (diff["path"],))
 
-def view_duplicates(env, encsync, target):
+def view_duplicates(env, config, target):
     if target.src.encrypted:
         duplicates = select_duplicates(env, target.src)
 
@@ -280,7 +280,7 @@ class TargetReceiver(EventHandler):
 
         if stage == "scan":
             if target.status == "pending":
-                print_diffs(self.env, target.encsync, target)
+                print_diffs(self.env, target.config, target)
 
                 ask = self.env.get("ask", False)
                 no_diffs = self.env.get("no_diffs", False)
@@ -289,7 +289,7 @@ class TargetReceiver(EventHandler):
                     action = ask_continue()
 
                     while action == "view":
-                        view_diffs(self.env, target.encsync, target)
+                        view_diffs(self.env, target.config, target)
                         action = ask_continue()
 
                     if action == "stop":
@@ -401,9 +401,9 @@ class TaskReceiver(EventHandler):
         print(progress_str + ": uploaded %6.2f%%" % uploaded_percent)
 
 def do_sync(env, names):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     common.cleanup_filelists(env)
@@ -416,24 +416,24 @@ def do_sync(env, names):
     names = list(names)
 
     if env.get("all", False):
-        names.extend(sorted(encsync.targets.keys()))
+        names.extend(sorted(config.targets.keys()))
 
     if len(names) == 0:
         show_error("Error: no targets given")
         return 1
 
-    n_sync_workers = env.get("n_workers", encsync.sync_threads)
-    n_scan_workers = env.get("n_workers", encsync.scan_threads)
+    n_sync_workers = env.get("n_workers", config.sync_threads)
+    n_scan_workers = env.get("n_workers", config.scan_threads)
     no_journal = env.get("no_journal", False)
 
-    synchronizer = Synchronizer(encsync,
+    synchronizer = Synchronizer(config,
                                 env["db_dir"],
                                 n_sync_workers,
                                 n_scan_workers,
                                 enable_journal=not no_journal)
 
-    synchronizer.upload_limit = encsync.upload_limit
-    synchronizer.download_limit = encsync.download_limit
+    synchronizer.upload_limit = config.upload_limit
+    synchronizer.download_limit = config.download_limit
 
     with GenericSignalManager(synchronizer):
         synchronizer_receiver = SynchronizerReceiver(env, synchronizer)

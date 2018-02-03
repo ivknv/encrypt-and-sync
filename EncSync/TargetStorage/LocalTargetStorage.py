@@ -14,7 +14,7 @@ class LocalTargetStorage(TargetStorage):
             path = Paths.to_sys(self.encrypt_path(path))
 
             yield None
-            yield self.encsync.temp_decrypt(path)
+            yield self.config.temp_decrypt(path)
         else:
             yield None
             yield open(Paths.to_sys(path), "rb")
@@ -29,4 +29,4 @@ class LocalTargetStorage(TargetStorage):
             yield open(path, "rb")
         else:
             yield None
-            yield self.encsync.temp_encrypt(Paths.to_sys(path))
+            yield self.config.temp_encrypt(Paths.to_sys(path))

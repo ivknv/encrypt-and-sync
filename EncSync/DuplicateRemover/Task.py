@@ -9,7 +9,7 @@ class DuplicateRemoverTask(Task):
         Task.__init__(self)
 
         self.parent = target
-        self.encsync = target.encsync
+        self.config = target.config
         self.path = None
         self.ivs = None
         self.prefix = None
@@ -36,7 +36,7 @@ class DuplicateRemoverTask(Task):
         self.status = "pending"
 
         encoding = self.filename_encoding
-        encpath = self.encsync.encrypt_path(self.path, self.prefix,
+        encpath = self.config.encrypt_path(self.path, self.prefix,
                                             IVs=self.ivs,
                                             filename_encoding=encoding)[0]
 

@@ -13,9 +13,9 @@ READ_BLOCK_SIZE = 1024 ** 2 # Bytes
 def encrypt(env, paths):
     assert(len(paths) > 0)
 
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     if len(paths) == 1:
@@ -28,7 +28,7 @@ def encrypt(env, paths):
 
     for path in paths:
         try:
-            f = encsync.temp_encrypt(path)
+            f = config.temp_encrypt(path)
         except FileNotFoundError:
             show_error("Error: no such file or directory: %r" % path)
             return 1
@@ -57,12 +57,12 @@ def encrypt(env, paths):
     return 0
 
 def encrypt_path(env, paths, prefix, encoding):
-    encsync, ret = common.make_encsync(env)
+    config, ret = common.make_config(env)
 
-    if encsync is None:
+    if config is None:
         return ret
 
     for path in paths:
-        print(encsync.encrypt_path(path, prefix, filename_encoding=encoding)[0])
+        print(config.encrypt_path(path, prefix, filename_encoding=encoding)[0])
 
     return 0
