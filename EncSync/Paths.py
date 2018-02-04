@@ -375,10 +375,10 @@ if sys.platform.startswith("win"):
             if issubclass(preferred_type, bytes):
                 root = root.encode("utf8")
 
-            drive_letter = os.path.abspath(root)[0:1]
+            drive_letter = os.path.abspath(root)[0:1].upper()
             path = join(sep, drive_letter, path, sep=sep)
-        elif _is_drive_letter(path[0:1]) and path[1:2] in (":", b":"):
-            drive_letter = path[0:1]
+        elif _is_drive_letter(path[0:1].upper()) and path[1:2] in (":", b":"):
+            drive_letter = path[0:1].upper()
 
             path = join(sep, drive_letter, path[3:])
 

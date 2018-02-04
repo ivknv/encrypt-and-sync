@@ -90,6 +90,8 @@ class PathsTestCase(unittest.TestCase):
             self.assertEqual(Paths.explicit("/"), "/%s/" % (drive_letter,))
             self.assertEqual(Paths.explicit("C:/a/b/c"), "/C/a/b/c")
             self.assertEqual(Paths.explicit("D:/c/d/e/"), "/D/c/d/e/")
+            self.assertEqual(Paths.explicit("d:/c/d/e"), "/D/c/d/e")
+            self.assertEqual(Paths.explicit("c:/a/b/c"), "/C/a/b/c")
         else:
             self.assertEqual(Paths.explicit("/a/b/c"), "/a/b/c")
             self.assertEqual(Paths.explicit("/"), "/")
