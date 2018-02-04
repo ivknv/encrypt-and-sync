@@ -77,17 +77,20 @@ def _decode_bytes(b, m, n, charset, padding):
             raise ValueError("Encoding range exceeded")
 
         if decimal > 256:
-            b2 = decimal % 256 - 1
+            digits = []
 
-            if b2 == -1:
-                b2 = 255
+            while decimal:
+                d = decimal % 256 - 1
 
-            b1 = (decimal - b2) // 256 % 256 - 1
+                if d == -1:
+                    d = 255
 
-            if b1 == -1:
-                b1 = 255
+                digits.append(d)
 
-            output += bytes([b1, b2])
+                decimal = (decimal - d) // 256
+
+            digits.reverse()
+            output += bytes(digits)
         elif decimal == 256:
             output += bytes([255])
         else:
