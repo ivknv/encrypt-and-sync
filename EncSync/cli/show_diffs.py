@@ -10,7 +10,7 @@ def print_diff(diff):
     print("%s %s %s" % (diff["type"], diff["node_type"], diff["path"]))
 
 def show_diffs(env, name):
-    config, ret = common.make_config(env)
+    config, ret = common.make_config(env, load_encrypted_data=False)
 
     if config is None:
         return ret

@@ -135,7 +135,7 @@ def recognize_path(path, default="local"):
 def prepare_remote_path(path, cwd="/"):
     return Paths.join(cwd, path)
 
-def authenticate(env, enc_data_path, master_password=None):
+def authenticate(env, enc_data_path):
     if not os.path.exists(enc_data_path):
         show_error("Error: file not found: %r" % (enc_data_path,))
         return None, 1
@@ -143,8 +143,7 @@ def authenticate(env, enc_data_path, master_password=None):
         show_error("Error: %r is a directory" % (enc_data_path,))
         return None, 1
 
-    if master_password is None:
-        master_password = env.get("master_password", None)
+    master_password = env.get("master_password")
 
     if master_password is None:
         master_password = ask_master_password()
@@ -181,34 +180,35 @@ def ask_master_password(msg="Master password: "):
     except (KeyboardInterrupt, EOFError):
         return
 
-def make_config(env, enc_data_path=None, config_path=None, master_password=None):
-    config = env.get("config", None)
-    if config is not None:
+def make_config(env, load_encrypted_data=True):
+    config = env.get("config")
+
+    if config is not None and (config.encrypted_data or not load_encrypted_data):
         return config, 0
 
-    if config_path is None:
-        config_path = env["config_path"]
+    config_path = env["config_path"]
+    enc_data_path = env["enc_data_path"]
 
-    if enc_data_path is None:
-        enc_data_path = env["enc_data_path"]
+    if config is None:
+        try:
+            config = Config.load(config_path)
+        except InvalidConfigError as e:
+            show_error("Error: invalid configuration: %s" % (e,))
+            return None, 1
 
-    master_password, ret = authenticate(env, enc_data_path, master_password)
+    if load_encrypted_data:
+        master_password, ret = authenticate(env, enc_data_path)
 
-    if master_password is None:
-        return None, ret
+        if master_password is None:
+            return None, ret
 
-    try:
-        config = Config.load(config_path)
         config.master_password = master_password
-    except InvalidConfigError as e:
-        show_error("Error: invalid configuration: %s" % (e,))
-        return None, 1
 
-    try:
-        config.load_encrypted_data(enc_data_path)
-    except InvalidEncryptedDataError:
-        show_error("Error: invalid encrypted data")
-        return None, 1
+        try:
+            config.load_encrypted_data(enc_data_path)
+        except InvalidEncryptedDataError:
+            show_error("Error: invalid encrypted data")
+            return None, 1
 
     env["config"] = config
 
