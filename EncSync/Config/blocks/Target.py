@@ -60,6 +60,10 @@ class TargetNamespace(object):
     def __getitem__(self, key):
         if key == "encrypted":
             return EncryptedCommand
+        elif key == "avoid-rescan":
+            return AvoidRescanCommand
+        elif key == "rescan":
+            return RescanCommand
         elif key in ("src", "dst"):
             return DirCommand
 
@@ -76,13 +80,16 @@ class DirCommand(Command):
 
         if path_type == "local":
             path = prepare_local_path(path)
+            avoid_rescan = False
         else:
             path = prepare_remote_path(path)
+            avoid_rescan = True
 
         directory = {"name": path_type,
                      "path": path,
                      "encrypted": False,
-                     "filename_encoding": "base64"}
+                     "filename_encoding": "base64",
+                     "avoid_rescan": avoid_rescan}
         
         target[dir_type] = directory
 
@@ -106,3 +113,27 @@ class EncryptedCommand(Command):
 
             target[dir_type]["encrypted"] = True
             target[dir_type]["filename_encoding"] = encoding
+
+class AvoidRescanCommand(Command):
+    def evaluate(self, config, target, *args, **kwargs):
+        if len(self.args) < 2:
+            raise EvaluationError(self, "Expected at least 1 argument")
+
+        for dir_type in self.args[1:]:
+            if dir_type not in ("src", "dst"):
+                msg = "Invalid argument: %r, should be 'src' or 'dst'" % (dir_type,)
+                raise EvaluationError(self, msg)
+
+            target[dir_type]["avoid_rescan"] = True
+
+class RescanCommand(Command):
+    def evaluate(self, config, target, *args, **kwargs):
+        if len(self.args) < 2:
+            raise EvaluationError(self, "Expected at least 1 argument")
+
+        for dir_type in self.args[1:]:
+            if dir_type not in ("src", "dst"):
+                msg = "Invalid argument: %r, should be 'src' or 'dst'" % (dir_type,)
+                raise EvaluationError(self, msg)
+
+            target[dir_type]["avoid_rescan"] = False

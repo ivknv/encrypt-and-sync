@@ -92,6 +92,8 @@ class Synchronizer(Worker):
         target.dst = dst
         target.enable_scan = enable_scan
         target.skip_integrity_check = skip_integrity_check
+        target.avoid_src_rescan = config_target["src"]["avoid_rescan"]
+        target.avoid_dst_rescan = config_target["dst"]["avoid_rescan"]
 
         return target
 

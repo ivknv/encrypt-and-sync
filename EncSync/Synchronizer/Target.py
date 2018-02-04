@@ -27,6 +27,8 @@ class SyncTarget(StagedTask):
         self.skip_integrity_check = False
         self.name = None
         self.enable_scan = True
+        self.avoid_src_rescan = False
+        self.avoid_dst_rescan = False
 
         self.shared_flist1 = None
         self.shared_flist2 = None
@@ -157,11 +159,17 @@ class SyncTarget(StagedTask):
             target = scanner.make_target(scan_type, self.name)
 
             if scan_type == "src":
-                scanner.add_target(target)
-                targets.append(target)
-            elif force or self.shared_flist2.is_empty(self.dst.prefix):
-                scanner.add_target(target)
-                targets.append(target)
+                rescan = force or not self.avoid_src_rescan
+
+                if rescan or self.shared_flist1.is_empty(self.src.prefix):
+                    scanner.add_target(target)
+                    targets.append(target)
+            else:
+                rescan = force or not self.avoid_dst_rescan
+
+                if rescan or self.shared_flist2.is_empty(self.dst.prefix):
+                    scanner.add_target(target)
+                    targets.append(target)
 
         if self.stop_condition():
             return
