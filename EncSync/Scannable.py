@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import yadisk.exceptions
+
 from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
 from .common import normalize_node
@@ -151,7 +153,8 @@ class DecryptedScannable(BaseScannable):
                                                meta["modified"], meta["size"])
                         scannables.append(s)
                 break
-            except TemporaryStorageError as e:
+            except (TemporaryStorageError, yadisk.exceptions.UnauthorizedError) as e:
+                # Yandex.Disk seems to randomly throw UnauthorizedError sometimes
                 if i == 9:
                     raise e
 
@@ -230,7 +233,8 @@ class EncryptedScannable(BaseScannable):
                     if PathMatch.match(scannable.path, allowed_paths):
                         scannables.append(scannable)
                 break
-            except TemporaryStorageError as e:
+            except (TemporaryStorageError, yadisk.exceptions.UnauthorizedError) as e:
+                # Yandex.Disk seems to randomly throw UnauthorizedError sometimes
                 if i == 9:
                     raise e
 
