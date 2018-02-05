@@ -13,6 +13,17 @@ def _chunk(b, size):
     for i in range(math.ceil(len(b) / size)):
         yield b[size * i:size * (i + 1)]
 
+def _count_leading_zeroes(digits, zero=0):
+    n = 0
+
+    for d in digits:
+        if d == zero:
+            n += 1
+        else:
+            break
+
+    return n
+
 def _convert_decimal(d, base):
     if d == 0:
         return [0]
@@ -39,7 +50,7 @@ def _bytes_to_decimal(b):
     result = power = 0
 
     for i in b[::-1]:
-        result += (i + 1) * 256 ** power
+        result += i * 256 ** power
         power += 1
 
     return result
@@ -49,8 +60,15 @@ def _encode_bytes(b, m, n, charset, padding):
     output = b""
 
     for chunk in _chunk(b, m):
-        decimal = _bytes_to_decimal(chunk)
-        encoded = b"".join(charset[i:i + 1] for i in _convert_decimal(decimal, base)[::-1])
+        leading_zeroes = _count_leading_zeroes(chunk)
+        chunk = chunk[leading_zeroes:]
+        encoded = charset[0:1] * leading_zeroes
+
+        if chunk:
+            decimal = _bytes_to_decimal(chunk)
+            digits = _convert_decimal(decimal, base)[::-1]
+            encoded += b"".join(charset[i:i + 1] for i in digits)
+
         encoded += (n - len(encoded)) * padding
         output += encoded
 
@@ -62,13 +80,24 @@ def _decode_bytes(b, m, n, charset, padding):
     max_decimal = 0
 
     for i in range(m):
-        max_decimal += 256 * 256 ** i
+        max_decimal += 255 * 256 ** i
 
     for chunk in _chunk(b, n):
         if len(chunk) != n:
             raise ValueError("Invalid padding")
 
         chunk = chunk.rstrip(padding)
+        leading_zeroes = _count_leading_zeroes(chunk, charset[0])
+        chunk = chunk[leading_zeroes:]
+
+        encoded = b"\0" * leading_zeroes
+
+        if not chunk:
+            if len(encoded) > m:
+                encoded = encoded[len(encoded) - m:]
+
+            output += encoded
+            continue
 
         digits = [charset.index(i) for i in chunk]
         decimal = _convert_to_decimal(digits, base)
@@ -76,26 +105,13 @@ def _decode_bytes(b, m, n, charset, padding):
         if decimal > max_decimal:
             raise ValueError("Encoding range exceeded")
 
-        if decimal > 256:
-            digits = []
+        encoded += bytes(_convert_decimal(decimal, 256)[::-1])
 
-            while decimal:
-                d = decimal % 256 - 1
+        if len(encoded) > m:
+            encoded = encoded[len(encoded) - m:]
 
-                if d == -1:
-                    d = 255
-
-                digits.append(d)
-
-                decimal = (decimal - d) // 256
-
-            digits.reverse()
-            output += bytes(digits)
-        elif decimal == 256:
-            output += bytes([255])
-        else:
-            output += bytes([decimal % 256 - 1])
-
+        output += encoded
+        
     return output
 
 def base64_encode(b):
