@@ -39,7 +39,7 @@ class Config(object):
         self._upload_timeout = None
         self.n_retries = 5
 
-        self.targets = {}
+        self.folders = {}
         self._allowed_paths = {} # Uncompiled
         self.allowed_paths = {} # Compiled
 
@@ -88,32 +88,25 @@ class Config(object):
     def key(self):
         return self.encode_key(self.plain_key)
 
-    def identify_target(self, storage_name, path, dir_type=None):
+    def identify_folder(self, storage_name, path):
         best_match = None
-        best_dir = None
         best_path = None
 
-        if dir_type is None:
-            dir_types = ("src", "dst")
-        else:
-            dir_types = (dir_type,)
+        for folder in self.folders.values():
+            if folder["type"] != storage_name:
+                continue
 
-        for target in self.targets.values():
-            for d in dir_types:
-                if target[d]["name"] != storage_name:
-                    continue
+            prefix = folder["path"]
 
-                prefix = target[d]["path"]
+            if best_path is None:
+                if Paths.contains(prefix, path):
+                    best_match = folder
+                    best_path = prefix
+            elif Paths.contains(prefix, best_path):
+                best_match = folder
+                best_path = prefix
 
-                if best_path is None:
-                    if Paths.contains(prefix, path):
-                        best_match, best_dir = target, d
-                        best_path = target[d]["path"]
-                elif Paths.contains(prefix, best_path):
-                    best_match, best_dir = target, d
-                    best_path = target[d]["path"]
-
-        return best_match, best_dir
+        return best_match
 
     def check_master_key(self, path_or_file):
         return check_master_key(self.master_key, path_or_file)

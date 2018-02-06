@@ -4,37 +4,34 @@ from ..FileList import FileList
 from .. import Encryption
 from .. import Paths
 
-__all__ = ["TargetStorage"]
+__all__ = ["FolderStorage"]
 
-class TargetStorage(object):
+class FolderStorage(object):
     """
         Implements functionality necessary for the synchronizer (file access and encryption).
 
-        :param target_name: `str`, name of the target
-        :param dirname: `str`, directory name ("src" or "dst")
+        :param folder_name: `str`, name of the folder
         :param config: an instance of `config`
         :param directory: `str`, path to the directory with databases
 
-        :ivar config: an instance of `config`
-        :ivar target: `dict`, target information
-        :ivar encrypted: `bool`, tells whether the source is encrypted or not
-        :ivar dirname: `str`, directory name ("src" or "dst")
+        :ivar config: an instance of `Config`
+        :ivar folder: `dict`, folder information
+        :ivar encrypted: `bool`, tells whether the folder is encrypted or not
         :ivar storage: an instance of `Storage`
         :ivar prefix: `str`, directory root
         :ivar filename_encoding: `str`, filename encoding to use
     """
 
-    def __init__(self, target_name, dirname, config, directory=None, filelist=None):
+    def __init__(self, folder_name, config, directory=None, filelist=None):
         self.config = config
-        self.target = config.targets[target_name]
-        self.dirname = dirname
-        self.encrypted = self.target[dirname]["encrypted"]
-        self.storage = config.storages[self.target[dirname]["name"]]
-        self.prefix = Paths.dir_normalize(self.target[dirname]["path"])
-        self.filename_encoding = self.target[dirname]["filename_encoding"]
+        self.folder = config.folders[folder_name]
+        self.encrypted = self.folder["encrypted"]
+        self.storage = config.storages[self.folder["type"]]
+        self.prefix = Paths.dir_normalize(self.folder["path"])
+        self.filename_encoding = self.folder["filename_encoding"]
 
         if filelist is None:
-            self.filelist = FileList(target_name, self.storage.name, directory)
+            self.filelist = FileList(folder_name, directory)
         else:
             self.filelist = filelist
 

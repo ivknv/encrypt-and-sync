@@ -131,9 +131,9 @@ def main(args=None):
         env["src_only"] = ns.src_only
         env["dst_only"] = ns.dst_only
 
-    actions = {"scan": lambda: do_scan(env, ns.targets),
-               "sync": lambda: do_sync(env, ns.targets),
-               "diffs": lambda: show_diffs(env, ns.target),
+    actions = {"scan": lambda: do_scan(env, ns.folders),
+               "sync": lambda: do_sync(env, ns.folders),
+               "diffs": lambda: show_diffs(env, *ns.folders[:2]),
                "download": lambda: download(env, ns.paths),
                "rmdup": lambda: remove_duplicates(env, ns.paths),
                "encrypt": lambda: encrypt(env, ns.paths),
@@ -182,7 +182,7 @@ def parse_args(args):
                               help="Path to the configuration directory")
 
     scan_parser = subparsers.add_parser("scan", aliases=["s"], help="Scan targets")
-    scan_parser.add_argument("targets", nargs="*", help="List of targets to scan")
+    scan_parser.add_argument("folders", nargs="*", help="List of targets to scan")
     group1 = scan_parser.add_mutually_exclusive_group()
     group1.add_argument("--src-only", action="store_true",
                         help="Scan only source paths")
@@ -204,11 +204,11 @@ def parse_args(args):
 
     diffs_parser = subparsers.add_parser("diffs", aliases=["differences"],
                                          help="Show differences between directories")
-    diffs_parser.add_argument("target", help="Target to show differences for")
+    diffs_parser.add_argument("folders", nargs=2, help="Folders to show differences for")
     diffs_parser.set_defaults(func=show_diffs, action="diffs")
 
     sync_parser = subparsers.add_parser("sync", aliases=["S"], help="Sync targets")
-    sync_parser.add_argument("targets", nargs="*", help="List of targets to sync")
+    sync_parser.add_argument("folders", nargs="*", help="List of folders to sync")
     sync_parser.add_argument("-I", "--integrity-check", action="store_true",
                              help="Enable integrity check")
     sync_parser.add_argument("--no-scan", action="store_true", help="Disable scan")

@@ -28,7 +28,7 @@ class ScanTarget(Task):
         self.path = ""
         self.filename_encoding = "base64"
 
-        self.shared_flist = FileList(name, storage.name, scanner.directory)
+        self.shared_flist = FileList(name, scanner.directory)
         self.shared_duplist = DuplicateList(storage.name, scanner.directory)
 
         self.tasks = []

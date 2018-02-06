@@ -18,9 +18,11 @@ from .common import show_error
 
 PRINT_RATE_LIMIT = 1.0
 
+__all__ = ["do_scan", "ScannerReceiver"]
+
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
-        print("[%d] [%s:%s]" % (i + 1, target.name, target.type))
+        print("[%d] [%s]" % (i + 1, target.name))
 
     while True:
         try:
@@ -45,7 +47,7 @@ def get_path_with_schema(target):
 def print_target_totals(env, target):
     n_files = n_dirs = 0
 
-    filelist = FileList(target.name, target.storage.name, env["db_dir"])
+    filelist = FileList(target.name, env["db_dir"])
     children = filelist.find_node_children(target.path)
 
     for i in children:
@@ -56,8 +58,8 @@ def print_target_totals(env, target):
 
     filelist.close()
 
-    print("[%s:%s]: %d files" % (target.name, target.type, n_files))
-    print("[%s:%s]: %d directories" % (target.name, target.type, n_dirs))
+    print("[%s]: %d files" % (target.name, n_files))
+    print("[%s]: %d directories" % (target.name, n_dirs))
 
     if not target.encrypted:
         return
@@ -70,7 +72,7 @@ def print_target_totals(env, target):
 
     duplist.close()
 
-    print("[%s:%s]: %d duplicate(s)" % (target.name, target.type, n_duplicates))
+    print("[%s]: %d duplicate(s)" % (target.name, n_duplicates))
 
 class ScannerReceiver(Receiver):
     def __init__(self, env, scanner):
@@ -99,7 +101,7 @@ class ScannerReceiver(Receiver):
     def on_next_target(self, event, target):
         target.add_receiver(self.target_receiver)
 
-        print("Performing %s scan: [%s:%s]" % (target.storage.name, target.name, target.type))
+        print("Performing %s scan: [%s]" % (target.storage.name, target.name))
 
     def on_worker_starting(self, event, worker):
         worker.add_receiver(self.worker_receiver)
@@ -110,8 +112,7 @@ class ScannerReceiver(Receiver):
     def on_disk_error(self, exc, scanner):
         target = scanner.cur_target
 
-        print("[%s:%s]: error: %s: %s" % (target.name, target.type,
-                                          exc.error_type, exc))
+        print("[%s]: error: %s: %s" % (target.name, exc.error_type, exc))
 
     def on_exception(self, exc, scanner):
         traceback.print_exc()
@@ -129,8 +130,7 @@ class TargetReceiver(Receiver):
         target = event["emitter"]
 
         if target.status != "pending":
-            print("[%s:%s]: %s scan %s" % (target.name, target.type,
-                                           target.storage.name, target.status))
+            print("[%s]: %s scan %s" % (target.name, target.storage.name, target.status))
 
         if target.status == "finished":
             print_target_totals(self.env, target)
@@ -166,8 +166,7 @@ class WorkerReceiver(Receiver):
     def on_disk_error(self, exc, scanner):
         target = scanner.cur_target
 
-        print("[%s:%s]: error: %s: %s" % (target.name, target.type,
-                                          exc.error_type, exc))
+        print("[%s]: error: %s: %s" % (target.name, exc.error_type, exc))
 
     def on_exception(self, exc, scanner):
         traceback.print_exc()
@@ -187,15 +186,10 @@ def do_scan(env, names):
     names = list(names)
 
     if env.get("all", False):
-        for name in sorted(config.targets.keys()):
-            if not env.get("dst_only", False):
-                names.append(name + ":src")
-
-            if not env.get("src_only", False):
-                names.append(name + ":dst")
+        names += sorted(config.folders.keys())
 
     if len(names) == 0:
-        show_error("Error: no targets given")
+        show_error("Error: no folders given")
         return 1
 
     no_journal = env.get("no_journal", False)
@@ -207,29 +201,10 @@ def do_scan(env, names):
         targets = []
 
         for name in names:
-            if name.endswith(":src"):
-                scan_type = "src"
-                name = name[:-4]
-            elif name.endswith(":dst"):
-                scan_type = "dst"
-                name = name[:-4]
-            else:
-                scan_type = None
-
-            if scan_type is None:
-                if env["src_only"]:
-                    scan_type = "src"
-                elif env["dst_only"]:
-                    scan_type = "dst"
-
             try:
-                if scan_type in (None, "src"):
-                    targets.append(scanner.make_target("src", name))
-
-                if scan_type in (None, "dst"):
-                    targets.append(scanner.make_target("dst", name))
+                targets.append(scanner.make_target(name))
             except ValueError:
-                show_error("Error: unknown target %r" % (name,))
+                show_error("Error: unknown folder %r" % (name,))
                 return 1
 
         if (ask and env.get("all", False)) or choose_targets:
@@ -238,9 +213,9 @@ def do_scan(env, names):
         for target in targets:
             scanner.add_target(target)
 
-        print("Targets to scan:")
+        print("Folders to scan:")
         for target in targets:
-            print("[%s:%s]" % (target.name, target.type))
+            print("[%s]" % (target.name,))
 
         scanner_receiver = ScannerReceiver(env, scanner)
 

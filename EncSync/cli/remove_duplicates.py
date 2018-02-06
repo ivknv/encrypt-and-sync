@@ -14,7 +14,7 @@ from . import common
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 
-__all__ = ["remove_duplicates"]
+__all__ = ["remove_duplicates", "DuplicateRemoverReceiver"]
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
@@ -205,8 +205,6 @@ def remove_duplicates(env, paths):
 
     choose_targets = env.get("choose_targets", False)
     ask = env.get("ask", False)
-    src_only = env.get("src_only", False)
-    dst_only = env.get("dst_only", False)
 
     if env.get("all", False):
         choose_targets = choose_targets or ask
@@ -215,15 +213,9 @@ def remove_duplicates(env, paths):
         # Paths are from the configuration
         user_paths = False
 
-        for target in config.targets.values():
-            src_path = target["src"]["name"] + "://" + target["src"]["path"]
-            dst_path = target["dst"]["name"] + "://" + target["dst"]["path"]
-
-            if not dst_only:
-                paths.append(src_path)
-
-            if not src_only:
-                paths.append(dst_path)
+        for folder in config.folders.values():
+            folder_path = folder["type"] + "://" + folder["path"]
+            paths.append(folder_path)
 
     n_workers = env.get("n_workers", config.sync_threads)
     no_journal = env.get("no_journal", False)

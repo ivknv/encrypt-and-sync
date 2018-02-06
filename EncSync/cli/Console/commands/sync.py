@@ -14,7 +14,7 @@ class SyncCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Sync targets",
                                          prog=self.args[0])
-        parser.add_argument("targets", nargs="*", help="List of targets to sync")
+        parser.add_argument("folders", nargs="*", help="List of folders to sync")
         parser.add_argument("-a", "--all", action="store_true",
                             help="Sync all targets")
         parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
@@ -45,4 +45,4 @@ class SyncCommand(Command):
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers
 
-        return do_sync(env, ns.targets)
+        return do_sync(env, ns.folders)

@@ -33,31 +33,25 @@ class Scanner(Worker):
                 if i is not None:
                     i.status = status
 
-    def add_new_target(self, scan_type, name):
-        target = self.make_target(scan_type, name)
+    def add_new_target(self, folder_name):
+        target = self.make_target(folder_name)
         self.add_target(target)
 
         return target
 
-    def make_target(self, scan_type, name):
-        if scan_type not in ("src", "dst"):
-            msg = "Unknown scan_type: %r, must be 'src' or 'dst'" % (scan_type,)
-            raise ValueError(msg)
-
+    def make_target(self, folder_name):
         try:
-            config_target = self.config.targets[name]
+            folder = self.config.folders[folder_name]
         except KeyError:
-            raise ValueError("Unknown target: %r" % (name,))
+            raise ValueError("Unknown folder: %r" % (folder_name,))
 
-        target_dir = config_target[scan_type]
+        path = folder["path"]
+        encrypted = folder["encrypted"]
+        filename_encoding = folder["filename_encoding"]
+        storage = self.config.storages[folder["type"]]
 
-        path = target_dir["path"]
-        encrypted = target_dir["encrypted"]
-        filename_encoding = target_dir["filename_encoding"]
-        storage = self.config.storages[target_dir["name"]]
-
-        target = ScanTarget(self, name, storage)
-        target.type = scan_type
+        target = ScanTarget(self, folder_name, storage)
+        target.type = folder["type"]
         target.encrypted = encrypted
         target.path = path
         target.filename_encoding = filename_encoding

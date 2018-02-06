@@ -43,18 +43,18 @@ class DuplicateRemover(Worker):
         target.path = path
         target.storage = self.config.storages[storage_name]
 
-        config_target, dir_type = self.config.identify_target(storage_name, path)
+        folder = self.config.identify_folder(storage_name, path)
 
-        if config_target is None:
+        if folder is None:
             msg = "%r does not belong to any targets" % (storage_name + "://" + path,)
             raise ValueError(msg)
 
-        if not config_target[dir_type]["encrypted"]:
+        if not folder["encrypted"]:
             raise ValueError("%r is not encrypted" % (storage_name + "://" + path,))
 
-        encoding = config_target[dir_type]["filename_encoding"]
+        encoding = folder["filename_encoding"]
         target.filename_encoding = encoding
-        target.prefix = config_target[dir_type]["path"]
+        target.prefix = folder["path"]
 
         return target
 

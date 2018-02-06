@@ -23,9 +23,11 @@ class SyncTarget(StagedTask):
         self.config = synchronizer.config
         self.src = None
         self.dst = None
+
+        self.folder1 = None
+        self.folder2 = None
         
         self.skip_integrity_check = False
-        self.name = None
         self.enable_scan = True
         self.avoid_src_rescan = False
         self.avoid_dst_rescan = False
@@ -59,7 +61,7 @@ class SyncTarget(StagedTask):
         self.set_stage("check", self.init_check, self.finalize_check)
 
     def get_n_done(self):
-        return self.progress["finished"] + self.progress["failed"]
+        return self.progress["finished"] + self.progress["failed"] + self.progress["skipped"]
 
     def stop_condition(self):
         if self.stopped or self.synchronizer.stopped:
@@ -88,7 +90,8 @@ class SyncTarget(StagedTask):
 
     def get_differences(self):
         return FileComparator.compare_lists(self.config,
-                                            self.name,
+                                            self.folder1["name"],
+                                            self.folder2["name"],
                                             self.synchronizer.directory)
 
     def build_diffs_table(self):
@@ -98,7 +101,7 @@ class SyncTarget(StagedTask):
         
         try:
             self.difflist.begin_transaction()
-            self.difflist.clear_differences(self.name)
+            self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])
             self.difflist.insert_differences(diffs)
             self.difflist.commit()
         except Exception as e:
@@ -108,7 +111,7 @@ class SyncTarget(StagedTask):
 
         try:
             if self.stage != "check":
-                diff_count = self.difflist.get_difference_count(self.name)
+                diff_count = self.difflist.get_difference_count(self.folder1["name"], self.folder2["name"])
                 n_done = self.get_n_done()
 
                 self.expected_total_children = diff_count + n_done
@@ -146,19 +149,19 @@ class SyncTarget(StagedTask):
 
             return task
 
-    def do_scan(self, *scan_types, force=False):
+    def do_scan(self, *folder_names, force=False):
         scanner = Scanner(self.config,
                           self.synchronizer.directory,
                           self.synchronizer.n_scan_workers,
                           self.synchronizer.enable_journal)
         targets = []
 
-        for scan_type in scan_types:
-            assert(scan_type in ("src", "dst"))
+        for folder_name in folder_names:
+            assert(folder_name in (self.folder1["name"], self.folder2["name"]))
 
-            target = scanner.make_target(scan_type, self.name)
+            target = scanner.make_target(folder_name)
 
-            if scan_type == "src":
+            if folder_name == self.folder1["name"]:
                 rescan = force or not self.avoid_src_rescan
 
                 if rescan or self.shared_flist1.is_empty(self.src.prefix):
@@ -189,7 +192,7 @@ class SyncTarget(StagedTask):
         if self.stop_condition():
             return
 
-        self.do_scan("src", "dst")
+        self.do_scan(self.folder1["name"], self.folder2["name"])
 
     def finalize_scan(self):
         if not self.enable_scan:
@@ -221,7 +224,7 @@ class SyncTarget(StagedTask):
         pass
 
     def init_rm(self):
-        self.differences = self.difflist.select_rm_differences(self.name)
+        self.differences = self.difflist.select_rm_differences(self.folder1["name"], self.folder2["name"])
 
         self.shared_flist1.begin_transaction()
         self.shared_flist2.begin_transaction()
@@ -235,7 +238,7 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_dirs(self):
-        self.differences = self.difflist.select_dirs_differences(self.name)
+        self.differences = self.difflist.select_dirs_differences(self.folder1["name"], self.folder2["name"])
 
         self.shared_flist1.begin_transaction()
         self.shared_flist2.begin_transaction()
@@ -247,7 +250,7 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_files(self):
-        self.differences = self.difflist.select_files_differences(self.name)
+        self.differences = self.difflist.select_files_differences(self.folder1["name"], self.folder2["name"])
 
         self.shared_flist1.begin_transaction()
         self.shared_flist2.begin_transaction()
@@ -269,7 +272,7 @@ class SyncTarget(StagedTask):
 
         self.emit_event("integrity_check")
 
-        self.do_scan("dst", force=True)
+        self.do_scan(self.folder2["name"], force=True)
 
     def finalize_check(self):
         if self.stop_condition():
@@ -280,7 +283,7 @@ class SyncTarget(StagedTask):
 
         self.build_diffs_table()
 
-        if self.difflist.get_difference_count(self.name):
+        if self.difflist.get_difference_count(self.folder1["name"], self.folder2["name"]):
             self.emit_event("integrity_check_failed")
             self.status = "failed"
         else:
@@ -338,4 +341,4 @@ class SyncTarget(StagedTask):
                 self.status = "failed"
 
         if self.status == "finished":
-            self.difflist.clear_differences(self.name)
+            self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])

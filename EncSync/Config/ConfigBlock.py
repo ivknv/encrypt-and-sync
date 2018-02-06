@@ -3,6 +3,8 @@
 
 from ..EncScript import Block, SysCommand, AndOperator
 
+__all__ = ["ConfigBlock"]
+
 class ConfigBlock(Block):
     def evaluate_body(self, *args, **kwargs):
         for i in self.body:

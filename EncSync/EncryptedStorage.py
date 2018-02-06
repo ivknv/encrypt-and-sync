@@ -4,7 +4,7 @@ import tempfile
 
 from . import Paths
 from .Storage import get_storage
-from .TargetStorage import get_target_storage
+from .FolderStorage import get_folder_storage
 
 __all__ = ["EncryptedStorage"]
 
@@ -13,76 +13,75 @@ class EncryptedStorage(object):
         self.config = config
         self.name = storage_name
         self.directory = directory
-        self.target_storage_class = get_target_storage(storage_name)
+        self.folder_storage_class = get_folder_storage(storage_name)
         self.storage = get_storage(storage_name)(self.config)
-        self.target_storages = {}
+        self.folder_storages = {}
 
-    def get_target_storage(self, target_name, dirname):
+    def get_folder_storage(self, folder_name):
         try:
-            return self.target_storages[(target_name, dirname)]
+            return self.folder_storages[folder_name]
         except KeyError:
-            target_storage = self.target_storage_class(target_name,
-                                                       dirname,
+            folder_storage = self.folder_storage_class(folder_name,
                                                        self.config,
                                                        self.directory)
-            self.target_storages[(target_name, dirname)] = target_storage
+            self.folder_storages[folder_name] = folder_storage
 
-            return target_storage
+            return folder_storage
 
     def is_encrypted(self, path):
-        target, dirname = self.identify_directory(path)
+        folder = self.identify_folder(path)
 
-        if target is None:
+        if folder is None:
             return False
 
-        return target[dirname]["encrypted"]
+        return folder["encrypted"]
 
-    def identify_directory(self, path):
+    def identify_folder(self, path):
         path = Paths.join_properly("/", path)
-        best_match, best_dir = self.config.identify_target(self.name, path)
+        best_match = self.config.identify_folder(self.name, path)
 
-        if best_dir is None or not best_match[best_dir]["encrypted"]:
-            return None, None
+        if best_match is None or not best_match["encrypted"]:
+            return None
 
-        return best_match, best_dir
+        return best_match
 
     def get_meta(self, path, *args, **kwargs):
-        target, dirname = self.identify_directory(path)
+        folder = self.identify_folder(path)
 
-        if target is None:
+        if folder is None:
             return self.storage.get_meta(path, *args, **kwargs)
 
-        target_storage = self.get_target_storage(target["name"], dirname)
-        path = Paths.cut_prefix(path, target_storage.prefix)
+        folder_storage = self.get_folder_storage(folder["name"])
+        path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        return target_storage.get_meta(path, *args, **kwargs)
+        return folder_storage.get_meta(path, *args, **kwargs)
 
     def mkdir(self, path, *args, **kwargs):
-        target, dirname = self.identify_directory(path)
+        folder = self.identify_folder(path)
 
-        if target is None:
+        if folder is None:
             return self.storage.mkdir(path, *args, **kwargs), b""
 
-        target_storage = self.get_target_storage(target["name"], dirname)
-        path = Paths.cut_prefix(path, target_storage.prefix)
+        folder_storage = self.get_folder_storage(folder["name"])
+        path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        return target_storage.mkdir(path, *args, **kwargs)
+        return folder_storage.mkdir(path, *args, **kwargs)
 
     def upload(self, in_file, out_path, *args, **kwargs):
-        target, dirname = self.identify_directory(out_path)
+        folder = self.identify_folder(out_path)
 
-        if target is None:
+        if folder is None:
             return self.storage.upload(in_file, out_path, *args, **kwargs), b""
 
-        target_storage = self.get_target_storage(target["name"], dirname)
-        out_path = Paths.cut_prefix(out_path, target_storage.prefix)
+        folder_storage = self.get_folder_storage(folder["name"])
+        out_path = Paths.cut_prefix(out_path, folder_storage.prefix)
 
-        return target_storage.upload(in_file, out_path, *args, **kwargs)
+        return folder_storage.upload(in_file, out_path, *args, **kwargs)
 
     def get_file(self, path):
-        target, dirname = self.identify_directory(path)
+        folder = self.identify_folder(path)
 
-        if target is None:
+        if folder is None:
             if self.storage.name == "local":
                 yield None
                 yield open(Paths.to_sys(path), "rb")
@@ -98,15 +97,15 @@ class EncryptedStorage(object):
 
             return
 
-        target_storage = self.get_target_storage(target["name"], dirname)
-        path = Paths.cut_prefix(path, target_storage.prefix)
+        folder_storage = self.get_folder_storage(folder["name"])
+        path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        yield from target_storage.get_file(path)
+        yield from folder_storage.get_file(path)
 
     def get_encrypted_file(self, path):
-        target, dirname = self.identify_directory(path)
+        folder = self.identify_folder(path)
 
-        if target is None:
+        if folder is None:
             if self.storage.name == "local":
                 yield None
                 yield self.config.temp_encrypt(Paths.to_sys(path))
@@ -121,29 +120,29 @@ class EncryptedStorage(object):
 
             return
 
-        target_storage = self.get_target_storage(target["name"], dirname)
-        path = Paths.cut_prefix(path, target_storage.prefix)
+        folder_storage = self.get_folder_storage(folder["name"])
+        path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        yield from target_storage.get_encrypted_file(path)
+        yield from folder_storage.get_encrypted_file(path)
 
     def is_dir(self, path, *args, **kwargs):
-        target, dirname = self.identify_directory(path)
+        folder = self.identify_folder(path)
 
-        if target is None:
+        if folder is None:
             return self.storage.is_dir(path, *args, **kwargs)
 
-        target_storage = self.get_target_storage(target["name"], dirname)
-        path = Paths.cut_prefix(path, target_storage.prefix)
+        folder_storage = self.get_folder_storage(folder["name"])
+        path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        return target_storage.is_dir(path, *args, **kwargs)
+        return folder_storage.is_dir(path, *args, **kwargs)
 
     def listdir(self, path, *args, **kwargs):
-        target, dirname = self.identify_directory(path)
+        folder = self.identify_folder(path)
 
-        if target is None:
+        if folder is None:
             return self.storage.listdir(path, *args, **kwargs)
 
-        target_storage = self.get_target_storage(target["name"], dirname)
-        path = Paths.cut_prefix(path, target_storage.prefix)
+        folder_storage = self.get_folder_storage(folder["name"])
+        path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        return target_storage.listdir(path, *args, **kwargs)
+        return folder_storage.listdir(path, *args, **kwargs)

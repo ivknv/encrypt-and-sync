@@ -4,7 +4,7 @@
 from .BaseFileList import BaseFileList
 from .. import Paths
 from ..common import node_tuple_to_dict, format_timestamp
-from ..common import escape_glob, validate_target_name
+from ..common import escape_glob, validate_folder_name, validate_storage_name
 
 __all__ = ["FileList"]
 
@@ -12,11 +12,16 @@ def prepare_path(path):
     return Paths.join_properly("/", path)
 
 class FileList(BaseFileList):
-    def __init__(self, name, suffix, directory=None, *args, **kwargs):
-        if not validate_target_name(name):
-            raise ValueError("Invalid target name: %r" % (name,))
+    def __init__(self, folder_name, directory=None, *args, **kwargs):
+        folder_name, _, folder_type = folder_name.partition(":")
 
-        BaseFileList.__init__(self, "%s-%s-filelist.db" % (name, suffix),
+        if not validate_folder_name(folder_name):
+            raise ValueError("Invalid folder name: %r" % (folder_name,))
+
+        if not validate_storage_name(folder_type):
+            raise ValueError("Unknown folder type: %r" % (folder_type,))
+
+        BaseFileList.__init__(self, "%s-%s-filelist.db" % (folder_name, folder_type),
                               directory, *args, **kwargs)
 
     def create(self):
@@ -31,7 +36,7 @@ class FileList(BaseFileList):
                                        ON filelist(path ASC)""")
     def get_root(self):
         """
-            Get the root node which is also the target prefix.
+            Get the root node which is also the folder prefix.
 
             :returns: `dict`
         """

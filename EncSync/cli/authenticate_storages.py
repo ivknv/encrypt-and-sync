@@ -24,8 +24,7 @@ def authenticate_storages(env):
     if config is None:
         return ret
 
-    storages = {j for i in config.targets.values()
-                  for j in (i["src"]["name"], i["dst"]["name"])}
+    storages = {i["type"] for i in config.folders.values()}
 
     for name in storages:
         authenticate_storage = STORAGE_TABLE.get(name)

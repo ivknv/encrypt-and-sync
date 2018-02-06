@@ -3,11 +3,11 @@
 import tempfile
 
 from .. import Paths
-from .TargetStorage import TargetStorage
+from .FolderStorage import FolderStorage
 
-__all__ = ["RemoteTargetStorage"]
+__all__ = ["RemoteFolderStorage"]
 
-class RemoteTargetStorage(TargetStorage):
+class RemoteFolderStorage(FolderStorage):
     def get_file(self, path):
         path = Paths.join(self.prefix, path)
 

@@ -2,11 +2,11 @@
 
 from .. import Paths
 
-from .TargetStorage import TargetStorage
+from .FolderStorage import FolderStorage
 
-__all__ = ["LocalTargetStorage"]
+__all__ = ["LocalFolderStorage"]
 
-class LocalTargetStorage(TargetStorage):
+class LocalFolderStorage(FolderStorage):
     def get_file(self, path):
         path = Paths.join(self.prefix, path)
 

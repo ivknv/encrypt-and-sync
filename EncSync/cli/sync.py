@@ -21,9 +21,13 @@ from .parse_choice import interpret_choice
 from ..ExceptionManager import ExceptionManager
 from ..Synchronizer.Exceptions import TooLongFilenameError
 
+__all__ = ["do_sync", "SynchronizerReceiver"]
+
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
-        print("[%d] [%s]" % (i + 1, target.name))
+        print("[%d] [%s -> %s]" % (i + 1,
+                                   target.folder1["name"],
+                                   target.folder2["name"]))
 
     while True:
         try:
@@ -39,21 +43,23 @@ def ask_target_choice(targets):
         except (ValueError, IndexError) as e:
             show_error("Error: %s" % str(e))
 
-def count_duplicates(env, target_storage):
-    duplist = DuplicateList(target_storage.storage.name, env["db_dir"])
+def count_duplicates(env, folder_storage):
+    duplist = DuplicateList(folder_storage.storage.name, env["db_dir"])
     duplist.create()
 
-    return duplist.get_children_count(target_storage.prefix)
+    return duplist.get_children_count(folder_storage.prefix)
 
-def select_duplicates(env, target_storage):
-    duplist = DuplicateList(target_storage.storage.name, env["db_dir"])
+def select_duplicates(env, folder_storage):
+    duplist = DuplicateList(folder_storage.storage.name, env["db_dir"])
     duplist.create()
 
-    return duplist.find_children(target_storage.prefix)
+    return duplist.find_children(folder_storage.prefix)
 
 def print_diffs(env, target):
     difflist = DiffList(env["db_dir"])
-    name = target.name
+
+    folder_name1 = target.folder1["name"]
+    folder_name2 = target.folder2["name"]
 
     n_duplicates = 0
 
@@ -63,16 +69,18 @@ def print_diffs(env, target):
     if target.dst.encrypted:
         n_duplicates += count_duplicates(env, target.dst)
 
-    n_rm = difflist.count_rm_differences(name)
-    n_dirs = difflist.count_dirs_differences(name)
-    n_new_files = difflist.count_new_file_differences(name)
-    n_update = difflist.count_update_differences(name)
+    n_rm = difflist.count_rm_differences(folder_name1, folder_name2)
+    n_dirs = difflist.count_dirs_differences(folder_name1, folder_name2)
+    n_new_files = difflist.count_new_file_differences(folder_name1, folder_name2)
+    n_update = difflist.count_update_differences(folder_name1, folder_name2)
 
-    print("[%s]: %d duplicate removals" % (name, n_duplicates))
-    print("[%s]: %d removals" % (name, n_rm))
-    print("[%s]: %d new directories" % (name, n_dirs))
-    print("[%s]: %d new files to upload" % (name, n_new_files))
-    print("[%s]: %d files to update" % (name, n_update))
+    print("[%s -> %s]: %d duplicate removals" % (folder_name1, folder_name2,
+                                                 n_duplicates))
+    print("[%s -> %s]: %d removals" % (folder_name1, folder_name2, n_rm))
+    print("[%s -> %s]: %d new directories" % (folder_name1, folder_name2, n_dirs))
+    print("[%s -> %s]: %d new files to upload" % (folder_name1, folder_name2,
+                                                  n_new_files))
+    print("[%s -> %s]: %d files to update" % (folder_name1, folder_name2, n_update))
 
 def ask_continue():
     answer = None
@@ -109,7 +117,7 @@ def view_diffs(env, target):
 def view_rm_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_rm_differences(target.name)
+    diffs = difflist.select_rm_differences(target.folder1["name"], target.folder2["name"])
 
     print("Removals:")
     for diff in diffs:
@@ -118,7 +126,7 @@ def view_rm_diffs(env, target):
 def view_dirs_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_dirs_differences(target.name)
+    diffs = difflist.select_dirs_differences(target.folder1["name"], target.folder2["name"])
 
     print("New directories:")
     for diff in diffs:
@@ -127,7 +135,7 @@ def view_dirs_diffs(env, target):
 def view_new_file_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_new_file_differences(target.name)
+    diffs = difflist.select_new_file_differences(target.folder1["name"], target.folder2["name"])
 
     print("New files to upload:")
     for diff in diffs:
@@ -136,7 +144,7 @@ def view_new_file_diffs(env, target):
 def view_update_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_update_differences(target.name)
+    diffs = difflist.select_update_differences(target.folder1["name"], target.folder2["name"])
 
     print("Files to update:")
     for diff in diffs:
@@ -160,9 +168,12 @@ def print_target_totals(target):
     n_failed = target.progress["failed"]
     n_total = target.total_children
 
-    print("[%s]: %d tasks in total" % (target.name, n_total))
-    print("[%s]: %d tasks successful" % (target.name, n_finished))
-    print("[%s]: %d tasks failed" % (target.name, n_failed))
+    print("[%s -> %s]: %d tasks in total" % (target.folder1["name"],
+                                             target.folder2["name"], n_total))
+    print("[%s -> %s]: %d tasks successful" % (target.folder1["name"],
+                                               target.folder2["name"], n_finished))
+    print("[%s -> %s]: %d tasks failed" % (target.folder1["name"],
+                                           target.folder2["name"], n_failed))
 
 class SynchronizerReceiver(Receiver):
     def __init__(self, env, synchronizer):
@@ -191,7 +202,7 @@ class SynchronizerReceiver(Receiver):
 
     def on_next_target(self, event, target):
         target.add_receiver(self.target_receiver)
-        print("Next target: [%s]" % (target.name,))
+        print("Next target: [%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
 
     def on_worker_starting(self, event, worker):
         if isinstance(worker, Scanner):
@@ -206,7 +217,9 @@ class SynchronizerReceiver(Receiver):
 
     def on_disk_error(self, exc, synchronizer):
         target = synchronizer.cur_target
-        print("[%s]: error: %s: %s" % (target.name, exc.error_type, exc))
+        print("[%s -> %s]: error: %s: %s" % (target.folder1["name"],
+                                             target.folder2["name"],
+                                             exc.error_type, exc))
 
     def on_exception(self, exc, synchronizer):
         traceback.print_exc()
@@ -232,37 +245,44 @@ class TargetReceiver(Receiver):
         status = target.status
 
         if status != "pending":
-            print("[%s]: %s" % (target.name, status))
+            print("[%s -> %s]: %s" % (target.folder1["name"],
+                                      target.folder2["name"], status))
 
         if status in ("finished", "failed"):
             print_target_totals(target)
 
     def on_integrity_check(self, event):
         target = event["emitter"]
-        print("[%s]: integrity check" % (target.name,))
+        print("[%s -> %s]: integrity check" % (target.folder1["name"],
+                                               target.folder2["name"]))
 
     def on_integrity_check_finished(self, event):
         target = event["emitter"]
-        print("[%s]: integrity check: finished" % (target.name,))
+        print("[%s -> %s]: integrity check: finished" % (target.folder1["name"],
+                                                         target.folder2["name"]))
 
     def on_integrity_check_failed(self, event):
         target = event["emitter"]
-        print("[%s]: integrity check: failed" % (target.name,))
+        print("[%s -> %s]: integrity check: failed" % (target.folder1["name"],
+                                                       target.folder2["name"]))
 
     def on_diffs_started(self, event):
         target = event.emitter
 
-        print("[%s]: building the difference table" % (target.name,))
+        print("[%s -> %s]: building the difference table" % (target.folder1["name"],
+                                                             target.folder2["name"]))
 
     def on_diffs_failed(self, event):
         target = event.emitter
 
-        print("[%s]: failed to build the difference table" % (target.name,))
+        print("[%s -> %s]: failed to build the difference table" % (target.folder1["name"],
+                                                                    target.folder2["name"]))
 
     def on_diffs_finished(self, event):
         target = event.emitter
 
-        print("[%s]: finished building the difference table" % (target.name,))
+        print("[%s -> %s]: finished building the difference table" % (target.folder1["name"],
+                                                                      target.folder2["name"]))
 
     def on_entered_stage(self, event, stage):
         target = event.emitter
@@ -273,7 +293,8 @@ class TargetReceiver(Receiver):
         if stage == "check" and target.skip_integrity_check:
             return
 
-        print("[%s]: entered stage %r" % (target.name, stage))
+        print("[%s -> %s]: entered stage %r" % (target.folder1["name"],
+                                                target.folder2["name"], stage))
 
     def on_exited_stage(self, event, stage):
         target = event.emitter
@@ -302,7 +323,8 @@ class TargetReceiver(Receiver):
         elif stage == "check" and target.skip_integrity_check:
             return
 
-        print("[%s]: exited stage %r" % (target.name, stage))
+        print("[%s -> %s]: exited stage %r" % (target.folder1["name"],
+                                               target.folder2["name"], stage))
 
 class WorkerReceiver(Receiver):
     def __init__(self):
@@ -415,11 +437,12 @@ def do_sync(env, names):
 
     names = list(names)
 
-    if env.get("all", False):
-        names.extend(sorted(config.targets.keys()))
-
     if len(names) == 0:
-        show_error("Error: no targets given")
+        show_error("Error: no folders given")
+        return 1
+
+    if len(names) % 2 != 0:
+        show_error("Error: invalid number of arguments")
         return 1
 
     n_sync_workers = env.get("n_workers", config.sync_threads)
@@ -441,8 +464,8 @@ def do_sync(env, names):
 
         targets = []
 
-        for name in names:
-            target = synchronizer.make_target(name, not no_scan)
+        for name1, name2 in zip(names[::2], names[1::2]):
+            target = synchronizer.make_target(name1, name2, not no_scan)
             target.skip_integrity_check = no_check
             targets.append(target)
 
@@ -454,7 +477,7 @@ def do_sync(env, names):
 
         print("Targets to sync:")
         for target in targets:
-            print("[%s]" % (target.name,))
+            print("[%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
 
         synchronizer.start()
         synchronizer.join()

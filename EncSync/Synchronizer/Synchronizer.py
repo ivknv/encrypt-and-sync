@@ -7,7 +7,7 @@ from .Target import SyncTarget
 from .Logging import logger
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
-from ..TargetStorage import get_target_storage
+from ..FolderStorage import get_folder_storage
 
 __all__ = ["Synchronizer"]
 
@@ -74,26 +74,33 @@ class Synchronizer(Worker):
 
         return target
 
-    def make_target(self, name, enable_scan, skip_integrity_check=False):
+    def make_target(self, folder_name1, folder_name2,
+                    enable_scan, skip_integrity_check=False):
         try:
-            config_target = self.config.targets[name]
+            folder1 = self.config.folders[folder_name1]
         except KeyError:
-            raise ValueError("Unknown target: %r" % (name,))
+            raise ValueError("Unknown folder: %r" % (folder_name1,))
 
-        src_name = config_target["src"]["name"]
-        dst_name = config_target["dst"]["name"]
+        try:
+            folder2 = self.config.folders[folder_name2]
+        except KeyError:
+            raise ValueError("Unknown folder: %r" % (folder_name2,))
 
-        src = get_target_storage(src_name)(name, "src", self.config, self.directory)
-        dst = get_target_storage(dst_name)(name, "dst", self.config, self.directory)
+        folder_type1 = folder1["type"]
+        folder_type2 = folder2["type"]
+
+        src = get_folder_storage(folder_type1)(folder_name1, self.config, self.directory)
+        dst = get_folder_storage(folder_type2)(folder_name2, self.config, self.directory)
         
         target = SyncTarget(self)
-        target.name = name
+        target.folder1 = folder1
+        target.folder2 = folder2
         target.src = src
         target.dst = dst
         target.enable_scan = enable_scan
         target.skip_integrity_check = skip_integrity_check
-        target.avoid_src_rescan = config_target["src"]["avoid_rescan"]
-        target.avoid_dst_rescan = config_target["dst"]["avoid_rescan"]
+        target.avoid_src_rescan = folder1["avoid_rescan"]
+        target.avoid_dst_rescan = folder2["avoid_rescan"]
 
         return target
 

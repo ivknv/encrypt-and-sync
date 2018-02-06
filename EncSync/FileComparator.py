@@ -5,6 +5,8 @@ from . import Paths
 from . import PathMatch
 from .FileList import FileList
 
+__all__ = ["FileComparator", "compare_lists"]
+
 def try_next(it, default=None):
     try:
         return next(it)
@@ -12,30 +14,28 @@ def try_next(it, default=None):
         return default
 
 class FileComparator(object):
-    def __init__(self, config, name, directory=None):
+    def __init__(self, config, folder_name1, folder_name2, directory=None):
         self.config = config
-        self.name = name
 
         try:
-            self.target = config.targets[name]
+            self.folder1 = config.folders[folder_name1]
         except KeyError:
-            raise ValueError("Unknown target: %r" % (name,))
+            raise ValueError("Unknown folder: %r" % (folder_name1,))
+
+        try:
+            self.folder2 = config.folders[folder_name2]
+        except KeyError:
+            raise ValueError("Unknown folder: %r" % (folder_name2,))
 
         self.directory = directory
 
-        flist1 = FileList(name, self.target["src"]["name"], directory)
-        flist2 = FileList(name, self.target["dst"]["name"], directory)
+        flist1 = FileList(folder_name1, directory)
+        flist2 = FileList(folder_name2, directory)
         flist1.create()
         flist2.create()
 
-        target_src = self.target["src"]["path"]
-        target_dst = self.target["dst"]["path"]
-
-        self.prefix1 = Paths.dir_normalize(Paths.join_properly("/", target_src))
-        self.prefix2 = Paths.dir_normalize(Paths.join_properly("/", target_dst))
-
-        self.dir_name1 = self.target["src"]["name"]
-        self.dir_name2 = self.target["dst"]["name"]
+        self.prefix1 = self.folder1["path"]
+        self.prefix2 = self.folder2["path"]
 
         self.nodes1 = flist1.select_all_nodes()
         self.nodes2 = flist2.select_all_nodes()
@@ -69,14 +69,16 @@ class FileComparator(object):
         return [{"type": "rm",
                  "node_type": self.type2,
                  "path": self.path2,
-                 "name": self.name}]
+                 "folder1": self.folder1["name"],
+                 "folder2": self.folder2["name"]}]
 
     def diff_new(self):
         self.node1 = try_next(self.it1)
         return [{"type": "new",
                  "node_type": self.type1,
                  "path": self.path1,
-                 "name": self.name}]
+                 "folder1": self.folder1["name"],
+                 "folder2": self.folder2["name"]}]
 
     def diff_update(self):
         self.node1 = try_next(self.it1)
@@ -85,7 +87,8 @@ class FileComparator(object):
         return [{"type": "update",
                  "node_type": self.type2,
                  "path": self.path2,
-                 "name": self.name}]
+                 "folder1": self.folder1["name"],
+                 "folder2": self.folder2["name"]}]
 
     def diff_transition(self):
         self.node1 = try_next(self.it1)
@@ -98,12 +101,14 @@ class FileComparator(object):
             diffs.append({"type": "rm",
                           "node_type": self.type2,
                           "path": self.path2,
-                          "name": self.name})
+                          "folder1": self.folder1["name"],
+                          "folder2": self.folder2["name"]})
 
         diffs.append({"type": "new",
                       "node_type": self.type1,
                       "path": self.path1,
-                      "name": self.name})
+                      "folder1": self.folder1["name"],
+                      "folder2": self.folder2["name"]})
 
         return diffs
 
@@ -137,20 +142,6 @@ class FileComparator(object):
                 self.path2 = Paths.join("/", self.path2)
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
-
-            if self.path1 is not None and self.target is not None:
-                allowed_paths = self.target["allowed_paths"].get(self.dir_name1, [])
-
-                if not PathMatch.match(self.node1["path"], allowed_paths):
-                    self.node1 = try_next(self.it1)
-                    continue
-
-            if self.path2 is not None and self.target is not None:
-                allowed_paths = self.target["allowed_paths"].get(self.dir_name2, [])
-
-                if not PathMatch.match(self.node2["path"], allowed_paths):
-                    self.node1 = try_next(self.it2)
-                    continue
 
             if self.is_removed():
                 if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
@@ -188,8 +179,8 @@ class FileComparator(object):
     def is_transitioned(self):
         return self.node1 and self.node2 and self.type1 != self.type2
 
-def compare_lists(config, name, directory=None):
-    comparator = FileComparator(config, name, directory)
+def compare_lists(config, folder_name1, folder_name2, directory=None):
+    comparator = FileComparator(config, folder_name1, folder_name2, directory)
 
     for i in comparator:
         for j in i:

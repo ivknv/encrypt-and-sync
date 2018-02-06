@@ -84,10 +84,10 @@ class DownloadTarget(Task):
             yield self.node_to_task(node, dst_type)
 
     def set_tasks(self):
-        config_target, dir_type = self.config.identify_target(self.src.storage.name,
-                                                                self.src_path)
+        folder = self.config.identify_folder(self.src.storage.name,
+                                             self.src_path)
 
-        if config_target is None:
+        if folder is None:
             self.expected_total_children = -1
             scannable = DecryptedScannable(self.src.storage, self.src_path)
             scannable.identify()
@@ -97,9 +97,8 @@ class DownloadTarget(Task):
             nodes = (i[1] for i in scan_files(scannable))
             nodes = (j for i in ([scannable.to_node()], nodes) for j in i)
         else:
-            target_name = config_target["name"]
-            flist = FileList(target_name, self.src.storage.name,
-                             self.downloader.directory)
+            folder_name = folder["name"]
+            flist = FileList(folder_name, self.downloader.directory)
             flist.create()
 
             root_node = flist.find_node(self.src_path)
@@ -113,13 +112,11 @@ class DownloadTarget(Task):
                 self.expected_total_children = -1
 
                 if self.src.is_encrypted(self.src_path):
-                    dir_name = config_target[dir_type]["name"]
-                    target_storage = self.src.get_target_storage(target_name,
-                                                                 dir_name)
+                    folder_storage = self.src.get_folder_storage(folder_name)
 
-                    prefix = config_target[dir_type]["path"]
-                    enc_path = target_storage.encrypt_path(self.src_path)[0]
-                    filename_encoding = target_storage.filename_encoding
+                    prefix = folder["path"]
+                    enc_path = folder_storage.encrypt_path(self.src_path)[0]
+                    filename_encoding = folder_storage.filename_encoding
 
                     scannable = EncryptedScannable(self.src.storage,
                                                    prefix, enc_path,

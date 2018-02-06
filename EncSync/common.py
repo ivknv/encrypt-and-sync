@@ -8,8 +8,8 @@ import sys
 from . import Paths
 
 __all__ = ["format_timestamp", "parse_timestamp", "node_tuple_to_dict",
-           "normalize_node", "escape_glob", "validate_target_name", "is_windows",
-           "get_file_size"]
+           "normalize_node", "escape_glob", "validate_folder_name",
+           "validate_storage_name", "is_windows", "get_file_size"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -46,8 +46,11 @@ def normalize_node(node):
 def escape_glob(s):
     return "".join("[" + i + "]" if i in "*?[]" else i for i in s)
 
-def validate_target_name(name):
+def validate_folder_name(name):
     return all(c.isalnum() or c in "_-+." for c in name)
+
+def validate_storage_name(name):
+    return name in {"local", "yadisk"}
 
 def is_windows():
     return sys.platform.startswith("win")

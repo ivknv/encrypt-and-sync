@@ -16,6 +16,12 @@ from ..DuplicateRemover import DuplicateRemoverTask
 from ..Encryption import DecryptionError
 from .. import Paths
 
+__all__ = ["positive_int", "get_finished_percent", "get_failed_percent",
+           "get_progress_str", "make_size_readable", "local_path", "remote_path",
+           "non_local_path", "non_remote_path", "recognize_path", "prepare_remote_path",
+           "authenticate", "ask_master_password", "make_config", "show_error",
+           "create_encsync_dirs", "cleanup_filelists"]
+
 try:
     JSONDecodeError = json.JSONDecodeError
 except AttributeError:
@@ -235,7 +241,7 @@ def cleanup_filelists(env):
     config = env["config"]
     files = os.listdir(env["db_dir"])
 
-    target_names = set(config.targets.keys())
+    folder_names = {i.partition(":")[0] for i in config.folders.keys()}
 
     suffixes = ("-local-filelist.db", "-yadisk-filelist.db",
                 "-local-duplicates.db", "-yadisk-duplicates.db")
@@ -253,7 +259,7 @@ def cleanup_filelists(env):
 
         name = filename.rsplit(suffix, 1)[0]
 
-        if name not in target_names:
+        if name not in folder_names:
             try:
                 os.remove(os.path.join(env["db_dir"], filename))
             except (FileNotFoundError, IsADirectoryError, PermissionError):
