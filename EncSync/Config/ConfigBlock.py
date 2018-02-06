@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from ..EncScript import Block, SysCommand, AndOperator
+from ..EncScript.Exceptions import EvaluationError
 
 __all__ = ["ConfigBlock"]
 
@@ -9,10 +10,10 @@ class ConfigBlock(Block):
     def evaluate_body(self, *args, **kwargs):
         for i in self.body:
             if isinstance(i, SysCommand):
-                raise ValueError("Can't execute system commands")
+                raise EvaluationError(self, "Can't execute system commands")
             elif isinstance(i, Block) and not isinstance(i, ConfigBlock):
-                raise ValueError("Can't execute this kind of block")
+                raise EvaluationError(self, "Can't execute this kind of block")
             elif isinstance(i, AndOperator):
-                raise ValueError("'&&' operator is not available")
+                raise EvaluationError(self, "'&&' operator is not available")
 
             self.retcode = i.evaluate(*args, **kwargs)
