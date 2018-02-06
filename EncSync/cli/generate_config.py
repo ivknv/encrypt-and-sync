@@ -30,18 +30,18 @@ n-retries 10
 upload-connect-timeout 10
 upload-read-timeout 60
 
-# Specify targets
-# Target name can contain digits, characters of english alphabet, '+', '-', '_' and '.'
-# src specifies the source directory
-# dst specifies the destination directory
+# Specify folders
+# Folder name can contain digits, characters of english alphabet, '+', '-', '_' and '.'
 # A path that starts with local:// is a local one
 # A path that starts with disk:// or yadisk:// is a Yandex.Disk path
-# encrypted enables encryption (can be omitted)
-# target preferred-target-name {
-#     src local://path/to/local/dir
-#     dst yadisk://path/to/yadisk/dir
-#     encrypted dst
-# }
+folders {
+#    folder1 /path/to/local/folder {}
+#    folder1 disk://path/to/remote/folder {
+#        encrypted true
+#        filename-encoding base64 # optional
+#        avoid-rescan false # optional
+#    }
+}
 
 # List of patterns to exclude when performing local scan
 # The synchronizer will think they don't exist
