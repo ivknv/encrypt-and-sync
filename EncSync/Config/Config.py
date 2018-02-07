@@ -46,6 +46,8 @@ class Config(object):
         self.encrypted_data = {}
         self.storages = {}
 
+        self.sync_targets = [] 
+
         self._master_key = b""
 
     @property

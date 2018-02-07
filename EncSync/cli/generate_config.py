@@ -43,13 +43,19 @@ folders {
 #    }
 }
 
+# Default targets to sync (when given -a or --all)
+targets {
+#    folder:local  -> folder:yadisk
+#    folder:yadisk -> folder:local
+}
+
 # List of patterns to exclude when performing local scan
 # The synchronizer will think they don't exist
 # You can have multiple include/exclude blocks
 # They will be interpreted in specified order
 exclude {
     # /path/to/local/*.txt
-    # /path/to/local/dir2
+    # /path/to/local/dir2/
 }
 
 # This can cancel out any previous exclude blocks, works the same way

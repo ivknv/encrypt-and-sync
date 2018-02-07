@@ -20,5 +20,6 @@ class ConfigNamespace(Namespace):
         self["n-retries"] = commands.NRetriesCommand
 
         self["folders"] = blocks.FoldersBlock
+        self["targets"] = blocks.TargetsBlock
         self["include"] = blocks.IncludeBlock
         self["exclude"] = blocks.ExcludeBlock

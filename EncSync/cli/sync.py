@@ -437,6 +437,11 @@ def do_sync(env, names):
 
     names = list(names)
 
+    if env.get("all", False):
+        for folder1, folder2 in config.sync_targets:
+            names.append(folder1)
+            names.append(folder2)
+
     if len(names) == 0:
         show_error("Error: no folders given")
         return 1
