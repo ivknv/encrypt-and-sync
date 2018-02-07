@@ -29,7 +29,7 @@ def set_key(env):
 
     try:
         config.load_encrypted_data(env["enc_data_path"])
-        config.key = key
+        config.plain_key = key
 
         config.store_encrypted_data(env["enc_data_path"])
     except InvalidEncryptedDataError:

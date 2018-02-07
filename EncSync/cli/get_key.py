@@ -18,7 +18,7 @@ def get_key(env):
 
     try:
         config.load_encrypted_data(env["enc_data_path"])
-        print(config.key)
+        print(config.plain_key)
     except InvalidEncryptedDataError:
         show_error("Error: invalid encrypted data")
         return 1
