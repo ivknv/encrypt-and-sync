@@ -31,7 +31,9 @@ class TargetCommand(Command):
         if len(self.args) == 3:
             folder1, arrow, folder2 = self.args
 
-            if arrow not in ("->", "=>"):
+            if arrow in ("<-", "<="):
+                folder1, folder2 = folder2, folder1
+            elif arrow not in ("->", "=>"):
                 raise EvaluationError(self, "Bad arrow: %r instead of '->' or '=>'" % (arrow,))
         elif len(self.args) == 2:
             folder1, folder2 = self.args
