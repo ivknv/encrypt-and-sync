@@ -40,3 +40,5 @@ You can generate a sample configuration by running
 ```sh
 encsync make-config ~/.encsync/encsync.conf
 ```
+
+For additional information, see `Configuration.md`.
