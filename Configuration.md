@@ -2,7 +2,7 @@
 ## Syntax
 The syntax is mostly similar to BASH, although, there are no variables and nested commands.
 
-## Global Commands
+## Commands
 `sync-threads <non-negative-integer>` - sets the number of threads used for synchronization.
 
 `scan-threads <non-negative-integer>` - sets the number of threads used for scanning.
@@ -19,7 +19,7 @@ The syntax is mostly similar to BASH, although, there are no variables and neste
 
 `read-timeout <positive-number>` - sets the read timeout in seconds.
 
-## Global Blocks
+## Blocks
 ### `exclude`
 This block can be used to exclude files from the synchronization.
 This can also speed up the scan.
