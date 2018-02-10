@@ -72,7 +72,7 @@ folders {
     python disk://Python {
         encrypted true
         avoid-rescan true # Makes synchronizer avoid scanning the folder, unless it's empty in the database
-        filename-encoding base64
+        filename-encoding base64 # base64 is the default filename encoding
     }
 
     remote-only-folder disk://SomeFolder {
@@ -80,3 +80,9 @@ folders {
     }
 }
 ```
+
+`encrypted [true | false]` - enable/disable folder encryption.
+
+`avoid-rescan [true | false]` - makes synchronizer scan the folder only if it's empty in the database.
+
+`filename-encoding [base64 | base41]` - sets encoding used for encrypted filenames.
