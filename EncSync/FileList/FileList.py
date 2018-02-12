@@ -13,15 +13,10 @@ def prepare_path(path):
 
 class FileList(BaseFileList):
     def __init__(self, folder_name, directory=None, *args, **kwargs):
-        folder_name, _, folder_type = folder_name.partition(":")
-
         if not validate_folder_name(folder_name):
             raise ValueError("Invalid folder name: %r" % (folder_name,))
 
-        if not validate_storage_name(folder_type):
-            raise ValueError("Unknown folder type: %r" % (folder_type,))
-
-        BaseFileList.__init__(self, "%s-%s-filelist.db" % (folder_name, folder_type),
+        BaseFileList.__init__(self, "%s-filelist.db" % (folder_name,),
                               directory, *args, **kwargs)
 
     def create(self):

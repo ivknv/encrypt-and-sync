@@ -4,6 +4,7 @@
 from ...EncScript.Exceptions import EvaluationError
 from ...EncScript.Namespace import Namespace
 from ...EncScript import Command
+from ...common import validate_folder_name
 
 from ..ConfigBlock import ConfigBlock
 
@@ -39,5 +40,12 @@ class TargetCommand(Command):
             folder1, folder2 = self.args
         else:
             raise EvaluationError(self, "Expected 2 or 3 arguments")
+
+        for i in (folder1, folder2):
+            if not validate_folder_name(i):
+                raise EvaluationError(self, "Invalid folder name: %r" % (i,))
+
+            if i not in config.folders:
+                raise EvaluationError(self, "Unknown folder name: %r" % (i,))
 
         config.sync_targets.append((folder1, folder2))

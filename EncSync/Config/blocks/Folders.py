@@ -7,7 +7,7 @@ from ...EncScript.Exceptions import EvaluationError
 from ...EncScript.Namespace import Namespace
 from ...EncScript import Command
 from ...Storage import get_storage
-from ...common import recognize_path
+from ...common import recognize_path, validate_folder_name, validate_storage_name
 from ... import Paths
 
 from ..ConfigBlock import ConfigBlock
@@ -55,7 +55,13 @@ class FolderBlock(ConfigBlock):
 
         name, path = self.args
 
+        if not validate_folder_name(name):
+            raise EvaluationError(self, "Invalid folder name: %r" % (name,))
+
         path, path_type = recognize_path(path)
+
+        if not validate_storage_name(path_type):
+            raise EvaluationError(self, "Invalid storage type: %r" % (path_type,))
 
         if path_type == "local":
             path = prepare_local_path(path)
@@ -71,17 +77,16 @@ class FolderBlock(ConfigBlock):
         else:
             filename_encoding = "base41"
 
-        verbose_name = name + ":" + path_type
+        if name in config.folders:
+            raise EvaluationError(self, "Duplicate folder name: %r" % (name,))
 
-        config.folders.setdefault(verbose_name,
-                                  {"name":              verbose_name,
-                                   "path":              None,
-                                   "type":              path_type,
-                                   "avoid_rescan":      avoid_rescan,
-                                   "encrypted":         False,
-                                   "filename_encoding": filename_encoding})
-        config.folders[verbose_name]["path"] = path
-        self.folder = config.folders[verbose_name]
+        self.folder = {"name":              name,
+                       "path":              path,
+                       "type":              path_type,
+                       "avoid_rescan":      avoid_rescan,
+                       "encrypted":         False,
+                       "filename_encoding": filename_encoding}
+        config.folders[name] = self.folder
 
     def evaluate_body(self, config, *args, **kwargs):
         for i in self.body:

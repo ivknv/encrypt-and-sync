@@ -241,10 +241,13 @@ def cleanup_filelists(env):
     config = env["config"]
     files = os.listdir(env["db_dir"])
 
-    folder_names = {i.partition(":")[0] for i in config.folders.keys()}
+    folder_names = {i for i in config.folders.keys()}
+    storage_names = {i["type"] for i in config.folders.values()}
 
-    suffixes = ("-local-filelist.db", "-yadisk-filelist.db",
-                "-local-duplicates.db", "-yadisk-duplicates.db")
+    filelist_suffix = "-filelist.db"
+    duplicates_suffix = "-duplicates.db"
+
+    suffixes = (filelist_suffix, duplicates_suffix)
 
     for filename in files:
         suffix = None
@@ -257,10 +260,18 @@ def cleanup_filelists(env):
         if suffix is None:
             continue
 
-        name = filename.rsplit(suffix, 1)[0]
+        if suffix == filelist_suffix:
+            name = filename.partition(suffix)[0]
 
-        if name not in folder_names:
-            try:
-                os.remove(os.path.join(env["db_dir"], filename))
-            except (FileNotFoundError, IsADirectoryError, PermissionError):
-                pass
+            if name in folder_names:
+                continue
+        else:
+            storage_name = filename.partition(suffix)[0]
+
+            if storage_name in storage_names:
+                continue
+
+        try:
+            os.remove(os.path.join(env["db_dir"], filename))
+        except (FileNotFoundError, IsADirectoryError, PermissionError):
+            pass
