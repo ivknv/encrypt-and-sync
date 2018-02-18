@@ -15,7 +15,7 @@ from ..constants import TEMP_ENCRYPT_BUFFER_LIMIT
 from .. import Encryption
 from .. import Paths
 from .. import PathMatch
-from ..common import get_file_size
+from ..common import get_file_size, recognize_path
 
 from .Exceptions import InvalidConfigError
 from .ConfigProgram import ConfigProgram
@@ -40,8 +40,7 @@ class Config(object):
         self.n_retries = 5
 
         self.folders = {}
-        self._allowed_paths = {} # Uncompiled
-        self.allowed_paths = {} # Compiled
+        self.allowed_paths = {}
 
         self.encrypted_data = {}
         self.storages = {}
@@ -82,7 +81,7 @@ class Config(object):
         self.encrypted_data["key"] = value
 
     @staticmethod
-    @lru_cache(maxsize=2)
+    @lru_cache(maxsize=64)
     def encode_key(plain_key):
         return hashlib.sha256(plain_key.encode("utf8")).digest()
 
@@ -213,10 +212,27 @@ class Config(object):
 
             raise InvalidConfigError("At %s: %s" % (location, str(e)))
 
-        config._allowed_paths = config.allowed_paths
-        config.allowed_paths = {}
-
-        for k, v in config._allowed_paths.items():
-            config.allowed_paths[k] = PathMatch.compile_patterns(v)
-
         return config
+
+    def process(self):
+        for folder in self.folders.values():
+            if folder["type"] == "local":
+                folder["path"] = Paths.from_sys(os.path.expanduser(folder["path"]))
+            else:
+                folder["path"] = Paths.join_properly("/", folder["path"])
+
+            folder["path"] = Paths.dir_normalize(folder["path"])
+
+        for storage_name, blocks in self.allowed_paths.items():
+            for block_type, block in blocks:
+                for i, pattern in enumerate(block):
+                    pattern, path_type = recognize_path(pattern)
+
+                    if path_type == "local":
+                        pattern = Paths.from_sys(os.path.expanduser(pattern))
+                    else:
+                        pattern = Paths.join_properly("/", pattern)
+
+                    block[i] = pattern
+
+            self.allowed_paths[storage_name] = PathMatch.compile_patterns(blocks)

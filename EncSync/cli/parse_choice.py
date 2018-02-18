@@ -3,6 +3,8 @@
 
 import re
 
+__all__ = ["interpret_choice"]
+
 R_INTERVAL = re.compile(r"^([+-]?\d+:[+-]?\d+)$")
 R_INDEX = re.compile(r"^([+-]?\d+)$")
 
@@ -10,6 +12,7 @@ class Word(object):
     INDEX = 0
     INTERVAL = 1
     ALL = 2
+    NONE = 3
 
     def __init__(self, word):
         self.word = word
@@ -41,13 +44,17 @@ class Word(object):
         elif is_all(word):
             self.type = Word.ALL
             self.value = None
+        elif is_none(word):
+            self.type = Word.NONE
+            self.value = None
         else:
             raise ValueError("Unknown word: %r" % word)
 
     def interpret(self, values, output):
         func_table = {Word.INDEX:    self._interpret_index,
                       Word.INTERVAL: self._interpret_interval,
-                      Word.ALL:      self._interpret_all}
+                      Word.ALL:      self._interpret_all,
+                      Word.NONE:     self._interpret_none}
 
         func_table[self.type](values, output)
 
@@ -94,6 +101,14 @@ class Word(object):
         for i, value in enumerate(values):
             output[i + 1] = value
 
+    def _interpret_none(self, values, output):
+        if self.negative:
+            for i, value in enumerate(values):
+                output[i + 1] = value
+            return
+
+        output.clear()
+
 def interpret_choice(line, values):
     output = {}
 
@@ -115,3 +130,6 @@ def is_index(word):
 
 def is_all(word):
     return word == "all"
+
+def is_none(word):
+    return word == "none"

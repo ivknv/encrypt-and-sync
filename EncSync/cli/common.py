@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from copy import deepcopy
 from getpass import getpass
 import json
 import sys
@@ -76,23 +77,25 @@ def get_progress_str(task):
 
     return "[%6.2f%%:%6.2f%%][%s]" % (finished_percent, failed_percent, path)
 
-def make_size_readable(size):
-    unit_list = ["KiB", "MiB", "GiB", "TiB"]
-    units = "B"
+def make_size_readable(size, suffixes=None):
+    if suffixes is None:
+        suffixes= [" B", " KiB", " MiB", " GiB", " TiB"]
 
-    for u in unit_list:
+    suffix = suffixes[0]
+
+    for s in suffixes[1:]:
         if size >= 1024:
-            units = u
+            suffix = s
             size = float(size) / 1024
 
     d = round(size - int(size), 2)
 
     if d < 0.01:
-        return "%d %s" % (size, units)
+        return "%d%s" % (size, suffix)
     elif int(d * 100) % 10 == 0:
-        return "%.1f %s" % (size, units)
+        return "%.1f%s" % (size, suffix)
 
-    return "%.2f %s" % (size, units)
+    return "%.2f%s" % (size, suffix)
 
 def local_path(arg):
     path_type = recognize_path(arg)[1]
@@ -186,8 +189,12 @@ def ask_master_password(msg="Master password: "):
     except (KeyboardInterrupt, EOFError):
         return
 
-def make_config(env, load_encrypted_data=True):
+def make_config(env, load_encrypted_data=True, raw=False):
+    raw_config = env.get("raw_config")
     config = env.get("config")
+
+    if raw and raw_config is not None and (raw_config.encrypted_data or not load_encrypted_data):
+        return raw_config, 0
 
     if config is not None and (config.encrypted_data or not load_encrypted_data):
         return config, 0
@@ -195,9 +202,10 @@ def make_config(env, load_encrypted_data=True):
     config_path = env["config_path"]
     enc_data_path = env["enc_data_path"]
 
-    if config is None:
+    if raw_config is None:
         try:
-            config = Config.load(config_path)
+            raw_config = Config.load(config_path)
+
         except InvalidConfigError as e:
             show_error("Error: invalid configuration: %s" % (e,))
             return None, 1
@@ -208,15 +216,24 @@ def make_config(env, load_encrypted_data=True):
         if master_password is None:
             return None, ret
 
-        config.master_password = master_password
+        raw_config.master_password = master_password
 
         try:
-            config.load_encrypted_data(enc_data_path)
+            raw_config.load_encrypted_data(enc_data_path)
         except InvalidEncryptedDataError:
             show_error("Error: invalid encrypted data")
             return None, 1
 
+    env["raw_config"] = raw_config
+
+    if not raw:
+        config = deepcopy(raw_config)
+        config.process()
+
     env["config"] = config
+
+    if raw:
+        return raw_config, 0
 
     return config, 0
 

@@ -9,7 +9,7 @@ from . import Paths
 
 __all__ = ["format_timestamp", "parse_timestamp", "node_tuple_to_dict",
            "normalize_node", "escape_glob", "validate_folder_name",
-           "validate_storage_name", "is_windows", "get_file_size"]
+           "validate_storage_name", "is_windows", "get_file_size", "parse_size"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -79,3 +79,29 @@ def recognize_path(path, default="local"):
 
     return (after, before)
 
+def parse_size(s):
+    if s.lower() in ("inf", "nan"):
+        return float(s)
+
+    try:
+        last = s[-1].lower()
+
+        try:
+            if last.isdigit():
+                return float(s)
+        except ValueError:
+            raise ValueError("Expected a non-negative number")
+    except IndexError:
+        return 0
+
+    powers = {"k": 1, "m": 2, "g": 3, "t": 4}
+
+    try:
+        power = powers[last]
+    except KeyError:
+        raise ValueError("Unknown size suffix: %r" % last)
+
+    try:
+        return float(s[:-1]) * 1024 ** power
+    except ValueError:
+        raise ValueError("Expected a non-negative number")

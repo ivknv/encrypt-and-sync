@@ -24,6 +24,7 @@ from .cli.set_key import set_key
 from .cli.get_key import get_key
 from .cli.set_master_password import set_master_password
 from .cli.password_prompt import password_prompt
+from .cli.configure import configure
 
 def cleanup(env):
     try:
@@ -154,7 +155,8 @@ def main(args=None):
                "set_key": lambda: set_key(env),
                "get_key": lambda: get_key(env),
                "set_master_password": lambda: set_master_password(env),
-               "password_prompt": lambda: password_prompt(env)}
+               "password_prompt": lambda: password_prompt(env),
+               "configure": lambda: configure(env)}
 
     return actions[ns.action]()
 
@@ -332,6 +334,11 @@ def parse_args(args):
     password_prompt_parser = subparsers.add_parser("password-prompt",
                                                    help="Run the password prompt and print the password")
     password_prompt_parser.set_defaults(action="password_prompt")
+
+    configure_parser = subparsers.add_parser("configure",
+                                             help="Quick start and interactive configuration")
+    configure_parser.set_defaults(action="configure")
+
 
     ns = parser.parse_args(args[1:])
 

@@ -16,12 +16,6 @@ __all__ = ["FoldersBlock"]
 
 KNOWN_FILENAME_ENCODINGS = {"base64", "base41"}
 
-def prepare_local_path(path):
-    return Paths.dir_normalize(Paths.from_sys(os.path.abspath(os.path.expanduser(path))))
-
-def prepare_remote_path(path):
-    return Paths.dir_normalize(Paths.join_properly("/", path))
-
 class FoldersBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
         ConfigBlock.__init__(self, args, body, parent_namespace)
@@ -64,10 +58,8 @@ class FolderBlock(ConfigBlock):
             raise EvaluationError(self, "Invalid storage type: %r" % (path_type,))
 
         if path_type == "local":
-            path = prepare_local_path(path)
             avoid_rescan = False
         else:
-            path = prepare_remote_path(path)
             avoid_rescan = True
 
         storage_class = get_storage(path_type)

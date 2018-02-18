@@ -3,33 +3,9 @@
 
 from ...EncScript import Command
 from ...EncScript.Exceptions import EvaluationError
+from ...common import parse_size
 
-def parse_size(s):
-    if s.lower() in ("inf", "nan"):
-        return float(s)
-
-    try:
-        last = s[-1].lower()
-
-        try:
-            if last.isdigit():
-                return float(s)
-        except ValueError:
-            raise ValueError("Expected a non-negative number")
-    except IndexError:
-        return 0
-
-    powers = {"k": 1, "m": 2, "g": 3}
-
-    try:
-        power = powers[last]
-    except KeyError:
-        raise ValueError("Unknown size suffix: %r" % last)
-
-    try:
-        return float(s[:-1]) * 1024 ** power
-    except ValueError:
-        raise ValueError("Expected a non-negative number")
+__all__ = ["UploadLimitCommand", "DownloadLimitCommand"]
 
 class UploadLimitCommand(Command):
     def evaluate(self, config):
