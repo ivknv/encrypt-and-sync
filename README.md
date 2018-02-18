@@ -23,18 +23,13 @@ python setup.py install
 ```
 
 ## Configuration
-### Setting the master password and the encryption key
-In order to set the master password, run
+### Interactive configuration
+To interactively edit the configuration, run
 ```sh
-encsync set-master-password
+encsync configure
 ```
 
-To set the encryption key, run
-```sh
-encsync set-key
-```
-
-### The configuration file
+### Manual configuration
 The configuration file is located at `~/.encsync/encsync.conf`.
 You can generate a sample configuration by running
 ```sh
@@ -51,10 +46,7 @@ Folder path is specified like this: `<storage-name>:///path/to/the/folder`,
 where `<storage-name>` can be either 'local' or 'yadisk'.
 In folder paths you can also use 'disk' as a synonym for 'yadisk'.
 If `<storage-name>` is empty, the path will be considered local.
-
-Every folder must also have a name.
-One folder name can have several paths on different storages associated with it.
-The specific path can be specified like this: `<folder-name>:<storage-name>`.
+Every folder must also have a name, it can .
 
 The folders can be specified in the configuration file.
 
@@ -63,7 +55,7 @@ EncSync uses AES encryption to encrypt file content and filenames.
 After the filenames are encrypted they are just a bunch of unreadable bytes, so they need to be encoded.
 There are 2 filename encodings supported at the moment: `base64` and `base41`.
 
-Base64 is case-sensitive sensitive.
+Base64 is case-sensitive.
 Base41 is case-insensitive, but at the cost of producing longer filenames.
 
 ### Synchronizer
@@ -73,7 +65,7 @@ Sync targets require the source folder and the destination folder to be specifie
 
 In order to synchronize folders, you can run:
 ```sh
-encsync sync <source-folder>:<source-storage> <destination-folder>:<destination-storage>
+encsync sync <source-folder> <destination-folder>
 ```
 
 See `encsync sync --help` for additional information.
@@ -86,7 +78,7 @@ Synchronizer does this automatically, unless it's specifically told not to do th
 
 In order to manually scan a folder, you can run:
 ```sh
-encsync scan <folder1>:<storage1> <folder2>:<storage2> ...
+encsync scan <folder1> <folder2> ...
 ```
 
 See `encsync scan --help` for additional information.

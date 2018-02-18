@@ -53,11 +53,11 @@ This block specifies the default targets to sync when the synchronizer receives 
 Usage:
 ```sh
 targets {
-    python:local -> python:yadisk # From python:local to python:yadisk
-    c++:local <- c++:yadisk # From c++:yadisk to c++:local
-    folder1:yadisk -> folder2:yadisk
-    folder2:local => folder1:yadisk
-    folder3:local folder3:yadisk
+    python-local -> python-yadisk # From python-local to python-yadisk
+    c++-local <- c++-yadisk # From c++-yadisk to c++-local
+    folder1-local -> folder2-yadisk
+    folder2-local => folder1-yadisk
+    folder3-local folder3-yadisk
 }
 ```
 
@@ -68,8 +68,8 @@ Folder name must only contain letters, digits, '\_', '-', '+' and '.'.
 Usage:
 ```sh
 folders {
-    python ~/Python {}
-    python disk://Python {
+    python-local ~/Python {}
+    python-yadisk disk://Python {
         encrypted true
         avoid-rescan true # Makes synchronizer avoid scanning the folder, unless it's empty in the database
         filename-encoding base64 # base64 is the default filename encoding
