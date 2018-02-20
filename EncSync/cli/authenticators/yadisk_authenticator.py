@@ -19,17 +19,16 @@ def authenticate_yadisk(env):
                       config.encrypted_data.get("yadisk_token", ""))
 
     try:
-        token_valid = env.get("no_auth_check", False)
+        no_auth_check = env.get("no_auth_check", False)
 
-        if not token_valid:
-            token_valid = y.check_token(n_retries=1)
+        if not no_auth_check:
             refresh_token = config.encrypted_data.get("yadisk_refresh_token", "")
 
-            if not token_valid and refresh_token:
+            if refresh_token:
                 try:
                     response = y.refresh_token(refresh_token)
-                except yadisk.exceptions.UnauthorizedError as e:
-                    pass
+                except yadisk.exceptions.BadRequestError as e:
+                    token_valid = False
                 else:
                     token = response.access_token
                     refresh_token = response.refresh_token
@@ -38,6 +37,10 @@ def authenticate_yadisk(env):
                     config.encrypted_data["yadisk_refresh_token"] = refresh_token
 
                     token_valid = True
+            else:
+                token_valid = y.check_token(n_retries=1)
+        else:
+            token_valid = True
 
         if token_valid:
             config.storages["yadisk"] = YaDiskStorage(config)
