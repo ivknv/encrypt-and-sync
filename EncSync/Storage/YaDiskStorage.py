@@ -262,8 +262,11 @@ class YaDiskUploadController(UploadController):
             raise ControllerInterrupt
 
         try:
-            self.yadisk.upload(self.in_file, self.out_path, overwrite=True,
-                               timeout=self.timeout, n_retries=self.n_retries)
+            def attempt():
+                self.yadisk.upload(self.in_file, self.out_path, overwrite=True,
+                                   timeout=self.timeout, n_retries=0)
+
+            yadisk.utils.auto_retry(attempt, self.n_retries, 0.0)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
         except (RetriableYaDiskError, RequestException) as e:
