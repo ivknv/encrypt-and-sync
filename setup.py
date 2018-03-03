@@ -25,7 +25,7 @@ else:
     scripts = []
 
 setup(name="EncSync",
-      version="0.4.0",
+      version="0.5.0",
       description="Yandex.Disk encrypted sync tool",
       author="Ivan Konovalov",
       packages=find_packages(exclude=["tests"]),
