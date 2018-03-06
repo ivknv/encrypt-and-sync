@@ -71,7 +71,7 @@ class EncryptedScanTask(ScanTask):
 
         self.status = "pending"
 
-        allowed_paths = self.config.allowed_paths(target.storage.name, [])
+        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
 
         while not self.stop_condition(worker):
             try:
