@@ -333,7 +333,7 @@ class SyncTarget(StagedTask):
             self.differences = None
 
         if self.status == "pending":
-            if self.progress["finished"] == self.total_children:
+            if self.progress["finished"] + self.progress["skipped"] == self.total_children:
                 self.status = "finished"
             elif self.progress["suspended"] > 0:
                 self.status = "suspended"
