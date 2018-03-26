@@ -4,7 +4,8 @@ import base64
 import binascii
 import math
 
-__all__ = ["base64_encode", "base64_decode", "base41_encode", "base41_decode"]
+__all__ = ["base64_encode", "base64_decode", "base41_encode", "base41_decode",
+           "base32_encode", "base32_decode"]
 
 BASE41_CHARSET = b"+,-.0123456789_abcdefghijklmnopqrstuvwxyz"
 BASE41_PADDING = b"="
@@ -131,3 +132,15 @@ def base41_encode(b):
 
 def base41_decode(b):
     return _decode_bytes(b, 2, 3, BASE41_CHARSET, BASE41_PADDING)
+
+def base32_encode(b):
+    try:
+        return base64.b32encode(b)
+    except binascii.Error as e:
+        raise ValueError("binascii.Error: %s" % (e,))
+
+def base32_decode(b):
+    try:
+        return base64.b32decode(b)
+    except binascii.Error as e:
+        raise ValueError("binascii.Error: %s" % (e,))

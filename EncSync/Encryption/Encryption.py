@@ -25,9 +25,11 @@ MIN_ENC_SIZE = struct.calcsize("Q") + 16
 DUMMY_IV = b"0" * 16
 
 ENCODE_FUNCTIONS = {"base64": base64_encode,
-                    "base41": base41_encode}
+                    "base41": base41_encode,
+                    "base32": base32_encode}
 DECODE_FUNCTIONS = {"base64": base64_decode,
-                    "base41": base41_decode}
+                    "base41": base41_decode,
+                    "base32": base32_decode}
 
 def get_encode_function(name_or_func):
     if isinstance(name_or_func, str):

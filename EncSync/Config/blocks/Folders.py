@@ -14,7 +14,7 @@ from ..ConfigBlock import ConfigBlock
 
 __all__ = ["FoldersBlock"]
 
-KNOWN_FILENAME_ENCODINGS = {"base64", "base41"}
+KNOWN_FILENAME_ENCODINGS = {"base64", "base41", "base32"}
 
 class FoldersBlock(ConfigBlock):
     def __init__(self, args, body, parent_namespace=None):
