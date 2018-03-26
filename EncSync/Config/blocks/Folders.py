@@ -67,7 +67,7 @@ class FolderBlock(ConfigBlock):
         if storage_class.case_sensitive:
             filename_encoding = "base64"
         else:
-            filename_encoding = "base41"
+            filename_encoding = "base32"
 
         if name in config.folders:
             raise EvaluationError(self, "Duplicate folder name: %r" % (name,))

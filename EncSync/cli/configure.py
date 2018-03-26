@@ -421,9 +421,9 @@ class EditFoldersPrompter(ActionPrompter):
 
         if is_encrypted:
             filename_encoding = FilenameEncodingPrompter("Filename encoding:",
-                                                         "base64").prompt()
+                                                         "base32").prompt()
         else:
-            filename_encoding = "base64"
+            filename_encoding = "base32"
 
         if path_type == "local":
             avoid_rescan = YesNoPrompter("Avoid rescan y/[n]: ", ["y"], ["n", ""]).prompt()
