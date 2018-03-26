@@ -50,6 +50,12 @@ class CdCommand(Command):
             console.cwd, console.pwd = new_path, console.cwd
 
         if path_type == "local":
-            os.chdir(Paths.to_sys(console.cwd))
+            if console.cur_storage.is_encrypted(console.cwd):
+                folder_name = console.cur_storage.identify_folder(console.cwd)["name"]
+                folder_storage = console.cur_storage.get_folder_storage(folder_name)
+
+                os.chdir(folder_storage.encrypt_path(console.cwd)[0])
+            else:
+                os.chdir(Paths.to_sys(console.cwd))
 
         return 0

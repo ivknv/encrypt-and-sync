@@ -62,7 +62,7 @@ class FolderStorage(object):
             :param path: `str`, path to encrypt
             :param IVs: `bytes` or `None`, IVs to encrypt with, will be looked up if `None`
 
-            :returns: `str`
+            :returns: a `tuple` of encrypted path (`str`) and IVs (`bytes`)
         """
 
         full_path = Paths.join_properly("/", full_path)
