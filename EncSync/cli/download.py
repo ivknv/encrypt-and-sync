@@ -17,7 +17,7 @@ from .SignalManagers import GenericSignalManager
 from ..ExceptionManager import ExceptionManager
 
 def print_target_totals(target):
-    n_finished = target.progress["finished"]
+    n_finished = target.progress["finished"] + target.progress["skipped"]
     n_failed = target.progress["failed"]
     n_total = target.total_children
     downloaded = make_size_readable(target.downloaded)

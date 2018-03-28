@@ -164,7 +164,7 @@ def view_duplicates(env, target):
             print("  %s %s" % (duplicate[0], duplicate[2]))
 
 def print_target_totals(target):
-    n_finished = target.progress["finished"]
+    n_finished = target.progress["finished"] + target.progress["skipped"]
     n_failed = target.progress["failed"]
     n_total = target.total_children
 
