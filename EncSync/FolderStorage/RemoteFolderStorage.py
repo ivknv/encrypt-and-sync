@@ -12,7 +12,7 @@ class RemoteFolderStorage(FolderStorage):
         path = Paths.join(self.prefix, path)
 
         if self.encrypted:
-            path = self.encrypt_path(path)
+            path = self.encrypt_path(path)[0]
 
             with tempfile.TemporaryFile("w+b") as tmp_file:
                 controller = self.storage.download(path, tmp_file)
@@ -41,7 +41,7 @@ class RemoteFolderStorage(FolderStorage):
         path = Paths.join(self.prefix, path)
 
         if self.encrypted:
-            path = self.encrypt_path(path)
+            path = self.encrypt_path(path)[0]
 
             tmp_file = tempfile.TemporaryFile("w+b")
 

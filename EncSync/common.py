@@ -50,7 +50,7 @@ def validate_folder_name(name):
     return all(c.isalnum() or c in "_-+." for c in name)
 
 def validate_storage_name(name):
-    return name in {"local", "yadisk"}
+    return name in {"local", "yadisk", "dropbox"}
 
 def is_windows():
     return sys.platform.startswith("win")

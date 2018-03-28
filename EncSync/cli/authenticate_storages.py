@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from .authenticators import authenticate_yadisk
+from .authenticators import authenticate_yadisk, authenticate_dropbox
 
 from ..Storage import get_storage
 
@@ -8,7 +8,8 @@ from .common import make_config
 
 __all__ = ["authenticate_storages"]
 
-STORAGE_TABLE = {"yadisk": authenticate_yadisk}
+STORAGE_TABLE = {"yadisk": authenticate_yadisk,
+                 "dropbox": authenticate_dropbox}
 
 def authenticate_generic_storage(env, name):
     config, ret = make_config(env)

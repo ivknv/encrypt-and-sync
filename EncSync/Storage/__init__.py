@@ -3,11 +3,12 @@
 from .Storage import Storage
 from .LocalStorage import LocalStorage
 from .YaDiskStorage import YaDiskStorage
+from .DropboxStorage import DropboxStorage
 from .Exceptions import UnknownStorageError
 
-__all__ = ["Storage", "LocalStorage", "YaDiskStorage", "get_storage"]
+__all__ = ["Storage", "LocalStorage", "YaDiskStorage", "DropboxStorage", "get_storage"]
 
-STORAGE_TABLE = {s.name: s for s in [LocalStorage, YaDiskStorage]}
+STORAGE_TABLE = {s.name: s for s in [LocalStorage, YaDiskStorage, DropboxStorage]}
 
 def get_storage(name):
     """

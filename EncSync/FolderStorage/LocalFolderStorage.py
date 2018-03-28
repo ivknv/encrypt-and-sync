@@ -11,7 +11,7 @@ class LocalFolderStorage(FolderStorage):
         path = Paths.join(self.prefix, path)
 
         if self.encrypted:
-            path = Paths.to_sys(self.encrypt_path(path))
+            path = Paths.to_sys(self.encrypt_path(path)[0])
 
             yield None
             yield self.config.temp_decrypt(path)
@@ -23,7 +23,7 @@ class LocalFolderStorage(FolderStorage):
         path = Paths.join(self.prefix, path)
 
         if self.encrypted:
-            path = Paths.to_sys(self.encrypt_path(path))
+            path = Paths.to_sys(self.encrypt_path(path)[0])
 
             yield None
             yield open(path, "rb")

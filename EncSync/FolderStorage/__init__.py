@@ -10,7 +10,8 @@ __all__ = ["FolderStorage", "LocalFolderStorage", "RemoteFolderStorage",
            "get_folder_storage"]
 
 FOLDER_STORAGE_TABLE = {"local": LocalFolderStorage,
-                        "yadisk": RemoteFolderStorage}
+                        "yadisk": RemoteFolderStorage,
+                        "dropbox": RemoteFolderStorage}
 
 def get_folder_storage(name):
     try:

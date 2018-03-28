@@ -10,7 +10,8 @@ import yadisk.utils
 
 from ..constants import YADISK_APP_ID, YADISK_APP_SECRET
 
-from ..SpeedLimiter import SpeedLimiter
+from .ControlledSpeedLimiter import ControlledSpeedLimiter
+from .LimitedFile import LimitedFile
 from .Storage import Storage
 from .Exceptions import ControllerInterrupt, TemporaryStorageError
 from .DownloadController import DownloadController
@@ -32,120 +33,6 @@ def _yadisk_meta_to_dict(meta):
             "modified": modified,
             "size":     meta.size if meta.type != "dir" else 0,
             "link":     None}
-
-class ControlledSpeedLimiter(SpeedLimiter):
-    def __init__(self, controller, *args, **kwargs):
-        SpeedLimiter.__init__(self, *args, **kwargs)
-
-        self.controller = controller
-
-    def sleep(self, duration):
-        tolerance = 0.001
-        check_interval = 0.25
-        t1 = time.time()
-
-        left_to_sleep = duration
-
-        while not self.controller.stopped and left_to_sleep > tolerance:
-            time.sleep(min(left_to_sleep, check_interval))
-
-            left_to_sleep = duration - (time.time() - t1)
-
-class LimitedFile(object):
-    def __init__(self, file, controller, limit=float("inf")):
-        self.file = file
-        self.limit = limit
-
-        if self.limit != float("inf"):
-            self.limit = int(self.limit)
-
-        self.last_delay = 0
-        self.cur_read = 0
-        self.controller = controller
-        self.speed_limiter = ControlledSpeedLimiter(controller, self.limit)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.readline()
-
-    def seek(self, *args, **kwargs):
-        self.file.seek(*args, **kwargs)
-
-    def tell(self):
-        return self.file.tell()
-
-    def delay(self):
-        self.speed_limiter.delay()
-
-    def readline(self):
-        if self.controller.stopped:
-            raise ControllerInterrupt
-
-        self.delay()
-
-        if self.controller.stopped:
-            raise ControllerInterrupt
-
-        line = self.file.readline()
-
-        if self.controller.stopped:
-            raise ControllerInterrupt
-
-        self.speed_limiter.quantity += len(line)
-        self.controller.uploaded = self.file.tell()
-
-        return line
-
-    def read(self, size=-1):
-        amount_read = 0
-
-        content = b""
-
-        self.controller.uploaded = self.file.tell()
-        
-        if self.controller.stopped:
-            raise ControllerInterrupt
-
-        if size == -1:
-            amount_to_read = self.limit
-            if amount_to_read == float("inf"):
-                amount_to_read = -1
-            condition = lambda: cur_content
-            # Just any non-empty string
-            cur_content = b"1"
-        else:
-            amount_to_read = min(self.limit, size)
-            condition = lambda: amount_read < size
-
-        while condition():
-            self.delay()
-
-            if self.controller.stopped:
-                raise ControllerInterrupt
-
-            if size != -1:
-                amount_to_read = min(size - amount_read, amount_to_read)
-
-            cur_content = self.file.read(amount_to_read)
-
-            if self.controller.stopped:
-                raise ControllerInterrupt
-
-            content += cur_content
-
-            l = len(cur_content)
-
-            self.speed_limiter.quantity += l
-            amount_read += l
-
-            self.controller.uploaded = self.file.tell()
-
-            if l < amount_to_read:
-                break
-
-        return content
 
 class YaDiskDownloadController(DownloadController):
     def __init__(self, ynd, in_path, out_file, limit=float("inf"), timeout=None, n_retries=None):
