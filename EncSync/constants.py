@@ -18,4 +18,4 @@ TEMP_ENCRYPT_BUFFER_LIMIT = 80 * 1024**2 # In bytes
 # Test string used to verify whether the file was decrypted with the correct key
 CONFIG_TEST = b"TEST STRING\n"
 
-FILENAME_ENCODINGS = ("base64", "base41")
+FILENAME_ENCODINGS = ("base64", "base41", "base32")
