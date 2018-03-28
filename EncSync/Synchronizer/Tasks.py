@@ -223,13 +223,6 @@ class MkdirTask(SyncTask):
         src_path = Paths.join(self.src.prefix, self.path)
         dst_path = Paths.join(self.dst.prefix, self.path)
 
-        if not self.src.exists(self.path):
-            self.flist1.remove_node(src_path)
-            self.autocommit()
-
-            self.status = "skipped"
-            return True
-
         ivs = self.dst.mkdir(self.path)
 
         newnode = {"type":        "d",
