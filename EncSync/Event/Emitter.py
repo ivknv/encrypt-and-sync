@@ -13,8 +13,6 @@ class Emitter(object):
         self._receivers = []
         self._receivers_lock = threading.RLock()
 
-        self.add_event("event")
-
     def add_event(self, event_name):
         with self._events_lock:
             if event_name in self._events:
@@ -43,7 +41,7 @@ class Emitter(object):
         with self._receivers_lock:
             self._receivers.remove(receiver)
 
-    def _emit_event(self, event_name, *args, **kwargs):
+    def emit_event(self, event_name, *args, **kwargs):
         ev = self.get_event(event_name)
 
         ev.set()
@@ -60,7 +58,3 @@ class Emitter(object):
             ev.clear()
 
         return events
-
-    def emit_event(self, event_name, *args, **kwargs):
-        self._emit_event("event", event_name, *args, **kwargs)
-        self._emit_event(event_name, *args, **kwargs)
