@@ -153,9 +153,14 @@ class TaskReceiver(Receiver):
     def on_status_changed(self, event):
         task = event["emitter"]
 
-        if task.status != "pending":
-            progress_str = get_progress_str(task)
-            print(progress_str + ": %s" % task.status)
+        if task.status in ("pending", None):
+            return
+
+        progress_str = get_progress_str(task)
+        print(progress_str + ": %s" % task.status)
+
+        self.last_download_percents.pop(task.src_path, None)
+        self.last_upload_percents.pop(task.src_path, None)
 
     def on_downloaded_changed(self, event):
         task = event["emitter"]
@@ -165,13 +170,13 @@ class TaskReceiver(Receiver):
         except ZeroDivisionError:
             downloaded_percent = 100.0
 
-        last_percent = self.last_download_percents.get(task, 0.0)
+        last_percent = self.last_download_percents.get(task.src_path, 0.0)
 
         # Change can be negative due to retries
         if abs(downloaded_percent - last_percent) < 25.0 and downloaded_percent < 100.0:
             return
 
-        self.last_download_percents[task] = downloaded_percent
+        self.last_download_percents[task.src_path] = downloaded_percent
 
         progress_str = get_progress_str(task)
 
@@ -185,13 +190,13 @@ class TaskReceiver(Receiver):
         except ZeroDivisionError:
             uploaded_percent = 100.0
 
-        last_percent = self.last_upload_percents.get(task, 0.0)
+        last_percent = self.last_upload_percents.get(task.src_path, 0.0)
 
         # Change can be negative due to retries
         if abs(uploaded_percent - last_percent) < 25.0 and uploaded_percent < 100.0:
             return
 
-        self.last_upload_percents[task] = uploaded_percent
+        self.last_upload_percents[task.src_path] = uploaded_percent
 
         progress_str = get_progress_str(task)
 

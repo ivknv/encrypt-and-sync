@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import time
+import weakref
 
 from ..Event.Receiver import Receiver
 from ..Task import Task
@@ -15,23 +16,35 @@ class UploadControllerReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
 
-        self.task = task
+        self.weak_task = weakref.finalize(task, lambda: None)
 
         self.add_callback("uploaded_changed", self.on_uploaded_changed)
 
     def on_uploaded_changed(self, event, uploaded):
-        self.task.uploaded = uploaded
+        result = self.weak_task.peek()
+
+        if result is None:
+            return False
+
+        task = result[0]
+        task.uploaded = uploaded
 
 class DownloadControllerReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
 
-        self.task = task
+        self.weak_task = weakref.finalize(task, lambda: None)
 
         self.add_callback("downloaded_changed", self.on_downloaded_changed)
 
     def on_downloaded_changed(self, event, downloaded):
-        self.task.downloaded = downloaded
+        result = self.weak_task.peek()
+
+        if result is None:
+            return False
+
+        task = result[0]
+        task.downloaded = downloaded
 
 class SyncTask(Task):
     def __init__(self, target):

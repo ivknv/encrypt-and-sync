@@ -401,6 +401,8 @@ class TaskReceiver(Receiver):
 
         print(progress_str + ": %s" % status)
 
+        self.last_uploaded_percents.pop(task.path, None)
+
     def on_uploaded_changed(self, event):
         task = event["emitter"]
         uploaded, size = task.uploaded, task.size
@@ -410,13 +412,13 @@ class TaskReceiver(Receiver):
         except ZeroDivisionError:
             uploaded_percent = 100.0
 
-        last_uploaded = self.last_uploaded_percents.get(task, 0.0)
+        last_uploaded = self.last_uploaded_percents.get(task.path, 0.0)
 
         # Change can be negative due to retries
         if abs(uploaded_percent - last_uploaded) < 25.0 and uploaded_percent < 100.0:
             return
 
-        self.last_uploaded_percents[task] = uploaded_percent
+        self.last_uploaded_percents[task.path] = uploaded_percent
 
         progress_str = get_progress_str(task)
 
