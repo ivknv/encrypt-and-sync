@@ -197,10 +197,7 @@ class UploadTask(SyncTask):
                 if self.stop_condition():
                     return True
 
-                try:
-                    controller.work()
-                except ControllerInterrupt:
-                    return True
+                controller.work()
 
                 self.flist1.update_size(src_path, new_size)
             else:
@@ -217,6 +214,8 @@ class UploadTask(SyncTask):
 
             self.status = "finished"
 
+            return True
+        except ControllerInterrupt:
             return True
         finally:
             self.upload_controller = None
