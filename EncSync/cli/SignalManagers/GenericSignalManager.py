@@ -15,7 +15,7 @@ class GenericSignalManager(SignalManager):
     def __init__(self, target_manager):
         SignalManager.__init__(self)
 
-        def quit_handler(self, signum, frame):
+        def quit_handler(signum, frame):
             target_manager.change_status("suspended")
             target_manager.full_stop()
             _exit(signum)
