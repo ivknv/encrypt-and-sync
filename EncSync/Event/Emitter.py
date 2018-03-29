@@ -5,6 +5,8 @@ import threading
 
 from .Exceptions import UnknownEventError, DuplicateEventError
 
+__all__ = ["Emitter"]
+
 class Emitter(object):
     def __init__(self):
         self._events = {}

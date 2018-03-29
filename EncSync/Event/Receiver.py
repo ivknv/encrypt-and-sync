@@ -7,6 +7,8 @@ import weakref
 
 from .Event import Event
 
+__all__ = ["Receiver"]
+
 class Receiver(object):
     def __init__(self):
         self._callbacks = {}
