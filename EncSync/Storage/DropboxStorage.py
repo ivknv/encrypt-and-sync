@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import contextlib
+import time
+
 import dropbox
 import requests
 
@@ -205,7 +207,7 @@ class DropboxDownloadController(DownloadController):
                 raise ControllerInterrupt
 
             try:
-                meta, self.response = self.dbx.files_download(self.in_path)
+                self.response = self.dbx.files_download(self.in_path)[1]
             except dropbox.exceptions.ApiError as e:
                 if not isinstance(e.error, dropbox.files.DownloadError):
                     raise e
@@ -230,13 +232,16 @@ class DropboxDownloadController(DownloadController):
 
             self.size = float(self.response.headers.get("Content-Length", "0"))
 
-        try:
-            auto_retry(attempt, self.n_retries, 0.0)
-        except Exception as e:
-            if e in RETRY_CAUSES:
-                raise TemporaryStorageError(str(e))
+        if enable_retries:
+            try:
+                auto_retry(attempt, self.n_retries, 0.0)
+            except Exception as e:
+                if e in RETRY_CAUSES:
+                    raise TemporaryStorageError(str(e))
 
-            raise e
+                raise e
+        else:
+            attempt()
 
     def work(self):
         def attempt():

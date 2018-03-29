@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import weakref
+
 from .Exceptions import ControllerInterrupt
 from .ControlledSpeedLimiter import ControlledSpeedLimiter
 
@@ -15,7 +17,7 @@ class LimitedFile(object):
 
         self.last_delay = 0
         self.cur_read = 0
-        self.controller = controller
+        self.weak_controller = weakref.finalize(controller, lambda: None)
         self.speed_limiter = ControlledSpeedLimiter(controller, self.limit)
 
     def __iter__(self):
@@ -34,32 +36,36 @@ class LimitedFile(object):
         self.speed_limiter.delay()
 
     def readline(self):
-        if self.controller.stopped:
+        controller = self.weak_controller.peek()[0]
+
+        if controller.stopped:
             raise ControllerInterrupt
 
         self.delay()
 
-        if self.controller.stopped:
+        if controller.stopped:
             raise ControllerInterrupt
 
         line = self.file.readline()
 
-        if self.controller.stopped:
+        if controller.stopped:
             raise ControllerInterrupt
 
         self.speed_limiter.quantity += len(line)
-        self.controller.uploaded = self.file.tell()
+        controller.uploaded = self.file.tell()
 
         return line
 
     def read(self, size=-1):
+        controller = self.weak_controller.peek()[0]
+
         amount_read = 0
 
         content = b""
 
-        self.controller.uploaded = self.file.tell()
+        controller.uploaded = self.file.tell()
         
-        if self.controller.stopped:
+        if controller.stopped:
             raise ControllerInterrupt
 
         if size == -1:
@@ -76,7 +82,7 @@ class LimitedFile(object):
         while condition():
             self.delay()
 
-            if self.controller.stopped:
+            if controller.stopped:
                 raise ControllerInterrupt
 
             if size != -1:
@@ -84,7 +90,7 @@ class LimitedFile(object):
 
             cur_content = self.file.read(int(amount_to_read))
 
-            if self.controller.stopped:
+            if controller.stopped:
                 raise ControllerInterrupt
 
             content += cur_content
@@ -94,7 +100,7 @@ class LimitedFile(object):
             self.speed_limiter.quantity += l
             amount_read += l
 
-            self.controller.uploaded = self.file.tell()
+            controller.uploaded = self.file.tell()
 
             if l < amount_to_read:
                 break
