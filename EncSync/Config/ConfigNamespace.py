@@ -12,6 +12,7 @@ class ConfigNamespace(Namespace):
         self["scan-threads"] = commands.ScanThreadsCommand
         self["upload-limit"] = commands.UploadLimitCommand
         self["download-limit"] = commands.DownloadLimitCommand
+        self["temp-encrypt-buffer-limit"] = commands.TempEncryptBufferLimitCommand
         self["download-threads"] = commands.DownloadThreadsCommand
         self["connect-timeout"] = commands.ConnectTimeoutCommand
         self["read-timeout"] = commands.ReadTimeoutCommand

@@ -11,7 +11,6 @@ from functools import lru_cache
 
 from ..EncScript import Parser, Tokenizer, ast2program
 from ..EncScript.Exceptions import EncScriptError, ASTConversionError, EvaluationError
-from ..constants import TEMP_ENCRYPT_BUFFER_LIMIT
 from .. import Encryption
 from .. import Paths
 from .. import PathMatch
@@ -38,6 +37,7 @@ class Config(object):
         self.timeout = (15.0, 30.0)
         self._upload_timeout = None
         self.n_retries = 5
+        self.temp_encrypt_buffer_limit = 4 * 1024**2
 
         self.folders = {}
         self.allowed_paths = {}
@@ -118,7 +118,7 @@ class Config(object):
     def temp_encrypt(self, in_file):
         size = get_file_size(in_file)
 
-        if size < TEMP_ENCRYPT_BUFFER_LIMIT:
+        if size < self.temp_encrypt_buffer_limit:
             f = io.BytesIO()
         else:
             f = tempfile.TemporaryFile(mode="w+b")
@@ -131,7 +131,7 @@ class Config(object):
     def temp_decrypt(self, in_file):
         size = get_file_size(in_file)
 
-        if size < TEMP_ENCRYPT_BUFFER_LIMIT:
+        if size < self.temp_encrypt_buffer_limit:
             f = io.BytesIO()
         else:
             f = tempfile.TemporaryFile(mode="w+b")

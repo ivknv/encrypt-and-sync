@@ -722,17 +722,19 @@ class EditOtherPrompter(ActionPrompter):
                                        "description": "set upload speed limit"},
                                  "5": {"function": self.set_download_limit,
                                        "description": "set download speed limit"},
-                                 "6": {"function": self.set_n_retries,
+                                 "6": {"function": self.set_temp_encrypt_buffer_limit,
+                                       "description": "set temporary encryption buffer size"},
+                                 "7": {"function": self.set_n_retries,
                                        "description": "set number of retries"},
-                                 "7": {"function": self.set_connect_timeout,
+                                 "8": {"function": self.set_connect_timeout,
                                        "description": "set connect timeout"},
-                                 "8": {"function": self.set_read_timeout,
+                                 "9": {"function": self.set_read_timeout,
                                        "description": "set read timeout"},
-                                 "9": {"function": self.set_upload_connect_timeout,
+                                 "10": {"function": self.set_upload_connect_timeout,
                                        "description": "set upload connect timeout"},
-                                 "10": {"function": self.set_upload_read_timeout,
+                                 "11": {"function": self.set_upload_read_timeout,
                                         "description": "set upload read timeout"},
-                                 "11": {"function": quit_prompt,
+                                 "12": {"function": quit_prompt,
                                        "description": "go back"}})
 
         self.config = config
@@ -795,6 +797,19 @@ class EditOtherPrompter(ActionPrompter):
         self.config.download_limit = new_download_limit
 
         print("Download limit: %s" % (make_size_readable(new_download_limit, ["", "K", "M"])))
+
+    @return_on_interrupt
+    def set_temp_encrypt_buffer_limit(self, prompter):
+        temp_encrypt_buffer_limit = self.config.temp_encrypt_buffer_limit
+
+        readable_limit = make_size_readable(temp_encrypt_buffer_limit, ["", "K", "M", "G"])
+
+        msg = "Temporary encryption buffer limit [default: %s]: " % (readable_limit,)
+        new_temp_encrypt_buffer_limit = SizePrompter(msg, temp_encrypt_buffer_limit)()
+
+        self.config.temp_encrypt_buffer_limit = new_temp_encrypt_buffer_limit
+
+        print("Download limit: %s" % (make_size_readable(new_temp_encrypt_buffer_limit, ["", "K", "M", "G"])))
 
     @return_on_interrupt
     def set_n_retries(self, prompter):
@@ -918,6 +933,8 @@ def dump_config(config):
 """
     output += "upload-limit %s\n" % (make_size_readable(config.upload_limit, ["", "K", "M"]),)
     output += "download-limit %s\n\n" % (make_size_readable(config.download_limit, ["", "K", "M"]),)
+
+    output += "temp-encrypt-buffer-limit %s\n\n" % (make_size_readable(config.temp_encrypt_buffer_limit, ["", "K", "M", "G"]))
 
     output += "n-retries %d\n\n" % (config.n_retries,)
 
