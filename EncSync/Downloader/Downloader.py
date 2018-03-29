@@ -12,6 +12,10 @@ from ..EncryptedStorage import EncryptedStorage
 __all__ = ["Downloader"]
 
 class Downloader(Worker):
+    """
+        Events: next_target, next_task, error
+    """
+
     def __init__(self, config, directory, n_workers=2):
         Worker.__init__(self)
 
@@ -25,10 +29,6 @@ class Downloader(Worker):
         self._download_limit = float("inf") # Bytes per second
 
         self.cur_target = None
-
-        self.add_event("next_target")
-        self.add_event("next_task")
-        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 

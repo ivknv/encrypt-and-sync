@@ -9,6 +9,10 @@ from .Event.Emitter import Emitter
 __all__ = ["Task"]
 
 class Task(Emitter):
+    """
+        Events: status_changed, stop
+    """
+
     def __init__(self):
         Emitter.__init__(self)
 
@@ -20,12 +24,6 @@ class Task(Emitter):
         self.stopped = False
 
         self._lock = threading.RLock()
-
-        self.add_event("status_changed")
-        self.add_event("stop")
-
-    #def __del__(self):
-    #    self.parent = None
 
     def stop(self):
         self.stopped = True

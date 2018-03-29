@@ -10,14 +10,6 @@ class Event(dict):
                              "name": name,
                              "args": args,
                              "kwargs": kwargs})
-        
-        self._event = threading.Event()
-
-    def wait(self):
-        self._event.wait()
-
-    def is_set(self):
-        return self._event.is_set()
 
     @property
     def args(self):

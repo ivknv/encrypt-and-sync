@@ -11,7 +11,5 @@ class LogReceiver(Receiver):
 
         self.logger = logger
 
-        self.add_callback("error", self.on_error)
-
     def on_error(self, event, exception):
         self.logger.exception("An error occured")

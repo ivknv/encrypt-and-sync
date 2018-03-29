@@ -15,6 +15,10 @@ from .Worker import ScanWorker
 __all__ = ["ScanTarget"]
 
 class ScanTarget(Task):
+    """
+        Events: next_node, duplicates_found, scan_finished
+    """
+
     def __init__(self, scanner, name, storage):
         Task.__init__(self)
 
@@ -33,10 +37,6 @@ class ScanTarget(Task):
 
         self.tasks = []
         self.task_lock = threading.Lock()
-
-        self.add_event("next_node")
-        self.add_event("duplicates_found")
-        self.add_event("scan_finished")
 
     def get_next_task(self):
         with self.task_lock:

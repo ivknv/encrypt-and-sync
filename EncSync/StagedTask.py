@@ -5,14 +5,15 @@ from .Task import Task
 __all__ = ["StagedTask"]
 
 class StagedTask(Task):
+    """
+        Events: entered_stage, exited_stage
+    """
+
     def __init__(self):
         Task.__init__(self)
 
         self._stages = {}
         self._stage = None
-
-        self.add_event("entered_stage")
-        self.add_event("exited_stage")
 
     @property
     def stage(self):

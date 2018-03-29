@@ -12,18 +12,15 @@ else:
     DEFAULT_JOIN_INTERVAL = None
 
 class WorkerBase(Emitter):
+    """
+        Events: started, stopping, finished, worker_starting, worker_started, worker_finished
+    """
+
     def __init__(self, parent=None):
         Emitter.__init__(self)
 
         self.parent = parent
         self.stopped = False
-
-        self.add_event("started")
-        self.add_event("stopping")
-        self.add_event("finished")
-        self.add_event("worker_starting")
-        self.add_event("worker_started")
-        self.add_event("worker_finished")
 
         self.retval = None
 

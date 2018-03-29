@@ -8,6 +8,10 @@ from ..LogReceiver import LogReceiver
 __all__ = ["ScanWorker"]
 
 class ScanWorker(Waiter):
+    """
+        Events: next_node, error
+    """
+
     def __init__(self, parent, target):
         Waiter.__init__(self, parent)
 
@@ -16,9 +20,6 @@ class ScanWorker(Waiter):
 
         self.flist = target.shared_flist
         self.duplist = target.shared_duplist
-
-        self.add_event("next_node")
-        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 

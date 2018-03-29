@@ -9,14 +9,15 @@ __all__ = ["DuplicateRemoverWorker"]
 COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
 class DuplicateRemoverWorker(Worker):
+    """
+        Events: next_task, error
+    """
+
     def __init__(self, parent):
         Worker.__init__(self, parent)
 
         self.target = parent.cur_target
         self.cur_task = None
-
-        self.add_event("next_task")
-        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 

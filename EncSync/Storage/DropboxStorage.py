@@ -190,6 +190,7 @@ class DropboxDownloadController(DownloadController):
         self.n_retries = n_retries
 
     def __del__(self):
+        DownloadController.__del__(self)
         if self.response is not None:
             self.response.close()
 

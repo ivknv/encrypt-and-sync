@@ -8,13 +8,14 @@ from ..LogReceiver import LogReceiver
 __all__ = ["SyncWorker"]
 
 class SyncWorker(Worker):
+    """
+        Events: next_task, error
+    """
+
     def __init__(self, parent):
         Worker.__init__(self, parent)
 
         self.cur_task = None
-
-        self.add_event("next_task")
-        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 

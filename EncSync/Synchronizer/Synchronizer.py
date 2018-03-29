@@ -12,6 +12,10 @@ from ..FolderStorage import get_folder_storage
 __all__ = ["Synchronizer"]
 
 class Synchronizer(Worker):
+    """
+        Events: next_target, error
+    """
+
     def __init__(self, config, directory, n_workers=2, n_scan_workers=2,
                  enable_journal=True):
         Worker.__init__(self)
@@ -29,9 +33,6 @@ class Synchronizer(Worker):
         self._download_limit = float("inf") # Bytes per second
 
         self.cur_target = None
-
-        self.add_event("next_target")
-        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 

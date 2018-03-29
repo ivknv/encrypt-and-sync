@@ -5,6 +5,10 @@ from ..Event.Emitter import Emitter
 __all__ = ["UploadController"]
 
 class UploadController(Emitter):
+    """
+        Events: uploaded_changed
+    """
+
     def __init__(self, in_file, limit=float("inf")):
         Emitter.__init__(self)
 
@@ -12,8 +16,6 @@ class UploadController(Emitter):
         self.limit = limit
         self._uploaded = 0
         self.stopped = False
-
-        self.add_event("uploaded_changed")
 
     @property
     def uploaded(self):

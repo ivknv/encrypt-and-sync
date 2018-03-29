@@ -11,6 +11,10 @@ __all__ = ["ScanTask", "DecryptedScanTask", "EncryptedScanTask",
            "AsyncDecryptedScanTask", "AsyncDecryptedScanTask"]
 
 class ScanTask(Task):
+    """
+        Events: interrupt, duplicates_found
+    """
+
     def __init__(self, target, scannable=None):
         Task.__init__(self)
 
@@ -21,9 +25,6 @@ class ScanTask(Task):
         self.duplist = target.shared_duplist
         self.config = target.config
         self.cur_path = None
-
-        self.add_event("interrupt")
-        self.add_event("duplicates_found")
 
     def stop_condition(self, worker):
         if self.stopped or worker.stopped:

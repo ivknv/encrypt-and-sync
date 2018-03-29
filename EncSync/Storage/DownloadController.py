@@ -5,6 +5,10 @@ from ..Event.Emitter import Emitter
 __all__ = ["DownloadController"]
 
 class DownloadController(Emitter):
+    """
+        Events: downloaded_changed
+    """
+
     def __init__(self, out_file, limit=float("inf")):
         Emitter.__init__(self)
 
@@ -13,7 +17,6 @@ class DownloadController(Emitter):
         self._downloaded = 0
         self.stopped = False
         self.size = None
-        self.add_event("downloaded_changed")
 
     @property
     def downloaded(self):

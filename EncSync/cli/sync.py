@@ -23,6 +23,31 @@ from ..Synchronizer.Exceptions import TooLongFilenameError
 
 __all__ = ["do_sync", "SynchronizerReceiver"]
 
+class SynchronizerExceptionManager(ExceptionManager):
+    def __init__(self, synchronizer):
+        ExceptionManager.__init__(self)
+
+        def on_disk_error(exc, worker):
+            target = synchronizer.cur_target
+
+            dst_path, src_path = target.dst_path, target.src_path
+            dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
+            src_path = "%s://%s" % (target.src.storage.name, src_path)
+
+            show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
+                                                      exc.error_type, exc))
+
+        def on_too_long_filename(exc, worker):
+            progress_str = get_progress_str(worker.cur_task)
+            print("%s: error: too long filename (>= 160)" % progress_str)
+
+        def on_exception(exc, worker):
+            traceback.print_exc()
+
+        self.add(YaDiskError, on_disk_error)
+        self.add(TooLongFilenameError, on_too_long_filename)
+        self.add(Exception, on_exception)
+
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
         print("[%d] [%s -> %s]" % (i + 1,
@@ -179,20 +204,11 @@ class SynchronizerReceiver(Receiver):
     def __init__(self, env, synchronizer):
         Receiver.__init__(self)
 
-        self.worker_receiver = WorkerReceiver()
-        self.target_receiver = TargetReceiver(env)
         self.env = env
 
-        self.exc_manager = ExceptionManager()
-
-        self.add_emitter_callback(synchronizer, "started", self.on_started)
-        self.add_emitter_callback(synchronizer, "finished", self.on_finished)
-        self.add_emitter_callback(synchronizer, "next_target", self.on_next_target)
-        self.add_emitter_callback(synchronizer, "worker_starting", self.on_worker_starting)
-        self.add_emitter_callback(synchronizer, "error", self.on_error)
-
-        self.exc_manager.add(YaDiskError, self.on_disk_error)
-        self.exc_manager.add(BaseException, self.on_exception)
+        self.worker_receiver = WorkerReceiver(synchronizer)
+        self.target_receiver = TargetReceiver(env)
+        self.exc_manager = SynchronizerExceptionManager(synchronizer)
 
     def on_started(self, event):
         print("Synchronizer: started")
@@ -215,30 +231,11 @@ class SynchronizerReceiver(Receiver):
     def on_error(self, event, exc):
         self.exc_manager.handle(exc, event.emitter)
 
-    def on_disk_error(self, exc, synchronizer):
-        target = synchronizer.cur_target
-        print("[%s -> %s]: error: %s: %s" % (target.folder1["name"],
-                                             target.folder2["name"],
-                                             exc.error_type, exc))
-
-    def on_exception(self, exc, synchronizer):
-        traceback.print_exc()
-
 class TargetReceiver(Receiver):
     def __init__(self, env):
         Receiver.__init__(self)
 
         self.env = env
-
-        self.add_callback("status_changed", self.on_status_changed)
-        self.add_callback("integrity_check", self.on_integrity_check)
-        self.add_callback("integrity_check_finished", self.on_integrity_check_finished)
-        self.add_callback("integrity_check_failed", self.on_integrity_check_failed)
-        self.add_callback("diffs_started", self.on_diffs_started)
-        self.add_callback("diffs_failed", self.on_diffs_failed)
-        self.add_callback("diffs_finished", self.on_diffs_finished)
-        self.add_callback("entered_stage", self.on_entered_stage)
-        self.add_callback("exited_stage", self.on_exited_stage)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -327,19 +324,12 @@ class TargetReceiver(Receiver):
                                                target.folder2["name"], stage))
 
 class WorkerReceiver(Receiver):
-    def __init__(self):
+    def __init__(self, synchronizer):
         Receiver.__init__(self)
 
         self.task_receiver = TaskReceiver()
 
-        self.add_callback("next_task", self.on_next_task)
-        self.add_callback("error", self.on_error)
-
-        self.exc_manager = ExceptionManager()
-
-        self.exc_manager.add(YaDiskError, self.on_disk_error)
-        self.exc_manager.add(TooLongFilenameError, self.on_too_long_filename)
-        self.exc_manager.add(BaseException, self.on_exception)
+        self.exc_manager = SynchronizerExceptionManager(synchronizer)
 
     def on_next_task(self, event, task):
         msg = get_progress_str(task) + ": "
@@ -369,23 +359,9 @@ class WorkerReceiver(Receiver):
     def on_error(self, event, exc):
         self.exc_manager.handle(exc, event.emitter)
 
-    def on_disk_error(self, exc, worker):
-        progress_str = get_progress_str(worker.cur_task)
-        print("%s: error: %s: %s" % (progress_str, exc.error_type, exc))
-
-    def on_too_long_filename(self, exc, worker):
-        progress_str = get_progress_str(worker.cur_task)
-        print("%s: error: too long filename (>= 160)" % progress_str)
-
-    def on_exception(self, exc, worker):
-        traceback.print_exc()
-
 class TaskReceiver(Receiver):
     def __init__(self):
         Receiver.__init__(self)
-
-        self.add_callback("uploaded_changed", self.on_uploaded_changed)
-        self.add_callback("status_changed", self.on_status_changed)
 
         self.last_uploaded_percents = {}
 

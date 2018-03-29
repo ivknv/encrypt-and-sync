@@ -8,12 +8,13 @@ from ..LogReceiver import LogReceiver
 __all__ = ["DownloaderWorker"]
 
 class DownloaderWorker(Worker):
+    """
+        Events: next_task, error
+    """
+
     def __init__(self, downloader):
         Worker.__init__(self, downloader)
         self.cur_task = None
-
-        self.add_event("next_task")
-        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 

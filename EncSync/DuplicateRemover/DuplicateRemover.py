@@ -11,6 +11,10 @@ from .Target import DuplicateRemoverTarget
 __all__ = ["DuplicateRemover"]
 
 class DuplicateRemover(Worker):
+    """
+        Events: next_target, error
+    """
+
     def __init__(self, config, directory, n_workers=2, enable_journal=True):
         Worker.__init__(self)
 
@@ -22,9 +26,6 @@ class DuplicateRemover(Worker):
         self.targets = []
         self.targets_lock = threading.Lock()
         self.cur_target = None
-
-        self.add_event("next_target")
-        self.add_event("error")
 
         self.add_receiver(LogReceiver(logger))
 

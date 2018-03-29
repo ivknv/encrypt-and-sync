@@ -14,6 +14,10 @@ __all__ = ["DuplicateRemoverTarget"]
 COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
 class DuplicateRemoverTarget(Task):
+    """
+        Events: autocommit_started, autocommit_failed, autocommit_finished
+    """
+
     def __init__(self, duprem):
         Task.__init__(self)
 
@@ -27,10 +31,6 @@ class DuplicateRemoverTarget(Task):
         self.shared_duplist = None
         self.duplicates = None
         self.task_lock = threading.Lock()
-
-        self.add_event("autocommit_started")
-        self.add_event("autocommit_failed")
-        self.add_event("autocommit_finished")
 
     def stop_condition(self):
         if self.stopped or self.duprem.stopped:

@@ -17,8 +17,6 @@ class UploadControllerReceiver(Receiver):
 
         self.weak_task = weakref.finalize(task, lambda: None)
 
-        self.add_callback("uploaded_changed", self.on_uploaded_changed)
-
     def on_uploaded_changed(self, event, uploaded):
         result = self.weak_task.peek()
 
@@ -34,8 +32,6 @@ class DownloadControllerReceiver(Receiver):
 
         self.weak_task = weakref.finalize(task, lambda: None)
 
-        self.add_callback("downloaded_changed", self.on_downloaded_changed)
-
     def on_downloaded_changed(self, event, downloaded):
         result = self.weak_task.peek()
 
@@ -46,6 +42,10 @@ class DownloadControllerReceiver(Receiver):
         task.downloaded = downloaded
 
 class DownloadTask(Task):
+    """
+        Events: downloaded_changed, uploaded_changed
+    """
+
     def __init__(self, target):
         Task.__init__(self)
 
@@ -68,9 +68,6 @@ class DownloadTask(Task):
         self._download_limit = target.download_limit
 
         self.worker = None
-
-        self.add_event("downloaded_changed")
-        self.add_event("uploaded_changed")
 
     @property
     def upload_limit(self):

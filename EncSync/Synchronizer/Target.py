@@ -16,6 +16,12 @@ __all__ = ["SyncTarget"]
 COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
 class SyncTarget(StagedTask):
+    """
+        Events: integrity_check, integrity_check_failed, integrity_check_finished,
+                diffs_started, diffs_failed, diffs_finished, autocommit_started,
+                autocommit_failed, autocommit_finished
+    """
+
     def __init__(self, synchronizer):
         StagedTask.__init__(self)
 
@@ -42,16 +48,6 @@ class SyncTarget(StagedTask):
 
         self.upload_limit = self.synchronizer.upload_limit
         self.download_limit = self.synchronizer.download_limit
-
-        self.add_event("integrity_check")
-        self.add_event("integrity_check_finished")
-        self.add_event("integrity_check_failed")
-        self.add_event("diffs_started")
-        self.add_event("diffs_failed")
-        self.add_event("diffs_finished")
-        self.add_event("autocommit_started")
-        self.add_event("autocommit_failed")
-        self.add_event("autocommit_finished")
 
         self.set_stage("scan",  self.init_scan,  self.finalize_scan)
         self.set_stage("rmdup", self.init_rmdup, self.finalize_rmdup)

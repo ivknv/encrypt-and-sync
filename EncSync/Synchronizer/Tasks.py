@@ -18,8 +18,6 @@ class UploadControllerReceiver(Receiver):
 
         self.weak_task = weakref.finalize(task, lambda: None)
 
-        self.add_callback("uploaded_changed", self.on_uploaded_changed)
-
     def on_uploaded_changed(self, event, uploaded):
         result = self.weak_task.peek()
 
@@ -35,8 +33,6 @@ class DownloadControllerReceiver(Receiver):
 
         self.weak_task = weakref.finalize(task, lambda: None)
 
-        self.add_callback("downloaded_changed", self.on_downloaded_changed)
-
     def on_downloaded_changed(self, event, downloaded):
         result = self.weak_task.peek()
 
@@ -47,6 +43,10 @@ class DownloadControllerReceiver(Receiver):
         task.downloaded = downloaded
 
 class SyncTask(Task):
+    """
+        Events: uploaded_changed, downloaded_changed, filename_too_long, interrupted
+    """
+
     def __init__(self, target):
         Task.__init__(self)
 
@@ -68,11 +68,6 @@ class SyncTask(Task):
 
         self.src = target.src
         self.dst = target.dst
-
-        self.add_event("uploaded_changed")
-        self.add_event("downloaded_changed")
-        self.add_event("filename_too_long")
-        self.add_event("interrupted")
 
     def stop_condition(self):
         if self.stopped or self.parent.stop_condition():

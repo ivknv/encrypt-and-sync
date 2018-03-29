@@ -20,6 +20,26 @@ PRINT_RATE_LIMIT = 1.0
 
 __all__ = ["do_scan", "ScannerReceiver"]
 
+class ScannerExceptionManager(ExceptionManager):
+    def __init__(self, scanner):
+        ExceptionManager.__init__(self)
+
+        def on_disk_error(exc, worker):
+            target = scanner.cur_target
+
+            dst_path, src_path = target.dst_path, target.src_path
+            dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
+            src_path = "%s://%s" % (target.src.storage.name, src_path)
+
+            show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
+                                                      exc.error_type, exc))
+
+        def on_exception(exc, worker):
+            traceback.print_exc()
+
+        self.add(YaDiskError, on_disk_error)
+        self.add(Exception, on_exception)
+
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
         print("[%d] [%s]" % (i + 1, target.name))
@@ -78,19 +98,10 @@ class ScannerReceiver(Receiver):
     def __init__(self, env, scanner):
         Receiver.__init__(self)
 
-        self.worker_receiver = WorkerReceiver()
+        self.worker_receiver = WorkerReceiver(scanner)
         self.target_receiver = TargetReceiver(env)
 
-        self.add_emitter_callback(scanner, "started", self.on_started)
-        self.add_emitter_callback(scanner, "finished", self.on_finished)
-        self.add_emitter_callback(scanner, "next_target", self.on_next_target)
-        self.add_emitter_callback(scanner, "worker_starting", self.on_worker_starting)
-        self.add_emitter_callback(scanner, "error", self.on_error)
-
-        self.exc_manager = ExceptionManager()
-
-        self.exc_manager.add(YaDiskError, self.on_disk_error)
-        self.exc_manager.add(BaseException, self.on_exception)
+        self.exc_manager = ScannerExceptionManager(scanner)
 
     def on_started(self, event):
         print("Scanner: started")
@@ -109,22 +120,11 @@ class ScannerReceiver(Receiver):
     def on_error(self, event, exception):
         self.exc_manager.handle(exception, event.emitter)
 
-    def on_disk_error(self, exc, scanner):
-        target = scanner.cur_target
-
-        print("[%s]: error: %s: %s" % (target.name, exc.error_type, exc))
-
-    def on_exception(self, exc, scanner):
-        traceback.print_exc()
-
 class TargetReceiver(Receiver):
     def __init__(self, env):
         Receiver.__init__(self)
 
         self.env = env
-
-        self.add_callback("status_changed", self.on_status_changed)
-        self.add_callback("duplicates_found", self.on_duplicates_found)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -139,16 +139,10 @@ class TargetReceiver(Receiver):
         print("Found %d duplicate(s) of %s" % (len(duplicates) - 1, duplicates[0].path))
 
 class WorkerReceiver(Receiver):
-    def __init__(self):
+    def __init__(self, scanner):
         Receiver.__init__(self)
 
-        self.add_callback("next_node", self.on_next_node)
-        self.add_callback("error", self.on_error)
-
-        self.exc_manager = ExceptionManager()
-
-        self.exc_manager.add(YaDiskError, self.on_disk_error)
-        self.exc_manager.add(BaseException, self.on_exception)
+        self.exc_manager = ScannerExceptionManager(scanner)
 
         self.last_print = 0
 
@@ -162,14 +156,6 @@ class WorkerReceiver(Receiver):
 
     def on_error(self, event, exception):
         self.exc_manager.handle(exception, event.emitter)
-
-    def on_disk_error(self, exc, scanner):
-        target = scanner.cur_target
-
-        print("[%s]: error: %s: %s" % (target.name, exc.error_type, exc))
-
-    def on_exception(self, exc, scanner):
-        traceback.print_exc()
 
 def do_scan(env, names):
     config, ret = common.make_config(env)

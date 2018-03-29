@@ -31,25 +31,46 @@ def print_target_totals(target):
     print("[%s <- %s]: %d tasks failed" % (dst_path, src_path, n_failed))
     print("[%s <- %s]: %s downloaded" % (dst_path, src_path, downloaded))
 
+class DownloaderExceptionManager(ExceptionManager):
+    def __init__(self, downloader):
+        ExceptionManager.__init__(self)
+
+        self.downloader = downloader
+
+        def on_disk_error(exc, worker):
+            target = downloader.cur_target
+
+            dst_path, src_path = target.dst_path, target.src_path
+            dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
+            src_path = "%s://%s" % (target.src.storage.name, src_path)
+
+            show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
+                                                      exc.error_type, exc))
+
+        def on_not_found_error(exc, worker):
+            target = self.downloader.cur_target
+
+            dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
+            src_path = "%s://%s" % (target.src.storage.name, target.src_path)
+
+            show_error("[%s <- %s]: error: %s" % (dst_path, src_path, exc))
+
+        def on_exception(exc, worker):
+            traceback.print_exc()
+
+        self.add(YaDiskError, on_disk_error)
+        self.add(NotFoundInDBError, on_not_found_error)
+        self.add(Exception, on_exception)
+
 class DownloaderReceiver(Receiver):
     def __init__(self, downloader):
         Receiver.__init__(self)
 
-        self.worker_receiver = WorkerReceiver()
+        self.worker_receiver = WorkerReceiver(downloader)
 
         self.downloader = downloader
 
-        self.add_emitter_callback(downloader, "started", self.on_started)
-        self.add_emitter_callback(downloader, "finished", self.on_finished)
-        self.add_emitter_callback(downloader, "next_target", self.on_next_target)
-        self.add_emitter_callback(downloader, "worker_starting", self.on_worker_starting)
-        self.add_emitter_callback(downloader, "error", self.on_error)
-
-        self.exc_manager = ExceptionManager()
-
-        self.exc_manager.add(YaDiskError, self.on_disk_error)
-        self.exc_manager.add(NotFoundInDBError, self.on_not_found_error)
-        self.exc_manager.add(BaseException, self.on_exception)
+        self.exc_manager = DownloaderExceptionManager(downloader)
 
     def on_started(self, event):
         print("Downloader: started")
@@ -66,34 +87,11 @@ class DownloaderReceiver(Receiver):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exc):
-        self.exc_manager.handle(exc)
-
-    def on_disk_error(self, exc):
-        target = self.downloader.cur_target
-
-        dst_path, src_path = target.dst_path, target.src_path
-        dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-        src_path = "%s://%s" % (target.src.storage.name, src_path)
-
-        show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
-                                                  exc.error_type, exc))
-
-    def on_not_found_error(self, exc):
-        target = self.downloader.cur_target
-
-        dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
-        src_path = "%s://%s" % (target.src.storage.name, target.src_path)
-
-        show_error("[%s <- %s]: error: %s" % (dst_path, src_path, exc))
-
-    def on_exception(self, exception):
-        traceback.print_exc()
+        self.exc_manager.handle(exc, event.emitter)
 
 class TargetReceiver(Receiver):
     def __init__(self):
         Receiver.__init__(self)
-
-        self.add_callback("status_changed", self.on_status_changed)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -109,18 +107,12 @@ class TargetReceiver(Receiver):
             print_target_totals(target)
 
 class WorkerReceiver(Receiver):
-    def __init__(self):
+    def __init__(self, downloader):
         Receiver.__init__(self)
 
         self.task_receiver = TaskReceiver()
 
-        self.add_callback("next_task", self.on_next_task)
-        self.add_callback("error", self.on_error)
-
-        self.exc_manager = ExceptionManager()
-
-        self.exc_manager.add(YaDiskError, self.on_disk_error)
-        self.exc_manager.add(BaseException, self.on_exception)
+        self.exc_manager = DownloaderExceptionManager(downloader)
 
     def on_next_task(self, event, task):
         progress_str = get_progress_str(task)
@@ -132,20 +124,9 @@ class WorkerReceiver(Receiver):
     def on_error(self, event, exc):
         self.exc_manager.handle(exc, event.emitter)
 
-    def on_disk_error(self, exc, worker):
-        progress_str = get_progress_str(worker.cur_task)
-        show_error("%s: error: %s: %s" % (progress_str, exc.error_type, exc))
-
-    def on_exception(self, exc, worker):
-        traceback.print_exc()
-
 class TaskReceiver(Receiver):
     def __init__(self):
         Receiver.__init__(self)
-
-        self.add_callback("status_changed", self.on_status_changed)
-        self.add_callback("downloaded_changed", self.on_downloaded_changed)
-        self.add_callback("uploaded_changed", self.on_uploaded_changed)
 
         self.last_download_percents = {}
         self.last_upload_percents = {}
