@@ -462,8 +462,8 @@ def do_sync(env, names):
     for target in targets:
         print("[%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
 
-    storage_names = {i.src.folder["type"] for i in targets}
-    storage_names |= {i.dst.folder["type"] for i in targets}
+    storage_names = {i.folder1["type"] for i in targets}
+    storage_names |= {i.folder2["type"] for i in targets}
 
     ret = authenticate_storages(env, storage_names)
 
