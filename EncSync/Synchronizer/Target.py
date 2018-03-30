@@ -170,7 +170,7 @@ class SyncTarget(StagedTask):
                     scanner.add_target(target)
                     targets.append(target)
 
-        if self.stop_condition():
+        if not targets or self.stop_condition():
             return
 
         self.synchronizer.start_worker(scanner).join()
