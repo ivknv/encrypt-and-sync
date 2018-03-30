@@ -87,6 +87,7 @@ class LocalUploadController(UploadController):
 
 class LocalStorage(Storage):
     name = "local"
+    type = "local"
     case_sensitive = True
     parallelizable = False
 

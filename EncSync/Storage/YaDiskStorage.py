@@ -170,6 +170,7 @@ class YaDiskUploadController(UploadController):
 
 class YaDiskStorage(Storage):
     name = "yadisk"
+    type = "remote"
     case_sensitive = True
     parallelizable = True
 

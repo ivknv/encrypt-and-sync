@@ -9,6 +9,7 @@ class Storage(object):
         :param config: `config` instance
 
         :cvar name: `str`, storage name
+        :cvar type: `str`, storage type ("local" or "remote")
         :cvar case_sensitive: `bool`, determines whether the storage filenames are case sensitive
         :cvar parallelizable: `bool`, determines whether the storage supports parallel operations
                               (or at least if it's useful or not)
@@ -16,6 +17,7 @@ class Storage(object):
     """
 
     name = None
+    type = None
     case_sensitive = True
     parallelizable = False
 

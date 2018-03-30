@@ -288,6 +288,7 @@ class DropboxDownloadController(DownloadController):
 
 class DropboxStorage(Storage):
     name = "dropbox"
+    type = "remote"
     case_sensitive = False
     parallelizable = True
 
