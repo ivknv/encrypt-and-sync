@@ -4,7 +4,6 @@ Add multiple encryption formats support
 
 Google Drive support
 Use lockfile to not allow parallel synchronizations
-Add --no-remove option support to ignore removals
 
 WebDav support
 FTP support
