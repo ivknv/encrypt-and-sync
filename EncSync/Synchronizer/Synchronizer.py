@@ -7,7 +7,6 @@ from .Target import SyncTarget
 from .Logging import logger
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
-from ..FolderStorage import get_folder_storage
 
 __all__ = ["Synchronizer"]
 
@@ -86,18 +85,10 @@ class Synchronizer(Worker):
             folder2 = self.config.folders[folder_name2]
         except KeyError:
             raise ValueError("Unknown folder: %r" % (folder_name2,))
-
-        folder_type1 = folder1["type"]
-        folder_type2 = folder2["type"]
-
-        src = get_folder_storage(folder_type1)(folder_name1, self.config, self.directory)
-        dst = get_folder_storage(folder_type2)(folder_name2, self.config, self.directory)
         
         target = SyncTarget(self)
         target.folder1 = folder1
         target.folder2 = folder2
-        target.src = src
-        target.dst = dst
         target.enable_scan = enable_scan
         target.skip_integrity_check = skip_integrity_check
         target.avoid_src_rescan = folder1["avoid_rescan"]

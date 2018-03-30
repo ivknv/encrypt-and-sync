@@ -6,6 +6,7 @@ import traceback
 from yadisk.exceptions import YaDiskError
 
 from . import common
+from .authenticate_storages import authenticate_storages
 from .common import show_error, get_progress_str
 from .scan import ScannerReceiver
 from .remove_duplicates import DuplicateRemoverReceiver
@@ -31,8 +32,8 @@ class SynchronizerExceptionManager(ExceptionManager):
             target = synchronizer.cur_target
 
             dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-            src_path = "%s://%s" % (target.src.storage.name, src_path)
+            dst_path = "%s://%s" % (target.dst.folder["type"], dst_path)
+            src_path = "%s://%s" % (target.src.folder["type"], src_path)
 
             show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
                                                       exc.error_type, exc))
@@ -441,27 +442,35 @@ def do_sync(env, names):
     synchronizer.upload_limit = config.upload_limit
     synchronizer.download_limit = config.download_limit
 
+    synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
+    synchronizer.add_receiver(synchronizer_receiver)
+
+    targets = []
+
+    for name1, name2 in zip(names[::2], names[1::2]):
+        target = synchronizer.make_target(name1, name2, not no_scan)
+        target.skip_integrity_check = no_check
+        targets.append(target)
+
+    if (ask and env.get("all", False)) or choose_targets:
+        targets = ask_target_choice(targets)
+
+    for target in targets:
+        synchronizer.add_target(target)
+
+    print("Targets to sync:")
+    for target in targets:
+        print("[%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
+
+    storage_names = {i.src.folder["type"] for i in targets}
+    storage_names |= {i.dst.folder["type"] for i in targets}
+
+    ret = authenticate_storages(env, storage_names)
+
+    if ret:
+        return ret
+
     with GenericSignalManager(synchronizer):
-        synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
-        synchronizer.add_receiver(synchronizer_receiver)
-
-        targets = []
-
-        for name1, name2 in zip(names[::2], names[1::2]):
-            target = synchronizer.make_target(name1, name2, not no_scan)
-            target.skip_integrity_check = no_check
-            targets.append(target)
-
-        if (ask and env.get("all", False)) or choose_targets:
-            targets = ask_target_choice(targets)
-
-        for target in targets:
-            synchronizer.add_target(target)
-
-        print("Targets to sync:")
-        for target in targets:
-            print("[%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
-
         synchronizer.start()
         synchronizer.join()
 

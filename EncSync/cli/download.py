@@ -12,6 +12,7 @@ from ..Downloader.Exceptions import NotFoundInDBError
 from ..Event.Receiver import Receiver
 
 from . import common
+from .authenticate_storages import authenticate_storages
 from .common import show_error, get_progress_str, make_size_readable
 from .SignalManagers import GenericSignalManager
 from ..ExceptionManager import ExceptionManager
@@ -23,8 +24,8 @@ def print_target_totals(target):
     downloaded = make_size_readable(target.downloaded)
 
     dst_path, src_path = target.dst_path, target.src_path
-    dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-    src_path = "%s://%s" % (target.src.storage.name, src_path)
+    dst_path = "%s://%s" % (target.dst_storage_name, dst_path)
+    src_path = "%s://%s" % (target.src_storage_name, src_path)
 
     print("[%s <- %s]: %d tasks in total" % (dst_path, src_path, n_total))
     print("[%s <- %s]: %d tasks successful" % (dst_path, src_path, n_finished))
@@ -41,8 +42,8 @@ class DownloaderExceptionManager(ExceptionManager):
             target = downloader.cur_target
 
             dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-            src_path = "%s://%s" % (target.src.storage.name, src_path)
+            dst_path = "%s://%s" % (target.dst_storage_name, dst_path)
+            src_path = "%s://%s" % (target.src_storage_name, src_path)
 
             show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
                                                       exc.error_type, exc))
@@ -50,8 +51,8 @@ class DownloaderExceptionManager(ExceptionManager):
         def on_not_found_error(exc, worker):
             target = self.downloader.cur_target
 
-            dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
-            src_path = "%s://%s" % (target.src.storage.name, target.src_path)
+            dst_path = "%s://%s" % (target.dst_storage_name, target.dst_path)
+            src_path = "%s://%s" % (target.src_storage_name, target.src_path)
 
             show_error("[%s <- %s]: error: %s" % (dst_path, src_path, exc))
 
@@ -79,8 +80,8 @@ class DownloaderReceiver(Receiver):
         print("Downloader: finished")
 
     def on_next_target(self, event, target):
-        src_path = "%s://%s" % (target.src.storage.name, target.src_path)
-        dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
+        src_path = "%s://%s" % (target.src_storage_name, target.src_path)
+        dst_path = "%s://%s" % (target.dst_storage_name, target.dst_path)
         print("Next target: [%s <- %s]" % (dst_path, src_path))
 
     def on_worker_starting(self, event, worker):
@@ -96,11 +97,12 @@ class TargetReceiver(Receiver):
     def on_status_changed(self, event):
         target = event["emitter"]
 
-        dst_path = "%s://%s" % (target.dst.storage.name, target.dst_path)
-        src_path = "%s://%s" % (target.src.storage.name, target.src_path)
         status = target.status
 
         if status != "pending":
+            dst_path = "%s://%s" % (target.dst_storage_name, target.dst_path)
+            src_path = "%s://%s" % (target.src_storage_name, target.src_path)
+
             print("[%s <- %s]: %s" % (dst_path, src_path, status))
 
         if status in ("finished", "failed",):
@@ -195,39 +197,47 @@ def download(env, paths):
     downloader.upload_limit = config.upload_limit
     downloader.download_limit = config.download_limit
 
+    downloader_receiver = DownloaderReceiver(downloader)
+    downloader.add_receiver(downloader_receiver)
+
+    target_receiver = TargetReceiver()
+
+    targets = []
+
+    if len(paths) == 1:
+        dst_path = Paths.from_sys(os.getcwd())
+    else:
+        dst_path = paths.pop()
+
+    dst_path, dst_path_type = common.recognize_path(dst_path)
+
+    if dst_path_type == "local":
+        dst_path = Paths.from_sys(os.path.abspath(Paths.to_sys(dst_path)))
+    else:
+        dst_path = Paths.join_properly("/", dst_path)
+
+    for src_path in paths:
+        src_path, src_path_type = common.recognize_path(src_path)
+
+        if src_path_type == "local":
+            src_path = Paths.from_sys(os.path.abspath(Paths.to_sys(src_path)))
+        else:
+            src_path = Paths.join_properly("/", src_path)
+
+        target = downloader.add_download(src_path_type, src_path,
+                                         dst_path_type, dst_path)
+        target.add_receiver(target_receiver)
+        targets.append(target)
+
+    storage_names = {i.src_storage_name for i in targets}
+    storage_names |= {i.dst_storage_name for i in targets}
+
+    ret = authenticate_storages(env, storage_names)
+
+    if ret:
+        return ret
+
     with GenericSignalManager(downloader):
-        downloader_receiver = DownloaderReceiver(downloader)
-        downloader.add_receiver(downloader_receiver)
-
-        target_receiver = TargetReceiver()
-
-        targets = []
-
-        if len(paths) == 1:
-            dst_path = Paths.from_sys(os.getcwd())
-        else:
-            dst_path = paths.pop()
-
-        dst_path, dst_path_type = common.recognize_path(dst_path)
-
-        if dst_path_type == "local":
-            dst_path = Paths.from_sys(os.path.abspath(Paths.to_sys(dst_path)))
-        else:
-            dst_path = Paths.join_properly("/", dst_path)
-
-        for src_path in paths:
-            src_path, src_path_type = common.recognize_path(src_path)
-
-            if src_path_type == "local":
-                src_path = Paths.from_sys(os.path.abspath(Paths.to_sys(src_path)))
-            else:
-                src_path = Paths.join_properly("/", src_path)
-
-            target = downloader.add_download(src_path_type, src_path,
-                                             dst_path_type, dst_path)
-            target.add_receiver(target_receiver)
-            targets.append(target)
-
         downloader.start()
         downloader.join()
 

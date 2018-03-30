@@ -11,6 +11,8 @@ from ..ExceptionManager import ExceptionManager
 from ..Event.Receiver import Receiver
 from .. import Paths
 
+from .authenticate_storages import authenticate_storages
+
 from . import common
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
@@ -25,8 +27,8 @@ class DuplicateRemoverExceptionManager(ExceptionManager):
             target = duprem.cur_target
 
             dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-            src_path = "%s://%s" % (target.src.storage.name, src_path)
+            dst_path = "%s://%s" % (target.dst.storage_name, dst_path)
+            src_path = "%s://%s" % (target.src.storage_name, src_path)
 
             common.show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
                                                              exc.error_type, exc))
@@ -39,7 +41,7 @@ class DuplicateRemoverExceptionManager(ExceptionManager):
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
-        print("[%d] [%s://%s]" % (i + 1, target.storage.name, target.path))
+        print("[%d] [%s://%s]" % (i + 1, target.storage_name, target.path))
 
     while True:
         try:
@@ -76,13 +78,13 @@ def ask_continue(duprem):
     return values[answer]
 
 def count_duplicates(env, target):
-    duplist = DuplicateList(target.storage.name, env["db_dir"])
+    duplist = DuplicateList(target.storage_name, env["db_dir"])
     duplist.create()
 
     return duplist.get_children_count(target.path)
 
 def view_duplicates(env, target):
-    duplist = DuplicateList(target.storage.name, env["db_dir"])
+    duplist = DuplicateList(target.storage_name, env["db_dir"])
     duplist.create()
     duplicates = duplist.find_children(target.path)
 
@@ -110,11 +112,11 @@ class DuplicateRemoverReceiver(Receiver):
     def on_next_target(self, event, target):
         target.add_receiver(self.target_receiver)
         
-        print("Removing duplicates: [%s://%s]" % (target.storage.name, target.path,))
+        print("Removing duplicates: [%s://%s]" % (target.storage_name, target.path,))
 
         n_duplicates = count_duplicates(self.env, target)
 
-        print("[%s://%s]: %d duplicates to remove" % (target.storage.name,
+        print("[%s://%s]: %d duplicates to remove" % (target.storage_name,
                                                       target.path, n_duplicates,))
 
         if not self.interactive_continue:
@@ -143,7 +145,7 @@ class TargetReceiver(Receiver):
         status = target.status
 
         if status != "pending":
-            print("[%s://%s]: %s" % (target.storage.name, target.path, status))
+            print("[%s://%s]: %s" % (target.storage_name, target.path, status))
 
 class WorkerReceiver(Receiver):
     def __init__(self, duprem):
@@ -204,34 +206,39 @@ def remove_duplicates(env, paths):
     duprem = DuplicateRemover(config, env["db_dir"], n_workers, not no_journal)
     targets = []
 
+    for path in paths:
+        path, path_type = common.recognize_path(path)
+
+        if path_type == "local":
+            path = Paths.from_sys(os.path.abspath(Paths.to_sys(path)))
+        else:
+            path = Paths.join_properly("/", path)
+
+        try:
+            target = duprem.make_target(path_type, path)
+            targets.append(target)
+        except ValueError as e:
+            if user_paths:
+                common.show_error("Error: " + str(e))
+
+    if choose_targets:
+        targets = ask_target_choice(targets)
+
+    for target in targets:
+        duprem.add_target(target)
+
+    print("Duplicate remover targets:")
+    for target in duprem.get_targets():
+        print("[%s://%s]" % (target.storage_name, target.path))
+
+    duprem.add_receiver(DuplicateRemoverReceiver(env, duprem))
+
+    ret = authenticate_storages(env, {i.storage_name for i in targets})
+
+    if ret:
+        return ret
+
     with GenericSignalManager(duprem):
-        for path in paths:
-            path, path_type = common.recognize_path(path)
-
-            if path_type == "local":
-                path = Paths.from_sys(os.path.abspath(Paths.to_sys(path)))
-            else:
-                path = Paths.join_properly("/", path)
-
-            try:
-                target = duprem.make_target(path_type, path)
-                targets.append(target)
-            except ValueError as e:
-                if user_paths:
-                    common.show_error("Error: " + str(e))
-
-        if choose_targets:
-            targets = ask_target_choice(targets)
-
-        for target in targets:
-            duprem.add_target(target)
-
-        print("Duplicate remover targets:")
-        for target in duprem.get_targets():
-            print("[%s://%s]" % (target.storage.name, target.path))
-
-        duprem.add_receiver(DuplicateRemoverReceiver(env, duprem))
-
         duprem.start()
         duprem.join()
 

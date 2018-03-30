@@ -7,7 +7,6 @@ from .Logging import logger
 from .Target import DownloadTarget
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
-from ..EncryptedStorage import EncryptedStorage
 
 __all__ = ["Downloader"]
 
@@ -70,12 +69,7 @@ class Downloader(Worker):
             return list(self.targets)
 
     def make_target(self, src_storage_name, src_path, dst_storage_name, dst_path):
-        src = EncryptedStorage(self.config, src_storage_name, self.directory)
-        dst = EncryptedStorage(self.config, dst_storage_name, self.directory)
-
-        target = DownloadTarget(self)
-        target.src = src
-        target.dst = dst
+        target = DownloadTarget(self, src_storage_name, dst_storage_name)
         target.src_path = src_path
         target.dst_path = dst_path
 

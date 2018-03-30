@@ -40,9 +40,8 @@ class DuplicateRemover(Worker):
 
     def make_target(self, storage_name, path):
         path = Paths.join_properly("/", path)
-        target = DuplicateRemoverTarget(self)
+        target = DuplicateRemoverTarget(self, storage_name)
         target.path = path
-        target.storage = self.config.storages[storage_name]
 
         folder = self.config.identify_folder(storage_name, path)
 

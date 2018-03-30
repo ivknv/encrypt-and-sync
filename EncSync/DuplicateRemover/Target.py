@@ -18,10 +18,11 @@ class DuplicateRemoverTarget(Task):
         Events: autocommit_started, autocommit_failed, autocommit_finished
     """
 
-    def __init__(self, duprem):
+    def __init__(self, duprem, storage_name):
         Task.__init__(self)
 
         self.duprem = duprem
+        self.storage_name = storage_name
         self.config = duprem.config
         self.path = None
         self.prefix = None
@@ -64,6 +65,8 @@ class DuplicateRemoverTarget(Task):
     def complete(self, worker):
         if self.stop_condition():
             return True
+
+        self.storage = self.config.storages[self.storage_name]
 
         self.shared_duplist = DuplicateList(self.storage.name, self.duprem.directory)
 

@@ -19,15 +19,16 @@ def authenticate_generic_storage(env, name):
 
     config.storages[name] = Storage.get_storage(name)(config)
 
-def authenticate_storages(env):
+def authenticate_storages(env, storage_names=None):
     config, ret = make_config(env)
 
     if config is None:
         return ret
 
-    storages = {i["type"] for i in config.folders.values()}
+    if storage_names is None:
+        storage_names = {i["type"] for i in config.folders.values()}
 
-    for name in storages:
+    for name in storage_names:
         authenticate_storage = STORAGE_TABLE.get(name)
 
         if authenticate_storage is None:

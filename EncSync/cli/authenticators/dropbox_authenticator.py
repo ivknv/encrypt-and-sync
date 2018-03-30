@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import dropbox
-
 from ..common import show_error, make_config
-from ...Storage import DropboxStorage
+from ...Storage import Storage
 from ...constants import DROPBOX_APP_KEY, DROPBOX_APP_SECRET
 
 __all__ = ["authenticate_dropbox"]
@@ -13,6 +11,8 @@ def authenticate_dropbox(env):
 
     if config is None:
         return ret
+
+    import dropbox
 
     token = config.encrypted_data.get("dropbox_token", "")
 
@@ -31,7 +31,7 @@ def authenticate_dropbox(env):
             token_valid = False
 
     if token_valid:
-        config.storages["dropbox"] = DropboxStorage(config)
+        config.storages["dropbox"] = Storage.get_storage("dropbox")(config)
         return 0
 
     try:
@@ -56,7 +56,7 @@ def authenticate_dropbox(env):
             break
 
         config.encrypted_data["dropbox_token"] = token
-        config.storages["dropbox"] = DropboxStorage(config)
+        config.storages["dropbox"] = Storage.get_storage("dropbox")(config)
 
         return 0
     except (KeyboardInterrupt, EOFError):

@@ -49,9 +49,8 @@ class Scanner(Worker):
         path = folder["path"]
         encrypted = folder["encrypted"]
         filename_encoding = folder["filename_encoding"]
-        storage = self.config.storages[folder["type"]]
 
-        target = ScanTarget(self, folder_name, storage)
+        target = ScanTarget(self, folder_name)
         target.type = folder["type"]
         target.encrypted = encrypted
         target.path = path

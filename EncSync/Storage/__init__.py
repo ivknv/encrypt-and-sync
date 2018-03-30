@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import importlib
+
 from .Storage import Storage
-from .LocalStorage import LocalStorage
-from .YaDiskStorage import YaDiskStorage
-from .DropboxStorage import DropboxStorage
 
-__all__ = ["Storage", "LocalStorage", "YaDiskStorage", "DropboxStorage"]
+__all__ = ["Storage"]
 
-LocalStorage.register()
-YaDiskStorage.register()
-DropboxStorage.register()
+Storage.register_lazy("local", lambda: importlib.import_module("EncSync.Storage.LocalStorage").LocalStorage)
+Storage.register_lazy("yadisk", lambda: importlib.import_module("EncSync.Storage.YaDiskStorage").YaDiskStorage)
+Storage.register_lazy("dropbox", lambda: importlib.import_module("EncSync.Storage.DropboxStorage").DropboxStorage)

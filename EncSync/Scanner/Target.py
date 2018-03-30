@@ -19,21 +19,21 @@ class ScanTarget(Task):
         Events: next_node, duplicates_found, scan_finished
     """
 
-    def __init__(self, scanner, name, storage):
+    def __init__(self, scanner, name):
         Task.__init__(self)
 
         self.scanner = scanner
         self.config = scanner.config
         self.type = None
         self.name = name
-        self.storage = storage
+        self.storage = None
         self.encrypted = False
 
         self.path = ""
         self.filename_encoding = "base64"
 
         self.shared_flist = FileList(name, scanner.directory)
-        self.shared_duplist = DuplicateList(storage.name, scanner.directory)
+        self.shared_duplist = None
 
         self.tasks = []
         self.task_lock = threading.Lock()
@@ -110,6 +110,9 @@ class ScanTarget(Task):
         if self.stop_condition():
             return True
 
+        self.storage = self.config.storages[self.type]
+        self.shared_duplist = DuplicateList(self.storage.name, self.scanner.directory)
+
         if not self.scanner.enable_journal:
             self.shared_flist.disable_journal()
             self.shared_duplist.disable_journal()
@@ -120,6 +123,7 @@ class ScanTarget(Task):
         self.status = "pending"
 
         try:
+
             self.shared_flist.begin_transaction()
             self.shared_duplist.begin_transaction()
 

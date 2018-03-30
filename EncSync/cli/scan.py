@@ -12,6 +12,7 @@ from ..FileList import FileList, DuplicateList
 from ..ExceptionManager import ExceptionManager
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
+from .authenticate_storages import authenticate_storages
 
 from . import common
 from .common import show_error
@@ -28,8 +29,8 @@ class ScannerExceptionManager(ExceptionManager):
             target = scanner.cur_target
 
             dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst.storage.name, dst_path)
-            src_path = "%s://%s" % (target.src.storage.name, src_path)
+            dst_path = "%s://%s" % (target.dst_storage_name, dst_path)
+            src_path = "%s://%s" % (target.src_storage_name, src_path)
 
             show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
                                                       exc.error_type, exc))
@@ -59,7 +60,7 @@ def ask_target_choice(targets):
             show_error("Error: %s" % str(e))
 
 def get_path_with_schema(target):
-    if target.storage.name == "yadisk":
+    if target.storage_name == "yadisk":
         return "disk://" + target.path
 
     return target.path
@@ -84,7 +85,7 @@ def print_target_totals(env, target):
     if not target.encrypted:
         return
 
-    duplist = DuplicateList(target.storage.name, env["db_dir"])
+    duplist = DuplicateList(target.storage_name, env["db_dir"])
     duplist.create()
 
     children = duplist.find_children(target.path)
@@ -112,7 +113,7 @@ class ScannerReceiver(Receiver):
     def on_next_target(self, event, target):
         target.add_receiver(self.target_receiver)
 
-        print("Performing %s scan: [%s]" % (target.storage.name, target.name))
+        print("Performing %s scan: [%s]" % (target.type, target.name))
 
     def on_worker_starting(self, event, worker):
         worker.add_receiver(self.worker_receiver)
@@ -130,7 +131,7 @@ class TargetReceiver(Receiver):
         target = event["emitter"]
 
         if target.status != "pending":
-            print("[%s]: %s scan %s" % (target.name, target.storage.name, target.status))
+            print("[%s]: %s scan %s" % (target.name, target.type, target.status))
 
         if target.status == "finished":
             print_target_totals(self.env, target)
@@ -183,30 +184,35 @@ def do_scan(env, names):
     scanner = Scanner(env["config"], env["db_dir"], n_workers,
                       enable_journal=not no_journal)
 
+    targets = []
+
+    for name in names:
+        try:
+            targets.append(scanner.make_target(name))
+        except ValueError:
+            show_error("Error: unknown folder %r" % (name,))
+            return 1
+
+    if (ask and env.get("all", False)) or choose_targets:
+        targets = ask_target_choice(targets)
+
+    for target in targets:
+        scanner.add_target(target)
+
+    print("Folders to scan:")
+    for target in targets:
+        print("[%s]" % (target.name,))
+
+    scanner_receiver = ScannerReceiver(env, scanner)
+
+    scanner.add_receiver(scanner_receiver)
+
+    ret = authenticate_storages(env, {i.type for i in targets})
+
+    if ret:
+        return ret
+
     with GenericSignalManager(scanner):
-        targets = []
-
-        for name in names:
-            try:
-                targets.append(scanner.make_target(name))
-            except ValueError:
-                show_error("Error: unknown folder %r" % (name,))
-                return 1
-
-        if (ask and env.get("all", False)) or choose_targets:
-            targets = ask_target_choice(targets)
-
-        for target in targets:
-            scanner.add_target(target)
-
-        print("Folders to scan:")
-        for target in targets:
-            print("[%s]" % (target.name,))
-
-        scanner_receiver = ScannerReceiver(env, scanner)
-
-        scanner.add_receiver(scanner_receiver)
-
         scanner.start()
         scanner.join()
 

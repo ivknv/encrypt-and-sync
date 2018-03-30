@@ -7,6 +7,7 @@ from ..StagedTask import StagedTask
 from ..Scanner import Scanner
 from ..DuplicateRemover import DuplicateRemover
 from ..DiffList import DiffList
+from ..FolderStorage import get_folder_storage
 from .. import FileComparator
 from .Worker import SyncWorker
 from .Tasks import UploadTask, MkdirTask, RmTask
@@ -291,6 +292,13 @@ class SyncTarget(StagedTask):
             return True
 
         self.status = "pending"
+
+        self.src = get_folder_storage(self.folder1["type"])(self.folder1["name"],
+                                                            self.config,
+                                                            self.synchronizer.directory)
+        self.dst = get_folder_storage(self.folder2["type"])(self.folder2["name"],
+                                                            self.config,
+                                                            self.synchronizer.directory)
 
         self.shared_flist1 = self.src.filelist
         self.shared_flist2 = self.dst.filelist

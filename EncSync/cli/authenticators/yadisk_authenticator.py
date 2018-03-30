@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import yadisk
-from yadisk.exceptions import YaDiskError
-
 from ..common import show_error, make_config
-from ...Storage import YaDiskStorage
+from ...Storage import Storage
 from ...constants import YADISK_APP_ID, YADISK_APP_SECRET
 
 __all__ = ["authenticate_yadisk"]
@@ -14,6 +11,9 @@ def authenticate_yadisk(env):
 
     if config is None:
         return ret
+
+    import yadisk
+    from yadisk.exceptions import YaDiskError
 
     y = yadisk.YaDisk(YADISK_APP_ID, YADISK_APP_SECRET,
                       config.encrypted_data.get("yadisk_token", ""))
@@ -43,7 +43,7 @@ def authenticate_yadisk(env):
             token_valid = True
 
         if token_valid:
-            config.storages["yadisk"] = YaDiskStorage(config)
+            config.storages["yadisk"] = Storage.get_storage("yadisk")(config)
             return 0
     except YaDiskError as e:
         show_error("Yandex.Disk error: %s: %s" % (e.error_type, e))
@@ -71,7 +71,7 @@ def authenticate_yadisk(env):
         config.encrypted_data["yadisk_token"] = token
         config.encrypted_data["yadisk_refresh_token"] = refresh_token
 
-        config.storages["yadisk"] = YaDiskStorage(config)
+        config.storages["yadisk"] = Storage.get_storage("yadisk")(config)
 
         return 0
     except (KeyboardInterrupt, EOFError):

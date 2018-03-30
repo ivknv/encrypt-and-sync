@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import functools
 
 from .Exceptions import UnknownStorageError
 
@@ -8,13 +9,59 @@ __all__ = ["Storage"]
 
 _NAME_REGEX = re.compile(r"^[a-zA-Z0-9_][a-zA-Z0-9-_.]{0,63}$")
 
+class LazyDict(dict):
+    def __init__(self, x=None, **kwargs):
+        dict.__init__(self)
+
+        self.update(x, **kwargs)
+        
+    def get(self, key, default=None):
+        return dict.get(self, key, lambda: default)()
+
+    def setdefault(self, key, value):
+        return dict.setdefault(self, key, functools.lru_cache()(value))
+
+    def __getitem__(self, key):
+        return dict.__getitem__(self, key)()
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, functools.lru_cache()(value))
+
+    def values(self):
+        for value in dict.values(self):
+            yield value()
+
+    def items(self):
+        for k, v in dict.items(self):
+            yield k, v()
+
+    def update(self, d=None, **kwargs):
+        if not d:
+            d = kwargs
+
+        if isinstance(d, LazyDict):
+            for k, v in dict.items(d):
+                dict.__setitem__(self, k, v)
+        elif isinstance(d, dict):
+            for k, v in dict.items(d):
+                self[k] = v
+        else:
+            for k, v in d:
+                self[k] = v
+
+    def fromkeys(self, keys, value=None):
+        return LazyDict({k: value for k in keys})
+
+    def copy(self):
+        return LazyDict(self)
+
 class Storage(object):
     """
         Implements storage API.
 
         :param config: `config` instance
 
-        :cvar registered_storages: `dict`, contains descendant storage classes (don't touch it!)
+        :cvar registered_storages: `LazyDict`, contains descendant storage classes (don't touch it!)
 
         :cvar name: `str`, storage name, must match ^[a-zA-Z0-9_][a-zA-Z0-9-_.]{0,63}$
         :cvar type: `str`, storage type ("local" or "remote")
@@ -24,7 +71,7 @@ class Storage(object):
         :ivar config: `Config` instance
     """
 
-    registered_storages = {}
+    registered_storages = LazyDict()
 
     name = None
     type = None
@@ -36,7 +83,7 @@ class Storage(object):
         """
             Validate the storage class.
 
-            :raises ValuError: invalid storage class
+            :raises ValueError: invalid storage class
         """
 
         if not isinstance(cls.name, str) or not cls.name:
@@ -54,6 +101,27 @@ class Storage(object):
         if not isinstance(cls.parallelizable, bool):
             raise ValueError("%s.parallelizable must be of type bool" % (cls.__name__,))
 
+    @staticmethod
+    def register_lazy(name, function):
+        """
+            Register the descendant storage class lazily.
+
+            :param function: callable, must return the storage class
+
+            :raises ValueError: invalid storage class
+        """
+
+        if not _NAME_REGEX.match(name):
+            raise ValueError("Invalid storage name: %r" % (name,))
+
+        def wrapper():
+            cls = function()
+            cls.validate()
+
+            return cls
+
+        Storage.registered_storages[name] = wrapper
+
     @classmethod
     def register(cls):
         """
@@ -63,7 +131,7 @@ class Storage(object):
         """
 
         cls.validate()
-        Storage.registered_storages[cls.name] = cls
+        Storage.registered_storages[cls.name] = lambda: cls
 
     @classmethod
     def unregister(cls):

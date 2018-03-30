@@ -12,7 +12,6 @@ from .cli.show_diffs import show_diffs
 from .cli.sync import do_sync
 from .cli.download import download
 from .cli.remove_duplicates import remove_duplicates
-from .cli.authenticate_storages import authenticate_storages
 from .cli.encrypt import encrypt, encrypt_path
 from .cli.decrypt import decrypt, decrypt_path
 from .cli.show_duplicates import show_duplicates
@@ -102,16 +101,7 @@ def main(args=None):
 
     cleanup(genv)
 
-    requiring_auth = {"scan", "sync", "download", "console", "rmdup"}
-
     env = Environment(genv)
-
-    if ns.action in requiring_auth:
-        env["no_auth_check"] = ns.no_auth_check
-        ret = authenticate_storages(env)
-
-        if ret:
-            return ret
 
     if ns.action == "sync":
         env["no_check"] = not ns.integrity_check

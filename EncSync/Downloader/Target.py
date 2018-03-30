@@ -7,6 +7,7 @@ from ..Task import Task
 from ..Encryption import MIN_ENC_SIZE
 from ..FileList import FileList
 from ..Scannable import EncryptedScannable, DecryptedScannable, scan_files
+from ..EncryptedStorage import EncryptedStorage
 from .. import Paths
 from .Worker import DownloaderWorker
 from .Task import DownloadTask
@@ -14,8 +15,11 @@ from .Task import DownloadTask
 __all__ = ["DownloadTarget"]
 
 class DownloadTarget(Task):
-    def __init__(self, downloader):
+    def __init__(self, downloader, src_storage_name, dst_storage_name):
         Task.__init__(self)
+
+        self.src_storage_name = src_storage_name
+        self.dst_storage_name = dst_storage_name
 
         self.type = None
         self.downloader = downloader
@@ -130,6 +134,9 @@ class DownloadTarget(Task):
         self.tasks = self.task_generator(nodes)
 
     def complete(self, worker):
+        self.src = EncryptedStorage(self.config, self.src_storage_name, self.downloader.directory)
+        self.dst = EncryptedStorage(self.config, self.dst_storage_name, self.downloader.directory)
+
         if self.total_children == 0:
             self.set_tasks()
             
