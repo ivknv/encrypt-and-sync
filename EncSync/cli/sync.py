@@ -32,8 +32,8 @@ class SynchronizerExceptionManager(ExceptionManager):
             target = synchronizer.cur_target
 
             dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst.folder["type"], dst_path)
-            src_path = "%s://%s" % (target.src.folder["type"], src_path)
+            dst_path = "%s://%s" % (target.folder2["type"], dst_path)
+            src_path = "%s://%s" % (target.folder1["type"], src_path)
 
             show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
                                                       exc.error_type, exc))
