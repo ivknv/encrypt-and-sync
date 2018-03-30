@@ -2,7 +2,7 @@
 
 from .authenticators import authenticate_yadisk, authenticate_dropbox
 
-from ..Storage import get_storage
+from ..Storage import Storage
 
 from .common import make_config
 
@@ -17,7 +17,7 @@ def authenticate_generic_storage(env, name):
     if config is None:
         return ret
 
-    config.storages[name] = get_storage(name)(config)
+    config.storages[name] = Storage.get_storage(name)(config)
 
 def authenticate_storages(env):
     config, ret = make_config(env)

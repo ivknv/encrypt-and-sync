@@ -3,7 +3,7 @@
 import tempfile
 
 from . import Paths
-from .Storage import get_storage
+from .Storage import Storage
 from .FolderStorage import get_folder_storage
 
 __all__ = ["EncryptedStorage"]
@@ -14,7 +14,7 @@ class EncryptedStorage(object):
         self.name = storage_name
         self.directory = directory
         self.folder_storage_class = get_folder_storage(storage_name)
-        self.storage = get_storage(storage_name)(self.config)
+        self.storage = Storage.get_storage(storage_name)(self.config)
         self.folder_storages = {}
 
     def get_folder_storage(self, folder_name):

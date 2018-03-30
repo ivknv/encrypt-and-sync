@@ -6,7 +6,7 @@ import os
 from ...EncScript.Exceptions import EvaluationError
 from ...EncScript.Namespace import Namespace
 from ...EncScript import Command
-from ...Storage import get_storage
+from ...Storage import Storage
 from ...common import recognize_path, validate_folder_name, validate_storage_name
 from ... import Paths
 
@@ -62,7 +62,7 @@ class FolderBlock(ConfigBlock):
         else:
             avoid_rescan = True
 
-        storage_class = get_storage(path_type)
+        storage_class = Storage.get_storage(path_type)
 
         if storage_class.case_sensitive:
             filename_encoding = "base64"

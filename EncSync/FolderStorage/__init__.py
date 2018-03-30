@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..Storage import get_storage
+from ..Storage import Storage
 
 from .FolderStorage import *
 from .LocalFolderStorage import *
@@ -13,4 +13,4 @@ def get_folder_storage(name):
     TABLE = {"local": LocalFolderStorage,
              "remote": RemoteFolderStorage}
 
-    return TABLE[get_storage(name).type]
+    return TABLE[Storage.get_storage(name).type]
