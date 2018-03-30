@@ -26,8 +26,11 @@ class FileList(BaseFileList):
                                         modified DATETIME,
                                         padded_size INTEGER,
                                         path TEXT UNIQUE ON CONFLICT REPLACE,
-                                        IVs TEXT)""")
+                                        IVs TEXT,
+                                        deleted INTEGER)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS path_index
+                                       ON filelist(path ASC)""")
+            self.connection.execute("""CREATE INDEX IF NOT EXISTS deleted_index
                                        ON filelist(path ASC)""")
     def get_root(self):
         """
@@ -49,24 +52,28 @@ class FileList(BaseFileList):
             raise ValueError("Node type is None")
 
         self.connection.execute("""INSERT INTO filelist VALUES
-                                   (?, ?, ?, ?, ?)""",
+                                   (?, ?, ?, ?, ?, ?)""",
                                 (node["type"],
                                  format_timestamp(node["modified"]),
                                  node["padded_size"],
                                  prepare_path(node["path"]),
-                                 node["IVs"]))
+                                 node["IVs"], 0))
 
     def remove_node(self, path):
         path = prepare_path(path)
 
-        self.connection.execute("DELETE FROM filelist WHERE path=? OR path=?",
+        #self.connection.execute("DELETE FROM filelist WHERE path=? OR path=?",
+        #                        (path, Paths.dir_normalize(path)))
+        self.connection.execute("UPDATE filelist SET deleted=1 WHERE path=? OR path=?",
                                 (path, Paths.dir_normalize(path)))
 
     def remove_node_children(self, path):
         path = prepare_path(Paths.dir_normalize(path))
         path = escape_glob(path)
 
-        self.connection.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
+        #self.connection.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
+        self.connection.execute("UPDATE filelist SET deleted=1 WHERE path GLOB ?",
+                                (path + "*",))
 
     def clear(self):
         self.connection.execute("DELETE FROM filelist")
@@ -123,3 +130,6 @@ class FileList(BaseFileList):
     def update_size(self, path, new_size):
         self.connection.execute("UPDATE filelist SET padded_size=? WHERE path=?",
                                 (new_size, path))
+
+    def clear_deleted(self):
+        self.connection.execute("DELETE FROM filelist WHERE deleted=1")

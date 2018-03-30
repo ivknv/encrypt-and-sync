@@ -231,8 +231,11 @@ class SyncTarget(StagedTask):
         self.synchronizer.join_workers()
 
     def finalize_rm(self):
-        self.shared_flist1.commit()
+        self.shared_flist2.clear_deleted()
         self.shared_flist2.commit()
+
+        self.shared_flist1.clear_deleted()
+        self.shared_flist1.commit()
 
     def init_dirs(self):
         self.differences = self.difflist.select_dirs_differences(self.folder1["name"], self.folder2["name"])
