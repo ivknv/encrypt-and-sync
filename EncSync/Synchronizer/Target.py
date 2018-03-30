@@ -38,6 +38,7 @@ class SyncTarget(StagedTask):
         self.enable_scan = True
         self.avoid_src_rescan = False
         self.avoid_dst_rescan = False
+        self.no_remove = False
 
         self.shared_flist1 = None
         self.shared_flist2 = None
@@ -99,7 +100,12 @@ class SyncTarget(StagedTask):
         try:
             self.difflist.begin_transaction()
             self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])
-            self.difflist.insert_differences(diffs)
+
+            with self.difflist:
+                for diff in diffs:
+                    if not (self.no_remove and diff["type"] == "rm"):
+                        self.difflist.insert_difference(diff)
+
             self.difflist.commit()
         except Exception as e:
             self.difflist.rollback()
@@ -221,6 +227,9 @@ class SyncTarget(StagedTask):
         pass
 
     def init_rm(self):
+        if self.no_remove:
+            return
+
         self.differences = self.difflist.select_rm_differences(self.folder1["name"], self.folder2["name"])
 
         self.shared_flist1.begin_transaction()
@@ -231,6 +240,9 @@ class SyncTarget(StagedTask):
         self.synchronizer.join_workers()
 
     def finalize_rm(self):
+        if self.no_remove:
+            return
+
         self.shared_flist2.clear_deleted()
         self.shared_flist2.commit()
 

@@ -28,6 +28,8 @@ class SyncCommand(Command):
                             help="Don't show the list of differences")
         parser.add_argument("--no-journal", action="store_true",
                             help="Disable SQLite3 journaling")
+        parser.add_argument("--no-remove", action="store_true",
+                            help="Don't remove any files (except for file duplicates)")
         parser.add_argument("-I", "--integrity-check", action="store_true",
                             help="Enable integrity check")
 
@@ -41,6 +43,7 @@ class SyncCommand(Command):
         env["no_diffs"] = ns.no_diffs
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
+        env["no_remove"] = ns.no_remove
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

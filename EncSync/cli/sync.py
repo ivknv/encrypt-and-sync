@@ -95,14 +95,22 @@ def print_diffs(env, target):
     if target.dst.encrypted:
         n_duplicates += count_duplicates(env, target.dst)
 
-    n_rm = difflist.count_rm_differences(folder_name1, folder_name2)
+    if not target.no_remove:
+        n_rm = difflist.count_rm_differences(folder_name1, folder_name2)
+    else:
+        n_rm = 0
     n_dirs = difflist.count_dirs_differences(folder_name1, folder_name2)
     n_new_files = difflist.count_new_file_differences(folder_name1, folder_name2)
     n_update = difflist.count_update_differences(folder_name1, folder_name2)
 
     print("[%s -> %s]: %d duplicate removals" % (folder_name1, folder_name2,
                                                  n_duplicates))
-    print("[%s -> %s]: %d removals" % (folder_name1, folder_name2, n_rm))
+
+    if target.no_remove:
+        print("[%s -> %s]: 0 removals (disabled)" % (folder_name1, folder_name2))
+    else:
+        print("[%s -> %s]: %d removals" % (folder_name1, folder_name2, n_rm))
+
     print("[%s -> %s]: %d new directories" % (folder_name1, folder_name2, n_dirs))
     print("[%s -> %s]: %d new files to upload" % (folder_name1, folder_name2,
                                                   n_new_files))
@@ -411,6 +419,7 @@ def do_sync(env, names):
 
     no_scan = env.get("no_scan", False)
     no_check = env.get("no_check", False)
+    no_remove = env.get("no_remove", False)
     choose_targets = env.get("choose_targets", False)
     ask = env.get("ask", False)
 
@@ -450,6 +459,7 @@ def do_sync(env, names):
     for name1, name2 in zip(names[::2], names[1::2]):
         target = synchronizer.make_target(name1, name2, not no_scan)
         target.skip_integrity_check = no_check
+        target.no_remove = no_remove
         targets.append(target)
 
     if (ask and env.get("all", False)) or choose_targets:

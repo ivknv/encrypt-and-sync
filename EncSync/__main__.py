@@ -107,6 +107,7 @@ def main(args=None):
         env["no_check"] = not ns.integrity_check
         env["no_scan"] = ns.no_scan
         env["no_diffs"] = ns.no_diffs
+        env["no_remove"] = ns.no_remove
 
     if ns.action in ("scan", "sync", "download", "rmdup"):
         if ns.n_workers is not None:
@@ -218,6 +219,8 @@ def parse_args(args):
                              help="Disable SQLite3 journaling")
     sync_parser.add_argument("--no-auth-check", action="store_true",
                              help="Disable the authentication check")
+    sync_parser.add_argument("--no-remove", action="store_true",
+                             help="Don't remove any files (except for file duplicates)")
     sync_parser.set_defaults(action="sync")
     
     download_parser = subparsers.add_parser("download", aliases=["d"],
