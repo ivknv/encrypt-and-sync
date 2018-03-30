@@ -60,7 +60,7 @@ def ask_target_choice(targets):
             show_error("Error: %s" % str(e))
 
 def get_path_with_schema(target):
-    if target.storage_name == "yadisk":
+    if target.type == "yadisk":
         return "disk://" + target.path
 
     return target.path
@@ -85,7 +85,7 @@ def print_target_totals(env, target):
     if not target.encrypted:
         return
 
-    duplist = DuplicateList(target.storage_name, env["db_dir"])
+    duplist = DuplicateList(target.type, env["db_dir"])
     duplist.create()
 
     children = duplist.find_children(target.path)
