@@ -184,7 +184,7 @@ class UploadTask(SyncTask):
                 padded_size = pad_size(self.size)
 
             if self.size >= 700 * 1024**2:
-                if not isinstance(timeout, (tuple, list)):
+                if not isinstance(upload_timeout, (tuple, list)):
                     connect_timeout = read_timeout = upload_timeout
                 else:
                     connect_timeout, read_timeout = upload_timeout
