@@ -3,8 +3,10 @@ Mark filelist entries as deleted and delete them on startup instead of instantly
 Add variable and nested expression support to EncScript
 Add multiple encryption formats support
 
-Dropbox support
 Google Drive support
+Use lockfile to not allow parallel synchronizations
+Add --no-remove option support to ignore removals
+
 WebDav support
 FTP support
 SFTP support
