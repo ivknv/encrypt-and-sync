@@ -6,7 +6,7 @@ import sys
 
 from setuptools import setup, find_packages
 
-requirements = ["s3m>=1.0.5", "requests", "pycryptodome", "yadisk>=1.2.3"]
+requirements = ["s3m>=1.0.5", "requests", "pycryptodome", "yadisk>=1.2.3", "dropbox"]
 
 readline_pkg = "readline"
 
