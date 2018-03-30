@@ -26,7 +26,7 @@ else:
 
 setup(name="EncSync",
       version="0.5.0",
-      description="Yandex.Disk encrypted sync tool",
+      description="A file synchronization utility with client-side encryption support",
       author="Ivan Konovalov",
       packages=find_packages(exclude=["tests"]),
       install_requires=requirements,
