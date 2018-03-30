@@ -13,7 +13,7 @@ class Storage(object):
         :cvar case_sensitive: `bool`, determines whether the storage filenames are case sensitive
         :cvar parallelizable: `bool`, determines whether the storage supports parallel operations
                               (or at least if it's useful or not)
-        :ivar config: `config` instance
+        :ivar config: `Config` instance
     """
 
     name = None
