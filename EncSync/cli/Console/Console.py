@@ -23,6 +23,7 @@ from ... import Paths
 from .. import common
 from ..common import show_error
 from ..Environment import Environment
+from ..authenticate_storages import authenticate_storages
 from .ConsoleProgram import ConsoleProgram
 
 __all__ = ["Console", "run_console"]
@@ -59,6 +60,12 @@ class Console(object):
         try:
             return self.storages[name]
         except KeyError:
+            if name not in self.config.storages:
+                ret = authenticate_storages(self.env, (name,))
+
+                if ret:
+                    raise ValueError("failed to authenticate storage")
+
             directory = self.env["db_dir"]
             storage = EncryptedStorage(self.config, name, directory)
             self.storages[name] = storage
