@@ -78,7 +78,7 @@ class EncryptedStorage(object):
 
         return folder_storage.upload(in_file, out_path, *args, **kwargs)
 
-    def get_file(self, path):
+    def get_file(self, path, ivs=None):
         folder = self.identify_folder(path)
 
         if folder is None:
@@ -100,9 +100,9 @@ class EncryptedStorage(object):
         folder_storage = self.get_folder_storage(folder["name"])
         path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        yield from folder_storage.get_file(path)
+        yield from folder_storage.get_file(path, ivs)
 
-    def get_encrypted_file(self, path):
+    def get_encrypted_file(self, path, ivs=None):
         folder = self.identify_folder(path)
 
         if folder is None:
@@ -123,7 +123,7 @@ class EncryptedStorage(object):
         folder_storage = self.get_folder_storage(folder["name"])
         path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        yield from folder_storage.get_encrypted_file(path)
+        yield from folder_storage.get_encrypted_file(path, ivs)
 
     def is_dir(self, path, *args, **kwargs):
         folder = self.identify_folder(path)

@@ -54,11 +54,14 @@ class DownloadTarget(Task):
         new_task = DownloadTask(self)
 
         new_task.type = node["type"]
+        new_task.IVs = node["IVs"]
         new_task.modified = node["modified"]
         new_task.src = self.src
         new_task.dst = self.dst
         new_task.src_path = node["path"]
         new_task.dst_path = self.dst_path
+
+        assert(self.type in ("f", "d"))
 
         if self.type == "f" and dst_type == "d":
             filename = Paths.split(new_task.src_path)[1]
@@ -127,6 +130,10 @@ class DownloadTarget(Task):
                                                    filename_encoding=filename_encoding)
                 else:
                     scannable = DecryptedScannable(self.src.storage, self.src_path)
+
+                scannable.identify()
+
+                self.type = scannable.type
 
                 nodes = (i[1] for i in scan_files(scannable))
                 nodes = (j for i in ([scannable.to_node()], nodes) for j in i)

@@ -7,11 +7,11 @@ from .FolderStorage import FolderStorage
 __all__ = ["LocalFolderStorage"]
 
 class LocalFolderStorage(FolderStorage):
-    def get_file(self, path):
+    def get_file(self, path, ivs=None):
         path = Paths.join(self.prefix, path)
 
         if self.encrypted:
-            path = Paths.to_sys(self.encrypt_path(path)[0])
+            path = Paths.to_sys(self.encrypt_path(path, ivs)[0])
 
             yield None
             yield self.config.temp_decrypt(path)
@@ -19,11 +19,11 @@ class LocalFolderStorage(FolderStorage):
             yield None
             yield open(Paths.to_sys(path), "rb")
 
-    def get_encrypted_file(self, path):
+    def get_encrypted_file(self, path, ivs=None):
         path = Paths.join(self.prefix, path)
 
         if self.encrypted:
-            path = Paths.to_sys(self.encrypt_path(path)[0])
+            path = Paths.to_sys(self.encrypt_path(path, ivs)[0])
 
             yield None
             yield open(path, "rb")
