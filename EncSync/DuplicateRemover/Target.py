@@ -80,6 +80,7 @@ class DuplicateRemoverTarget(Task):
 
         copy_src_path = self.shared_duplist.connection.path
         copy_dst_path = os.path.join(os.path.split(copy_src_path)[0], "duplist_copy.db")
+        copy_duplist = None
 
         try:
             shutil.copyfile(copy_src_path, copy_dst_path)
@@ -120,6 +121,9 @@ class DuplicateRemoverTarget(Task):
                 elif self.progress["failed"] > 0:
                     self.status = "failed"
         finally:
+            if copy_duplist is not None:
+                copy_duplist.close()
+
             try:
                 os.remove(copy_dst_path)
             except IOError:
