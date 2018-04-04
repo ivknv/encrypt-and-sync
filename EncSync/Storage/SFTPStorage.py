@@ -161,7 +161,7 @@ class SFTPStorage(Storage):
     name = "sftp"
     type = "remote"
     case_sensitive = True
-    parallelizable = True
+    parallelizable = False
 
     @staticmethod
     def split_path(path):
