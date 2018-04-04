@@ -7,4 +7,3 @@ Use lockfile to not allow parallel synchronizations
 
 WebDav support
 FTP support
-SFTP support
