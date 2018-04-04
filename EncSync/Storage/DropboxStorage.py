@@ -46,11 +46,11 @@ def _dropbox_meta_to_dict(meta):
                 "link":     None}
 
 def auto_retry(attempt, n_retries, retry_interval):
-    for i in range(n_retries):
+    for i in range(n_retries + 1):
         try:
             return attempt()
         except Exception as e:
-            if i + 1 == n_retries or e not in RETRY_CAUSES:
+            if i == n_retries or not any(isinstance(e, j) for j in RETRY_CAUSES):
                 raise e
 
         time.sleep(retry_interval)
