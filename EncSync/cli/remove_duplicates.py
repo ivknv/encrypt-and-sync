@@ -26,11 +26,7 @@ class DuplicateRemoverExceptionManager(ExceptionManager):
         def on_disk_error(exc, worker):
             target = duprem.cur_target
 
-            dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst.storage_name, dst_path)
-            src_path = "%s://%s" % (target.src.storage_name, src_path)
-
-            common.show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
+            common.show_error("[%s://%s]: error: %s: %s" % (target.storage_name, target.path,
                                                              exc.error_type, exc))
 
         def on_exception(exc, worker):
