@@ -6,6 +6,7 @@ import os
 import sys
 
 from . import Paths
+from .Storage import Storage
 
 __all__ = ["format_timestamp", "parse_timestamp", "node_tuple_to_dict",
            "normalize_node", "escape_glob", "validate_folder_name",
@@ -50,7 +51,7 @@ def validate_folder_name(name):
     return all(c.isalnum() or c in "_-+." for c in name)
 
 def validate_storage_name(name):
-    return name in {"local", "yadisk", "dropbox"}
+    return name in Storage.registered_storages
 
 def is_windows():
     return sys.platform.startswith("win")

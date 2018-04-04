@@ -4,6 +4,8 @@
 from ..EncScript import Namespace
 from . import commands, blocks
 
+__all__ = ["ConfigNamespace"]
+
 class ConfigNamespace(Namespace):
     def __init__(self):
         Namespace.__init__(self)
