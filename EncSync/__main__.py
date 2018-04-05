@@ -151,7 +151,7 @@ def main(args=None):
                "password_prompt": lambda: password_prompt(env),
                "configure": lambda: configure(env),
                "logout": lambda: logout(env, ns.storages),
-               "login": lambda: authenticate_storages(env, ns.storages)}
+               "login": lambda: authenticate_storages(env, ns.storages or None)}
 
     return actions[ns.action]()
 
