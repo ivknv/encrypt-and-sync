@@ -25,6 +25,7 @@ from .cli.set_master_password import set_master_password
 from .cli.password_prompt import password_prompt
 from .cli.configure import configure
 from .cli.logout import logout
+from .cli.authenticate_storages import authenticate_storages
 
 def cleanup(env):
     try:
@@ -149,7 +150,8 @@ def main(args=None):
                "set_master_password": lambda: set_master_password(env),
                "password_prompt": lambda: password_prompt(env),
                "configure": lambda: configure(env),
-               "logout": lambda: logout(env, ns.storages)}
+               "logout": lambda: logout(env, ns.storages),
+               "login": lambda: authenticate_storages(env, ns.storages)}
 
     return actions[ns.action]()
 
@@ -333,6 +335,12 @@ def parse_args(args):
     configure_parser = subparsers.add_parser("configure",
                                              help="Quick start and interactive configuration")
     configure_parser.set_defaults(action="configure")
+
+    login_parser = subparsers.add_parser("login",
+                                         help="Log into a storage")
+    login_parser.add_argument("storages", nargs="*",
+                              help="List of storage names to log into. default: all storages used in folders")
+    login_parser.set_defaults(action="login")
 
     logout_parser = subparsers.add_parser("logout",
                                           help="Log out of a storage")
