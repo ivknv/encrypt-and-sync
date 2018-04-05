@@ -125,6 +125,10 @@ def main(args=None):
         env["src_only"] = ns.src_only
         env["dst_only"] = ns.dst_only
 
+    if ns.action in ("scan", "sync", "rmdup", "download", "login", "logout",
+                     "console", "execute", "execute_script"):
+        env["no_auth_check"] = ns.no_auth_check
+
     actions = {"scan": lambda: do_scan(env, ns.folders),
                "sync": lambda: do_sync(env, ns.folders),
                "diffs": lambda: show_diffs(env, *ns.folders[:2]),
@@ -340,12 +344,16 @@ def parse_args(args):
                                          help="Log into a storage")
     login_parser.add_argument("storages", nargs="*",
                               help="List of storage names to log into. default: all storages used in folders")
+    login_parser.add_argument("--no-auth-check", action="store_true",
+                              help="Disable the authentication check")
     login_parser.set_defaults(action="login")
 
     logout_parser = subparsers.add_parser("logout",
                                           help="Log out of a storage")
     logout_parser.add_argument("storages", nargs="*",
                                help="List of storage names to logout from. default: all storages")
+    logout_parser.add_argument("--no-auth-check", action="store_true",
+                               help="Disable the authentication check")
     logout_parser.set_defaults(action="logout")
 
     ns = parser.parse_args(args[1:])
