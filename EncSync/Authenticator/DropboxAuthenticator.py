@@ -28,7 +28,7 @@ class DropboxAuthenticator(Authenticator):
             try:
                 dbx.users_get_current_account()
                 token_valid = True
-            except dropbox.exceptions.BadInputError:
+            except (dropbox.exceptions.BadInputError, dropbox.exceptions.AuthError):
                 token_valid = False
             except dropbox.exceptions.DropboxException as e:
                 raise LoginError("Dropbox error: %s: %s" % (e.__class__.__name__, e))

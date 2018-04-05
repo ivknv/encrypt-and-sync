@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ..Authenticator import Authenticator
-from ..Authenticator.Exceptions import AuthenticatorError
+from ..Authenticator.Exceptions import AuthenticatorError, UnknownAuthenticatorError
 
 from .common import show_error, make_config
 
@@ -19,9 +19,9 @@ def authenticate_storages(env, storage_names=None):
     for name in storage_names:
         assert(name != "_generic")
 
-        authenticator = Authenticator.get_authenticator(name)()
-
-        if authenticator is None:
+        try:
+            authenticator = Authenticator.get_authenticator(name)()
+        except UnknownAuthenticatorError:
             authenticator = Authenticator.get_authenticator("_generic")(name)
 
         try:
