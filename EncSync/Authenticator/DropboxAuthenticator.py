@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import dropbox
+import requests
 
 from .Authenticator import Authenticator
 from .Exceptions import LoginError, LogoutError
@@ -53,6 +54,10 @@ class DropboxAuthenticator(Authenticator):
                 show_error("Dropbox error: %s: %s" % (e.__class__.__name__, e))
                 show_error("Failed to get a token. Try again")
                 continue
+            except requests.exceptions.RequestException as e:
+                show_error("Network I/O error: %s: %s" % (e.__class__.__name__, e))
+                show_error("Failed to get a token. Try again")
+                continue
 
             token = response.access_token
             break
@@ -71,5 +76,7 @@ class DropboxAuthenticator(Authenticator):
             pass
         except dropbox.exceptions.DropboxException as e:
             raise LogoutError("Dropbox error: %s: %s" % (e.__class__.__name__, e))
+        except requests.exceptions.RequestException as e:
+            raise LogoutError("Network I/O error: %s: %s" % (e.__class__.__name__, e))
 
         config.encrypted_data.pop("dropbox_token", None)

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import requests
 import yadisk
 from yadisk.exceptions import YaDiskError
 
@@ -60,6 +61,10 @@ class YaDiskAuthenticator(Authenticator):
                 response = y.get_token(code)
             except YaDiskError as e:
                 show_error("Yandex.Disk error: %s: %s" % (e.error_type, e))
+                show_error("Failed to get a token. Try again")
+                continue
+            except requests.exceptions.RequestException as e:
+                show_error("Network I/O error: %s: %s" % (e.__class__.__name__, e))
                 show_error("Failed to get a token. Try again")
                 continue
 
