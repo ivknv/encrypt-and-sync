@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import dropbox
+
 from .Authenticator import Authenticator
 from .Exceptions import LoginError, LogoutError
 
@@ -10,9 +12,9 @@ from ..cli.common import show_error
 __all__ = ["DropboxAuthenticator"]
 
 class DropboxAuthenticator(Authenticator):
-    def login(self, config, env, *args, **kwargs):
-        import dropbox
+    name = "dropbox"
 
+    def login(self, config, env, *args, **kwargs):
         token = config.encrypted_data.get("dropbox_token", "")
 
         if not token:
@@ -59,8 +61,6 @@ class DropboxAuthenticator(Authenticator):
         config.storages["dropbox"] = Storage.get_storage("dropbox")(config)
 
     def logout(self, config, env, *args, **kwargs):
-        import dropbox
-
         token = config.encrypted_data.get("dropbox_token", "")
         if not token:
             return

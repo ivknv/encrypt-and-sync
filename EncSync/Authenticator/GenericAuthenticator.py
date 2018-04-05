@@ -9,6 +9,8 @@ __all__ = ["GenericAuthenticator"]
 class GenericAuthenticator(Authenticator):
     """Only creates a storage object."""
 
+    name = "_generic"
+
     def __init__(self, storage_name):
         self.storage_name = storage_name
 

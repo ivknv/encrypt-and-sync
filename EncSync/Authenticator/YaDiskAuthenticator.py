@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import yadisk
+from yadisk.exceptions import YaDiskError
+
 from .Authenticator import Authenticator
 from .Exceptions import LoginError
 
@@ -10,10 +13,9 @@ from ..cli.common import show_error
 __all__ = ["YaDiskAuthenticator"]
 
 class YaDiskAuthenticator(Authenticator):
-    def login(self, config, env, *args, **kwargs):
-        import yadisk
-        from yadisk.exceptions import YaDiskError
+    name = "yadisk"
 
+    def login(self, config, env, *args, **kwargs):
         y = yadisk.YaDisk(YADISK_APP_ID, YADISK_APP_SECRET,
                           config.encrypted_data.get("yadisk_token", ""))
 

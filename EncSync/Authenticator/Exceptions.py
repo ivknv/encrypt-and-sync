@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-__all__ = ["AuthenticatorError", "LoginError", "LogoutError"]
+__all__ = ["UnknownAuthenticatorError", "AuthenticatorError", "LoginError", "LogoutError"]
+
+class UnknownAuthenticatorError(Exception):
+    pass
 
 class AuthenticatorError(Exception):
     pass
