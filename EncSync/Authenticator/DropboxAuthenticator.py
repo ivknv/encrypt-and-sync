@@ -18,6 +18,8 @@ class DropboxAuthenticator(Authenticator):
     def login(self, config, env, *args, **kwargs):
         token = config.encrypted_data.get("dropbox_token", "")
 
+        token_valid = True
+
         if not token:
             token_valid = False
         else:
