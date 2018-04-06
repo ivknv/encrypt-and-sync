@@ -3,6 +3,8 @@
 import time
 import weakref
 
+from .Logging import TaskFailLogReceiver
+
 from ..Event.Receiver import Receiver
 from ..Task import Task
 from ..Encryption import pad_size, MIN_ENC_SIZE
@@ -68,6 +70,8 @@ class SyncTask(Task):
 
         self.src = target.src
         self.dst = target.dst
+
+        self.add_receiver(TaskFailLogReceiver())
 
     def stop_condition(self):
         if self.stopped or self.parent.stop_condition():

@@ -46,6 +46,7 @@ def setup_logging(env):
 
     loggers = ((Downloader.Logging.logger, "downloader.log"),
                (Synchronizer.Logging.logger, "synchronizer.log"),
+               (Synchronizer.Logging.fail_logger, "synchronizer-fails.log"),
                (Scanner.Logging.logger, "scanner.log"),
                (DuplicateRemover.Logging.logger, "duplicate-remover.log"),
                (CDB.Logging.logger, "cdb.log"))
@@ -53,7 +54,7 @@ def setup_logging(env):
     for logger, filename in loggers:
         formatter = logging.Formatter("%(asctime)s - %(name)s-Thread-%(thread)d: %(message)s")
 
-        path = os.path.join(env["config_dir"], filename)
+        path = os.path.join(env["log_dir"], filename)
 
         handler = logging.FileHandler(path)
         handler.setFormatter(formatter)

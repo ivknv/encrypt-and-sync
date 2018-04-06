@@ -3,6 +3,8 @@
 
 import threading
 
+from .Logging import TargetFailLogReceiver
+
 from ..StagedTask import StagedTask
 from ..Scanner import Scanner
 from ..DuplicateRemover import DuplicateRemover
@@ -57,6 +59,8 @@ class SyncTarget(StagedTask):
         self.set_stage("dirs",  self.init_dirs,  self.finalize_dirs)
         self.set_stage("files", self.init_files, self.finalize_files)
         self.set_stage("check", self.init_check, self.finalize_check)
+
+        self.add_receiver(TargetFailLogReceiver())
 
     def get_n_done(self):
         return self.progress["finished"] + self.progress["failed"] + self.progress["skipped"]
