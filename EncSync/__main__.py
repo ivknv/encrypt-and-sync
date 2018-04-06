@@ -82,12 +82,13 @@ def main(args=None):
     else:
         genv["master_password"] = ns.master_password
 
-    if ns.config_dir is not None or genv.get("config_dir", None) is None:
+    if ns.config_dir is not None or genv.get("config_dir") is None:
         if ns.config_dir is None:
             ns.config_dir = "~/.encsync"
 
-        genv["config_dir"] = os.path.realpath(os.path.expanduser(ns.config_dir))
+        genv["config_dir"] = os.path.abspath(os.path.expanduser(ns.config_dir))
         genv["db_dir"] = os.path.join(genv["config_dir"], "databases")
+        genv["log_dir"] = os.path.join(genv["config_dir"], "logs")
         genv["config_path"] = os.path.join(genv["config_dir"], "encsync.conf")
         genv["enc_data_path"] = os.path.join(genv["config_dir"], "encrypted_data.json")
 

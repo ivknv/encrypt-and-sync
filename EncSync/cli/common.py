@@ -249,7 +249,7 @@ def show_exception(exc, msg="Error: "):
     show_error("%s%s: %s" % (msg, exc_name, exc))
 
 def create_encsync_dirs(env):
-    paths = (env["config_dir"], env["db_dir"])
+    paths = (env["config_dir"], env["db_dir"], env["log_dir"])
 
     for path in paths:
         try:
