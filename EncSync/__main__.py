@@ -30,7 +30,7 @@ from .cli.authenticate_storages import authenticate_storages
 def cleanup(env):
     try:
         os.remove(os.path.join(env["db_dir"], "encsync_diffs.db"))
-    except (FileNotFoundError, IsADirectoryError):
+    except IOError:
         pass
 
 def any_not_none(keys, container):
