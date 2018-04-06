@@ -2,14 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import time
-import traceback
-
-from yadisk.exceptions import YaDiskError
 
 from ..Scanner import Scanner
 from ..Event.Receiver import Receiver
 from ..FileList import FileList, DuplicateList
-from ..ExceptionManager import ExceptionManager
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from .authenticate_storages import authenticate_storages
@@ -20,26 +16,6 @@ from .common import show_error
 PRINT_RATE_LIMIT = 1.0
 
 __all__ = ["do_scan", "ScannerReceiver"]
-
-class ScannerExceptionManager(ExceptionManager):
-    def __init__(self, scanner):
-        ExceptionManager.__init__(self)
-
-        def on_disk_error(exc, worker):
-            target = scanner.cur_target
-
-            dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst_storage_name, dst_path)
-            src_path = "%s://%s" % (target.src_storage_name, src_path)
-
-            show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
-                                                      exc.error_type, exc))
-
-        def on_exception(exc, worker):
-            traceback.print_exc()
-
-        self.add(YaDiskError, on_disk_error)
-        self.add(Exception, on_exception)
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
@@ -102,8 +78,6 @@ class ScannerReceiver(Receiver):
         self.worker_receiver = WorkerReceiver(scanner)
         self.target_receiver = TargetReceiver(env)
 
-        self.exc_manager = ScannerExceptionManager(scanner)
-
     def on_started(self, event):
         print("Scanner: started")
 
@@ -118,8 +92,8 @@ class ScannerReceiver(Receiver):
     def on_worker_starting(self, event, worker):
         worker.add_receiver(self.worker_receiver)
 
-    def on_error(self, event, exception):
-        self.exc_manager.handle(exception, event.emitter)
+    def on_error(self, event, exc):
+        show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
 
 class TargetReceiver(Receiver):
     def __init__(self, env):
@@ -143,8 +117,6 @@ class WorkerReceiver(Receiver):
     def __init__(self, scanner):
         Receiver.__init__(self)
 
-        self.exc_manager = ScannerExceptionManager(scanner)
-
         self.last_print = 0
 
     def on_next_node(self, event, scannable):
@@ -155,8 +127,8 @@ class WorkerReceiver(Receiver):
 
         print(scannable.path)
 
-    def on_error(self, event, exception):
-        self.exc_manager.handle(exception, event.emitter)
+    def on_error(self, event, exc):
+        show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
 
 def do_scan(env, names):
     config, ret = common.make_config(env)

@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import os
-import traceback
-
-from yadisk.exceptions import YaDiskError
 
 from ..DuplicateRemover import DuplicateRemover
 from ..FileList import DuplicateList
-from ..ExceptionManager import ExceptionManager
 from ..Event.Receiver import Receiver
 from .. import Paths
 
@@ -18,22 +14,6 @@ from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 
 __all__ = ["remove_duplicates", "DuplicateRemoverReceiver"]
-
-class DuplicateRemoverExceptionManager(ExceptionManager):
-    def __init__(self, duprem):
-        ExceptionManager.__init__(self)
-
-        def on_disk_error(exc, worker):
-            target = duprem.cur_target
-
-            common.show_error("[%s://%s]: error: %s: %s" % (target.storage_name, target.path,
-                                                             exc.error_type, exc))
-
-        def on_exception(exc, worker):
-            traceback.print_exc()
-
-        self.add(YaDiskError, on_disk_error)
-        self.add(Exception, on_exception)
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
@@ -95,7 +75,6 @@ class DuplicateRemoverReceiver(Receiver):
         self.env = env
         self.interactive_continue = interactive_continue
 
-        self.exc_manager = DuplicateRemoverExceptionManager(duprem)
         self.target_receiver = TargetReceiver()
         self.worker_receiver = WorkerReceiver(duprem)
 
@@ -133,7 +112,7 @@ class DuplicateRemoverReceiver(Receiver):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exc):
-        self.exc_manager.handle(exc, event.emitter)
+        common.show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
 
 class TargetReceiver(Receiver):
     def on_status_changed(self, event):
@@ -149,14 +128,12 @@ class WorkerReceiver(Receiver):
 
         self.task_receiver = TaskReceiver()
 
-        self.exc_manager = DuplicateRemoverExceptionManager(duprem)
-
     def on_next_task(self, event, task):
         print(common.get_progress_str(task) + ": " + "removing duplicate")
         task.add_receiver(self.task_receiver)
 
     def on_error(self, event, exc):
-        self.exc_manager.handle(exc, event.emitter)
+        common.show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
 
 class TaskReceiver(Receiver):
     def on_status_changed(self, event):

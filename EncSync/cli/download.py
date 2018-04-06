@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import traceback
-
-from yadisk.exceptions import YaDiskError
 
 from .. import Paths
 from ..Downloader import Downloader
@@ -15,7 +12,6 @@ from . import common
 from .authenticate_storages import authenticate_storages
 from .common import show_error, get_progress_str, make_size_readable
 from .SignalManagers import GenericSignalManager
-from ..ExceptionManager import ExceptionManager
 
 def print_target_totals(target):
     n_finished = target.progress["finished"] + target.progress["skipped"]
@@ -32,37 +28,6 @@ def print_target_totals(target):
     print("[%s <- %s]: %d tasks failed" % (dst_path, src_path, n_failed))
     print("[%s <- %s]: %s downloaded" % (dst_path, src_path, downloaded))
 
-class DownloaderExceptionManager(ExceptionManager):
-    def __init__(self, downloader):
-        ExceptionManager.__init__(self)
-
-        self.downloader = downloader
-
-        def on_disk_error(exc, worker):
-            target = downloader.cur_target
-
-            dst_path, src_path = target.dst_path, target.src_path
-            dst_path = "%s://%s" % (target.dst_storage_name, dst_path)
-            src_path = "%s://%s" % (target.src_storage_name, src_path)
-
-            show_error("[%s <- %s]: error: %s: %s" % (target.dst_path, target.src_path,
-                                                      exc.error_type, exc))
-
-        def on_not_found_error(exc, worker):
-            target = self.downloader.cur_target
-
-            dst_path = "%s://%s" % (target.dst_storage_name, target.dst_path)
-            src_path = "%s://%s" % (target.src_storage_name, target.src_path)
-
-            show_error("[%s <- %s]: error: %s" % (dst_path, src_path, exc))
-
-        def on_exception(exc, worker):
-            traceback.print_exc()
-
-        self.add(YaDiskError, on_disk_error)
-        self.add(NotFoundInDBError, on_not_found_error)
-        self.add(Exception, on_exception)
-
 class DownloaderReceiver(Receiver):
     def __init__(self, downloader):
         Receiver.__init__(self)
@@ -70,8 +35,6 @@ class DownloaderReceiver(Receiver):
         self.worker_receiver = WorkerReceiver(downloader)
 
         self.downloader = downloader
-
-        self.exc_manager = DownloaderExceptionManager(downloader)
 
     def on_started(self, event):
         print("Downloader: started")
@@ -88,7 +51,7 @@ class DownloaderReceiver(Receiver):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exc):
-        self.exc_manager.handle(exc, event.emitter)
+        show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
 
 class TargetReceiver(Receiver):
     def __init__(self):
@@ -114,8 +77,6 @@ class WorkerReceiver(Receiver):
 
         self.task_receiver = TaskReceiver()
 
-        self.exc_manager = DownloaderExceptionManager(downloader)
-
     def on_next_task(self, event, task):
         progress_str = get_progress_str(task)
 
@@ -124,7 +85,7 @@ class WorkerReceiver(Receiver):
         task.add_receiver(self.task_receiver)
 
     def on_error(self, event, exc):
-        self.exc_manager.handle(exc, event.emitter)
+        show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
 
 class TaskReceiver(Receiver):
     def __init__(self):
