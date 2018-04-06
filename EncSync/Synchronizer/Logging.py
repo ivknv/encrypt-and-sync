@@ -5,7 +5,8 @@ import logging
 
 from ..Event.Receiver import Receiver
 
-__all__ = ["logger", "fail_logger", "TaskFailLogReceiver", "TargetFailLogReceiver"]
+__all__ = ["logger", "fail_logger", "TaskFailLogReceiver", "TargetFailLogReceiver",
+           "WorkerFailLogReceiver", "SynchronizerFailLogReceiver"]
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -43,3 +44,40 @@ class TargetFailLogReceiver(Receiver):
 
         fail_logger.info("[%s -> %s]: synchronization failed" % (target.folder1["name"],
                                                                  target.folder2["name"]))
+
+class WorkerFailLogReceiver(Receiver):
+    def on_error(self, event, exc, *args, **kwargs):
+        worker = event.emitter
+        task = worker.cur_task
+
+        if task is None:
+            return
+
+        target = task.parent
+
+        if exc.__module__ is not None:
+            exc_name = exc.__class__.__module__ + "." + exc.__class__.__qualname__
+        else:
+            exc_name = exc.__class__.__qualname__
+
+        fail_logger.info("[%s -> %s][%s]: error: %s: %s" % (target.folder1["name"],
+                                                            target.folder2["name"],
+                                                            task.path,
+                                                            exc_name, exc))
+
+class SynchronizerFailLogReceiver(Receiver):
+    def on_error(self, event, exc, *args, **kwargs):
+        synchronizer = event.emitter
+        target = synchronizer.cur_target
+
+        if target is None:
+            return
+
+        if exc.__module__ is not None:
+            exc_name = exc.__class__.__module__ + "." + exc.__class__.__qualname__
+        else:
+            exc_name = exc.__class__.__qualname__
+
+        fail_logger.info("[%s -> %s]: error: %s: %s" % (target.folder1["name"],
+                                                        target.folder2["name"],
+                                                        exc_name, exc))

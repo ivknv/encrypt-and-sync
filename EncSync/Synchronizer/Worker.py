@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .Logging import logger
+from .Logging import logger, WorkerFailLogReceiver
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
 
@@ -18,6 +18,7 @@ class SyncWorker(Worker):
         self.cur_task = None
 
         self.add_receiver(LogReceiver(logger))
+        self.add_receiver(WorkerFailLogReceiver())
 
     def get_info(self):
         return {}

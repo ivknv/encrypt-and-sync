@@ -4,7 +4,7 @@
 import threading
 
 from .Target import SyncTarget
-from .Logging import logger
+from .Logging import logger, SynchronizerFailLogReceiver
 from ..Worker import Worker
 from ..LogReceiver import LogReceiver
 
@@ -34,6 +34,7 @@ class Synchronizer(Worker):
         self.cur_target = None
 
         self.add_receiver(LogReceiver(logger))
+        self.add_receiver(SynchronizerFailLogReceiver())
 
     @property
     def upload_limit(self):
