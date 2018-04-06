@@ -44,7 +44,7 @@ class SyncTarget(StagedTask):
 
         self.shared_flist1 = None
         self.shared_flist2 = None
-        self.difflist = DiffList(self.synchronizer.directory)
+        self.difflist = None
         self.differences = None
 
         self.tasks = []
@@ -312,56 +312,64 @@ class SyncTarget(StagedTask):
 
         self.status = "pending"
 
-        self.src = get_folder_storage(self.folder1["type"])(self.folder1["name"],
-                                                            self.config,
-                                                            self.synchronizer.directory)
-        self.dst = get_folder_storage(self.folder2["type"])(self.folder2["name"],
-                                                            self.config,
-                                                            self.synchronizer.directory)
+        try:
+            self.difflist = DiffList(self.synchronizer.directory)
 
-        self.shared_flist1 = self.src.filelist
-        self.shared_flist2 = self.dst.filelist
+            self.src = get_folder_storage(self.folder1["type"])(self.folder1["name"],
+                                                                self.config,
+                                                                self.synchronizer.directory)
+            self.dst = get_folder_storage(self.folder2["type"])(self.folder2["name"],
+                                                                self.config,
+                                                                self.synchronizer.directory)
 
-        if not self.synchronizer.enable_journal:
-            self.shared_flist1.disable_journal()
-            self.shared_flist2.disable_journal()
-            self.difflist.disable_journal()
+            self.shared_flist1 = self.src.filelist
+            self.shared_flist2 = self.dst.filelist
 
-        self.shared_flist1.create()
-        self.shared_flist2.create()
-        self.difflist.create()
+            if not self.synchronizer.enable_journal:
+                self.shared_flist1.disable_journal()
+                self.shared_flist2.disable_journal()
+                self.difflist.disable_journal()
 
-        stages = ("scan", "rmdup", "rm", "dirs", "files", "check")
+            self.shared_flist1.create()
+            self.shared_flist2.create()
+            self.difflist.create()
 
-        if self.stage is not None:
-            # Skip completed stages
-            idx = stages.index(self.stage)
-            stages = stages[idx:]
+            stages = ("scan", "rmdup", "rm", "dirs", "files", "check")
 
-        if self.stage is None and not self.enable_scan:
-            self.build_diffs_table()
-        elif self.stage not in {None, "scan", "check"}:
-            self.build_diffs_table()
+            if self.stage is not None:
+                # Skip completed stages
+                idx = stages.index(self.stage)
+                stages = stages[idx:]
 
-        if self.total_children == 0 and self.stage not in (None, "scan"):
-            self.status = "finished"
-            return True
+            if self.stage is None and not self.enable_scan:
+                self.build_diffs_table()
+            elif self.stage not in {None, "scan", "check"}:
+                self.build_diffs_table()
 
-        for stage in stages:
-            if self.stop_condition():
-                return
-
-            self.run_stage(stage)
-
-            self.differences = None
-
-        if self.status == "pending":
-            if self.progress["finished"] + self.progress["skipped"] == self.total_children:
+            if self.total_children == 0 and self.stage not in (None, "scan"):
                 self.status = "finished"
-            elif self.progress["suspended"] > 0:
-                self.status = "suspended"
-            elif self.progress["failed"] > 0:
-                self.status = "failed"
+                return True
 
-        if self.status == "finished":
-            self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])
+            for stage in stages:
+                if self.stop_condition():
+                    return
+
+                self.run_stage(stage)
+
+                self.differences = None
+
+            if self.status == "pending":
+                if self.progress["finished"] + self.progress["skipped"] == self.total_children:
+                    self.status = "finished"
+                elif self.progress["suspended"] > 0:
+                    self.status = "suspended"
+                elif self.progress["failed"] > 0:
+                    self.status = "failed"
+
+            if self.status == "finished":
+                self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])
+        finally:
+            self.differences = None
+            self.difflist = None
+            self.shared_flist1 = None
+            self.shared_flist2 = None

@@ -159,7 +159,11 @@ def main(args=None):
                "logout": lambda: logout(env, ns.storages),
                "login": lambda: authenticate_storages(env, ns.storages or None)}
 
-    return actions[ns.action]()
+    ret = actions[ns.action]()
+
+    cleanup(genv)
+
+    return ret
 
 def positive_int(arg):
     try:
