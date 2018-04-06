@@ -298,5 +298,5 @@ def cleanup_filelists(env):
 
         try:
             os.remove(os.path.join(env["db_dir"], filename))
-        except (FileNotFoundError, IsADirectoryError, PermissionError):
+        except IOError:
             pass
