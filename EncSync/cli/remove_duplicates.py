@@ -112,7 +112,7 @@ class DuplicateRemoverReceiver(Receiver):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exc):
-        common.show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
+        common.show_exception(exc)
 
 class TargetReceiver(Receiver):
     def on_status_changed(self, event):
@@ -133,7 +133,7 @@ class WorkerReceiver(Receiver):
         task.add_receiver(self.task_receiver)
 
     def on_error(self, event, exc):
-        common.show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
+        common.show_exception(exc)
 
 class TaskReceiver(Receiver):
     def on_status_changed(self, event):

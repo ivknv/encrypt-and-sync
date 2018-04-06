@@ -93,7 +93,7 @@ class ScannerReceiver(Receiver):
         worker.add_receiver(self.worker_receiver)
 
     def on_error(self, event, exc):
-        show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
+        common.show_exception(exc)
 
 class TargetReceiver(Receiver):
     def __init__(self, env):
@@ -128,7 +128,7 @@ class WorkerReceiver(Receiver):
         print(scannable.path)
 
     def on_error(self, event, exc):
-        show_error("Error: %s: %s" % (exc.__class__.__name__, exc))
+        common.show_exception(exc)
 
 def do_scan(env, names):
     config, ret = common.make_config(env)

@@ -21,7 +21,7 @@ __all__ = ["positive_int", "get_finished_percent", "get_failed_percent",
            "get_progress_str", "make_size_readable", "local_path", "remote_path",
            "non_local_path", "non_remote_path", "recognize_path", "prepare_remote_path",
            "authenticate", "ask_master_password", "make_config", "show_error",
-           "create_encsync_dirs", "cleanup_filelists"]
+           "create_encsync_dirs", "cleanup_filelists", "show_exception"]
 
 try:
     JSONDecodeError = json.JSONDecodeError
@@ -239,6 +239,14 @@ def make_config(env, load_encrypted_data=True, raw=False):
 
 def show_error(msg):
     print(msg, file=sys.stderr)
+
+def show_exception(exc, msg="Error: "):
+    if exc.__module__ is not None:
+        exc_name = exc.__class__.__module__ + "." + exc.__class__.__qualname__
+    else:
+        exc_name = exc.__class__.__qualname__
+
+    show_error("%s%s: %s" % (msg, exc_name, exc))
 
 def create_encsync_dirs(env):
     paths = (env["config_dir"], env["db_dir"])
