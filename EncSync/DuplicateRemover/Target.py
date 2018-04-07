@@ -66,6 +66,8 @@ class DuplicateRemoverTarget(Task):
         if self.stop_condition():
             return True
 
+        self.status = "pending"
+
         self.storage = self.config.storages[self.storage_name]
 
         self.shared_duplist = DuplicateList(self.storage.name, self.duprem.directory)
@@ -114,7 +116,9 @@ class DuplicateRemoverTarget(Task):
                 self.shared_duplist.commit()
 
             if self.status == "pending":
-                if self.progress["skipped"] == self.total_children:
+                if self.total_children == 0:
+                    self.status = "finished"
+                elif self.progress["skipped"] == self.total_children:
                     self.status = "skipped"
                 elif self.progress["finished"] + self.progress["skipped"] == self.total_children:
                     self.status = "finished"

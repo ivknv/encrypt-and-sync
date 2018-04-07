@@ -67,6 +67,18 @@ def view_duplicates(env, target):
     for duplicate in duplicates:
         print("  %s %s" % (duplicate[0], duplicate[2]))
 
+def print_target_totals(target):
+    n_finished = target.progress["finished"] + target.progress["skipped"]
+    n_failed = target.progress["failed"]
+    n_total = target.total_children
+
+    print("[%s://%s]: %d tasks in total" % (target.storage_name,
+                                            target.path, n_total))
+    print("[%s://%s]: %d tasks successful" % (target.storage_name,
+                                              target.path, n_finished))
+    print("[%s://%s]: %d tasks failed" % (target.storage_name,
+                                           target.path, n_failed))
+
 class DuplicateRemoverReceiver(Receiver):
     def __init__(self, env, duprem, interactive_continue=True):
         Receiver.__init__(self)
@@ -121,6 +133,9 @@ class TargetReceiver(Receiver):
 
         if status != "pending":
             print("[%s://%s]: %s" % (target.storage_name, target.path, status))
+
+        if status in ("finished", "failed"):
+            print_target_totals(target)
 
 class WorkerReceiver(Receiver):
     def __init__(self, env, duprem):
