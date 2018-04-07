@@ -29,10 +29,10 @@ def print_target_totals(target):
     print("[%s <- %s]: %s downloaded" % (dst_path, src_path, downloaded))
 
 class DownloaderReceiver(Receiver):
-    def __init__(self, downloader):
+    def __init__(self, env, downloader):
         Receiver.__init__(self)
 
-        self.worker_receiver = WorkerReceiver(downloader)
+        self.worker_receiver = WorkerReceiver(env, downloader)
 
         self.downloader = downloader
 
@@ -72,12 +72,16 @@ class TargetReceiver(Receiver):
             print_target_totals(target)
 
 class WorkerReceiver(Receiver):
-    def __init__(self, downloader):
+    def __init__(self, env, downloader):
         Receiver.__init__(self)
 
+        self.env = env
         self.task_receiver = TaskReceiver()
 
     def on_next_task(self, event, task):
+        if self.env.get("no_progress", False):
+            return
+
         progress_str = get_progress_str(task)
 
         print(progress_str + ": downloading")
@@ -158,7 +162,7 @@ def download(env, paths):
     downloader.upload_limit = config.upload_limit
     downloader.download_limit = config.download_limit
 
-    downloader_receiver = DownloaderReceiver(downloader)
+    downloader_receiver = DownloaderReceiver(env, downloader)
     downloader.add_receiver(downloader_receiver)
 
     target_receiver = TargetReceiver()

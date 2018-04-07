@@ -117,6 +117,8 @@ def main(args=None):
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers
 
+        env["no_progress"] = ns.no_progress
+
     if ns.action in ("scan", "sync", "rmdup"):
         env["all"] = ns.all
         env["ask"] = ns.ask
@@ -208,6 +210,8 @@ def parse_args(args):
                              help="Disable SQLite3 journaling")
     scan_parser.add_argument("--no-auth-check", action="store_true",
                              help="Disable the authentication check")
+    scan_parser.add_argument("--no-progress", action="store_true",
+                             help="Don't show intermediate progress")
     scan_parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                              help="Number of workers to use")
     scan_parser.set_defaults(action="scan")
@@ -238,6 +242,8 @@ def parse_args(args):
                              help="Disable the authentication check")
     sync_parser.add_argument("--no-remove", action="store_true",
                              help="Don't remove any files (except for file duplicates)")
+    sync_parser.add_argument("--no-progress", action="store_true",
+                             help="Don't show intermediate progress")
     sync_parser.set_defaults(action="sync")
     
     download_parser = subparsers.add_parser("download", aliases=["d"],
@@ -247,6 +253,8 @@ def parse_args(args):
                                  help="Number of workers to use")
     download_parser.add_argument("--no-auth-check", action="store_true",
                                  help="Disable the authentication check")
+    download_parser.add_argument("--no-progress", action="store_true",
+                                 help="Don't show intermediate progress")
     download_parser.set_defaults(action="download")
     
     rmdup_parser = subparsers.add_parser("rmdup", aliases=["remove-duplicates"],
@@ -269,6 +277,8 @@ def parse_args(args):
                               help="Disable SQLite3 journaling")
     rmdup_parser.add_argument("--no-auth-check", action="store_true",
                               help="Disable the authentication check")
+    rmdup_parser.add_argument("--no-progress", action="store_true",
+                              help="Don't show intermediate progress")
     rmdup_parser.set_defaults(action="rmdup")
     
     encrypt_parser = subparsers.add_parser("encrypt", help="Encrypt files")

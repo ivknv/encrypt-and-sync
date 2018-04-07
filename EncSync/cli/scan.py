@@ -75,7 +75,7 @@ class ScannerReceiver(Receiver):
     def __init__(self, env, scanner):
         Receiver.__init__(self)
 
-        self.worker_receiver = WorkerReceiver(scanner)
+        self.worker_receiver = WorkerReceiver(env)
         self.target_receiver = TargetReceiver(env)
 
     def on_started(self, event):
@@ -111,15 +111,22 @@ class TargetReceiver(Receiver):
             print_target_totals(self.env, target)
 
     def on_duplicates_found(self, event, duplicates):
+        if env.get("no_progress", False):
+            return
+
         print("Found %d duplicate(s) of %s" % (len(duplicates) - 1, duplicates[0].path))
 
 class WorkerReceiver(Receiver):
-    def __init__(self, scanner):
+    def __init__(self, env):
         Receiver.__init__(self)
 
+        self.env = env
         self.last_print = 0
 
     def on_next_node(self, event, scannable):
+        if self.env.get("no_progress", False):
+            return
+
         if time.time() - self.last_print < PRINT_RATE_LIMIT:
             return
 

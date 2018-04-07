@@ -185,7 +185,7 @@ class SynchronizerReceiver(Receiver):
 
         self.env = env
 
-        self.worker_receiver = WorkerReceiver(synchronizer)
+        self.worker_receiver = WorkerReceiver(env, synchronizer)
         self.target_receiver = TargetReceiver(env)
 
     def on_started(self, event):
@@ -260,6 +260,9 @@ class TargetReceiver(Receiver):
                                                                       target.folder2["name"]))
 
     def on_entered_stage(self, event, stage):
+        if self.env.get("no_progress", False):
+            return
+
         target = event.emitter
 
         if stage == "scan" and not target.enable_scan:
@@ -273,6 +276,12 @@ class TargetReceiver(Receiver):
 
     def on_exited_stage(self, event, stage):
         target = event.emitter
+
+        if self.env.get("no_progress", False):
+            if stage == "scan":
+                print_diffs(self.env, target)
+
+            return
 
         if stage == "scan":
             if target.status == "pending":
@@ -302,12 +311,16 @@ class TargetReceiver(Receiver):
                                                target.folder2["name"], stage))
 
 class WorkerReceiver(Receiver):
-    def __init__(self, synchronizer):
+    def __init__(self, env, synchronizer):
         Receiver.__init__(self)
 
+        self.env = env
         self.task_receiver = TaskReceiver()
 
     def on_next_task(self, event, task):
+        if self.env.get("no_progress", False):
+            return
+
         msg = get_progress_str(task) + ": "
 
         if task.type == "new":

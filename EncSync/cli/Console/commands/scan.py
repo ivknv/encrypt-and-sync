@@ -23,6 +23,8 @@ class ScanCommand(Command):
                             help="Choose which targets to scan")
         parser.add_argument("--no-journal", action="store_true",
                             help="Disable SQLite3 journaling")
+        parser.add_argument("--no-progress", action="store_true",
+                            help="Don't show intermediate progress")
         parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                             help="Number of workers to use")
 
@@ -40,6 +42,7 @@ class ScanCommand(Command):
         env["ask"] = ns.ask
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
+        env["no_progress"] = ns.no_progress
         env["src_only"] = ns.src_only
         env["dst_only"] = ns.dst_only
 

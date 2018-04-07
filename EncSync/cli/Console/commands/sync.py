@@ -30,6 +30,8 @@ class SyncCommand(Command):
                             help="Disable SQLite3 journaling")
         parser.add_argument("--no-remove", action="store_true",
                             help="Don't remove any files (except for file duplicates)")
+        parser.add_argument("--no-progress", action="store_true",
+                            help="Don't show intermediate progress")
         parser.add_argument("-I", "--integrity-check", action="store_true",
                             help="Enable integrity check")
 
@@ -44,6 +46,7 @@ class SyncCommand(Command):
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
         env["no_remove"] = ns.no_remove
+        env["no_prgoress"] = ns.no_progress
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

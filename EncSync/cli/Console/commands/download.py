@@ -16,6 +16,8 @@ class DownloadCommand(Command):
         parser = argparse.ArgumentParser(description="Download files/directories",
                                          prog=self.args[0])
         parser.add_argument("paths", nargs="+", help="List of paths to download")
+        parser.add_argument("--no-progress", action="store_true",
+                            help="Don't show intermediate progress")
         parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                             help="Number of workers to use")
 
@@ -33,6 +35,8 @@ class DownloadCommand(Command):
             paths.append(path)
 
         env = Environment(console.env)
+
+        env["no_progress"] = ns.no_progress
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

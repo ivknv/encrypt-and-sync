@@ -76,7 +76,7 @@ class DuplicateRemoverReceiver(Receiver):
         self.interactive_continue = interactive_continue
 
         self.target_receiver = TargetReceiver()
-        self.worker_receiver = WorkerReceiver(duprem)
+        self.worker_receiver = WorkerReceiver(env, duprem)
 
     def on_started(self, event):
         print("Duplicate remover: started")
@@ -123,12 +123,16 @@ class TargetReceiver(Receiver):
             print("[%s://%s]: %s" % (target.storage_name, target.path, status))
 
 class WorkerReceiver(Receiver):
-    def __init__(self, duprem):
+    def __init__(self, env, duprem):
         Receiver.__init__(self)
 
+        self.env = env
         self.task_receiver = TaskReceiver()
 
     def on_next_task(self, event, task):
+        if self.env.get("no_progress", False):
+            return
+
         print(common.get_progress_str(task) + ": " + "removing duplicate")
         task.add_receiver(self.task_receiver)
 
