@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import yadisk.exceptions
-
 from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
 from .common import normalize_node
@@ -11,6 +9,14 @@ from . import PathMatch
 
 __all__ = ["BaseScannable", "DecryptedScannable", "EncryptedScannable",
            "scan_files"]
+
+class DummyException(Exception):
+    pass
+
+try:
+    from yadisk.exceptions import UnauthorizedError
+except ImportError:
+    UnauthorizedError = DummyException
 
 class BaseScannable(object):
     def __init__(self, storage, path=None, type=None, modified=0, size=0):
@@ -153,7 +159,7 @@ class DecryptedScannable(BaseScannable):
                                                meta["modified"], meta["size"])
                         scannables.append(s)
                 break
-            except (TemporaryStorageError, yadisk.exceptions.UnauthorizedError) as e:
+            except (TemporaryStorageError, UnauthorizedError) as e:
                 # Yandex.Disk seems to randomly throw UnauthorizedError sometimes
                 if i == 9:
                     raise e

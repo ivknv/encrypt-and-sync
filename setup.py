@@ -6,8 +6,7 @@ import sys
 
 from setuptools import setup, find_packages
 
-requirements = ["s3m>=1.0.5", "requests", "pycryptodome", "yadisk>=1.2.3", "dropbox",
-                "pysftp", "paramiko"]
+requirements = ["s3m>=1.0.5", "pycryptodome"]
 
 readline_pkg = "readline"
 
@@ -31,6 +30,9 @@ setup(name="EncSync",
       author="Ivan Konovalov",
       packages=find_packages(exclude=["tests"]),
       install_requires=requirements,
-      extras_require={"readline": [readline_pkg]},
+      extras_require={"readline":    [readline_pkg],
+                      "yandex.disk": ["yadisk>=1.2.5", "requests"],
+                      "dropbox":     ["dropbox", "requests"],
+                      "sftp":        ["pysftp", "paramiko"]},
       entry_points=entry_points,
       scripts=scripts)
