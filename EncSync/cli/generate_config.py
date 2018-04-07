@@ -36,7 +36,7 @@ upload-read-timeout 60
 # A path that starts with disk:// or yadisk:// is a Yandex.Disk path
 folders {
 #    folder1 /path/to/local/folder {}
-#    folder1 disk://path/to/remote/folder {
+#    folder2 disk://path/to/remote/folder {
 #        encrypted true
 #        filename-encoding base64 # optional
 #        avoid-rescan false # optional
@@ -45,23 +45,27 @@ folders {
 
 # Default targets to sync (when given -a or --all)
 targets {
-#    folder:local  -> folder:yadisk
-#    folder:yadisk -> folder:local
+#    folder1 -> folder2
+#    folder2 -> folder1
 }
 
-# List of patterns to exclude when performing local scan
+# List of patterns to exclude when performing scan
 # The synchronizer will think they don't exist
 # You can have multiple include/exclude blocks
 # They will be interpreted in specified order
 exclude {
     # /path/to/local/*.txt
     # /path/to/local/dir2/
+    # yadisk:///path/to/yadisk/dir/
+    # dropbox:///path/to/dropbox/dir/
 }
 
 # This can cancel out any previous exclude blocks, works the same way
 include {
     # /path/to/local/*.txt
-    # /path/to/local/dir2
+    # /path/to/local/dir2/
+    # yadisk:///path/to/yadisk/dir/
+    # dropbox:///path/to/dropbox/dir/
 }"""
 
 def generate_config(env, path):
