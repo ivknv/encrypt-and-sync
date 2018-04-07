@@ -8,11 +8,6 @@ from setuptools import setup, find_packages
 
 requirements = ["s3m>=1.0.5", "pycryptodome"]
 
-readline_pkg = "readline"
-
-if sys.platform.startswith("win"):
-    readline_pkg = "pyreadline"
-
 if os.environ.get("USE_FASTER_SCRIPTS", None):
     entry_points = {}
 
@@ -30,8 +25,7 @@ setup(name="EncSync",
       author="Ivan Konovalov",
       packages=find_packages(exclude=["tests"]),
       install_requires=requirements,
-      extras_require={"readline":    [readline_pkg],
-                      "yandex.disk": ["yadisk>=1.2.5", "requests"],
+      extras_require={"yandex.disk": ["yadisk>=1.2.5", "requests"],
                       "dropbox":     ["dropbox", "requests"],
                       "sftp":        ["pysftp", "paramiko"]},
       entry_points=entry_points,
