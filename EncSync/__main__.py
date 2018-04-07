@@ -90,6 +90,7 @@ def main(args=None):
         genv["config_dir"] = os.path.abspath(os.path.expanduser(ns.config_dir))
         genv["db_dir"] = os.path.join(genv["config_dir"], "databases")
         genv["log_dir"] = os.path.join(genv["config_dir"], "logs")
+        genv["lockfile_path"] = os.path.join(genv["config_dir"], ".lockfile")
         genv["config_path"] = os.path.join(genv["config_dir"], "encsync.conf")
         genv["enc_data_path"] = os.path.join(genv["config_dir"], "encrypted_data.json")
 

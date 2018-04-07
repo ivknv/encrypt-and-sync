@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import portalocker
+
 from . import common
 from .authenticate_storages import authenticate_storages
 from .common import show_error, get_progress_str
@@ -16,6 +18,7 @@ from ..DiffList import DiffList
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from ..Synchronizer.Exceptions import TooLongFilenameError
+from ..Lockfile import Lockfile
 
 __all__ = ["do_sync", "SynchronizerReceiver"]
 
@@ -390,6 +393,14 @@ class TaskReceiver(Receiver):
         print(progress_str + ": uploaded %6.2f%%" % uploaded_percent)
 
 def do_sync(env, names):
+    lockfile = Lockfile(env["lockfile_path"])
+
+    try:
+        lockfile.acquire()
+    except portalocker.exceptions.AlreadyLocked:
+        common.show_error("Error: there can be only one EncSync (the lockfile is already locked)")
+        return 1
+
     config, ret = common.make_config(env)
 
     if config is None:

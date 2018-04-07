@@ -3,12 +3,15 @@
 
 import time
 
+import portalocker
+
 from ..Scanner import Scanner
 from ..Event.Receiver import Receiver
 from ..FileList import FileList, DuplicateList
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from .authenticate_storages import authenticate_storages
+from ..Lockfile import Lockfile
 
 from . import common
 from .common import show_error
@@ -138,6 +141,14 @@ class WorkerReceiver(Receiver):
         common.show_exception(exc)
 
 def do_scan(env, names):
+    lockfile = Lockfile(env["lockfile_path"])
+
+    try:
+        lockfile.acquire()
+    except portalocker.exceptions.AlreadyLocked:
+        common.show_error("Error: there can be only one EncSync (the lockfile is already locked)")
+        return 1
+
     config, ret = common.make_config(env)
 
     if config is None:

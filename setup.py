@@ -6,7 +6,7 @@ import sys
 
 from setuptools import setup, find_packages
 
-requirements = ["s3m>=1.0.5", "pycryptodome"]
+requirements = ["s3m>=1.0.5", "pycryptodome", "portalocker"]
 
 if os.environ.get("USE_FASTER_SCRIPTS", None):
     entry_points = {}

@@ -3,10 +3,13 @@
 
 import os
 
+import portalocker
+
 from .. import Paths
 from ..Downloader import Downloader
 from ..Downloader.Exceptions import NotFoundInDBError
 from ..Event.Receiver import Receiver
+from ..Lockfile import Lockfile
 
 from . import common
 from .authenticate_storages import authenticate_storages
@@ -151,6 +154,12 @@ class TaskReceiver(Receiver):
         print(progress_str + ": sent %6.2f%%" % uploaded_percent)
 
 def download(env, paths):
+    try:
+        lockfile.acquire()
+    except portalocker.exceptions.AlreadyLocked:
+        common.show_error("Error: there can be only one EncSync (the lockfile is already locked)")
+        return 1
+
     config, ret = common.make_config(env)
 
     if config is None:
