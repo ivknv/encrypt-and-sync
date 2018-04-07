@@ -131,6 +131,9 @@ def main(args=None):
                      "console", "execute", "execute_script"):
         env["no_auth_check"] = ns.no_auth_check
 
+    if ns.action == "login":
+        env["ask"] = not ns.no_ask
+
     actions = {"scan": lambda: do_scan(env, ns.folders),
                "sync": lambda: do_sync(env, ns.folders),
                "diffs": lambda: show_diffs(env, *ns.folders[:2]),
@@ -352,6 +355,8 @@ def parse_args(args):
                               help="List of storage names to log into. default: all storages used in folders")
     login_parser.add_argument("--no-auth-check", action="store_true",
                               help="Disable the authentication check")
+    login_parser.add_argument("--no-ask", action="store_true",
+                              help="Don't ask for any user input")
     login_parser.set_defaults(action="login")
 
     logout_parser = subparsers.add_parser("logout",

@@ -50,6 +50,9 @@ class YaDiskAuthenticator(Authenticator):
         except YaDiskError as e:
             raise LoginError("Yandex.Disk error: %s: %s" % (e.error_type, e))
 
+        if not env.get("ask", False):
+            raise LoginError("need user input (disabled) to log in")
+
         token = None
         refresh_token = None
 

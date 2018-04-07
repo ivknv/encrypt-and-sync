@@ -40,6 +40,9 @@ class DropboxAuthenticator(Authenticator):
             config.storages["dropbox"] = Storage.get_storage("dropbox")(config)
             return
 
+        if not env.get("ask", False):
+            raise LoginError("need user input (disabled) to log in")
+
         token = None
 
         while True:
