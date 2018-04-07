@@ -16,23 +16,17 @@ class RemoveDuplicatesCommand(Command):
                                          prog=self.args[0])
         parser.add_argument("paths", nargs="*", help="Paths to remove duplicates from")
         parser.add_argument("-a", "--all", action="store_true",
-                            help="Remove duplicates from all targets")
+                            help="Remove duplicates from all folders")
         parser.add_argument("--ask", action="store_true",
                             help="Ask for user's action in certain cases")
         parser.add_argument("--choose-targets", action="store_true",
-                            help="Choose which targets to remove duplicates for")
+                            help="Choose which folders to remove duplicates for")
         parser.add_argument("--no-journal", action="store_true",
                             help="Disable SQLite3 journaling")
         parser.add_argument("--no-progress", action="store_true",
                             help="Don't show intermediate progress")
         parser.add_argument("--n-workers", "-w", type=positive_int,
                             help="Number of workers to use")
-
-        group = parser.add_mutually_exclusive_group()
-        group.add_argument("--src-only", action="store_true",
-                           help="Remove duplicates only from source paths")
-        group.add_argument("--dst-only", action="store_true",
-                           help="Remove duplicates only from destination paths")
 
         ns = parser.parse_args(self.args[1:])
         paths = []
@@ -51,8 +45,6 @@ class RemoveDuplicatesCommand(Command):
 
         env["all"] = ns.all
         env["ask"] = ns.ask
-        env["src_only"] = ns.src_only
-        env["dst_only"] = ns.dst_only
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
         env["no_progress"] = ns.no_progress
