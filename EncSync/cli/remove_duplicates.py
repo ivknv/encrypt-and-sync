@@ -94,7 +94,7 @@ class DuplicateRemoverReceiver(Receiver):
         print("[%s://%s]: %d duplicates to remove" % (target.storage_name,
                                                       target.path, n_duplicates,))
 
-        if not self.interactive_continue:
+        if not self.interactive_continue or not self.env.get("ask", False):
             return
 
         action = ask_continue(self.duprem)
