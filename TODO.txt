@@ -3,7 +3,6 @@ Add variable and nested expression support to EncScript
 Add multiple encryption formats support
 
 Google Drive support
-Use lockfile to not allow parallel synchronizations
 
 WebDav support
 FTP support
