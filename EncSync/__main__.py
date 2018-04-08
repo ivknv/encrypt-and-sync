@@ -5,6 +5,8 @@ import argparse
 import os
 import sys
 
+import portalocker
+
 from .cli import common
 from .cli.Environment import Environment
 from .cli.scan import do_scan
@@ -26,12 +28,6 @@ from .cli.password_prompt import password_prompt
 from .cli.configure import configure
 from .cli.logout import logout
 from .cli.authenticate_storages import authenticate_storages
-
-def cleanup(env):
-    try:
-        os.remove(os.path.join(env["db_dir"], "encsync_diffs.db"))
-    except IOError:
-        pass
 
 def any_not_none(keys, container):
     for key in keys:
@@ -104,8 +100,6 @@ def main(args=None):
 
     setup_logging(genv)
 
-    cleanup(genv)
-
     env = Environment(genv)
 
     if ns.action == "sync":
@@ -161,9 +155,17 @@ def main(args=None):
                "logout": lambda: logout(env, ns.storages),
                "login": lambda: authenticate_storages(env, ns.storages or None)}
 
+    try:
+        common.cleanup(genv)
+    except portalocker.exceptions.AlreadyLocked:
+        pass
+
     ret = actions[ns.action]()
 
-    cleanup(genv)
+    try:
+        common.cleanup(genv)
+    except portalocker.exceptions.AlreadyLocked:
+        pass
 
     return ret
 

@@ -16,12 +16,13 @@ from ..Synchronizer import SyncTask
 from ..DuplicateRemover import DuplicateRemoverTask
 from ..Encryption import DecryptionError
 from .. import Paths
+from ..Lockfile import Lockfile
 
 __all__ = ["positive_int", "get_finished_percent", "get_failed_percent",
            "get_progress_str", "make_size_readable", "local_path", "remote_path",
            "non_local_path", "non_remote_path", "recognize_path", "prepare_remote_path",
            "authenticate", "ask_master_password", "make_config", "show_error",
-           "create_encsync_dirs", "cleanup_filelists", "show_exception"]
+           "create_encsync_dirs", "cleanup_filelists", "cleanup", "show_exception"]
 
 try:
     JSONDecodeError = json.JSONDecodeError
@@ -265,7 +266,11 @@ def create_encsync_dirs(env):
 
     return 0
 
-def cleanup_filelists(env):
+def cleanup_filelists(env, lock=True):
+    if lock:
+        lockfile = Lockfile(env["lockfile_path"])
+        lockfile.acquire()
+
     config = env["config"]
     files = os.listdir(env["db_dir"])
 
@@ -303,3 +308,20 @@ def cleanup_filelists(env):
             os.remove(os.path.join(env["db_dir"], filename))
         except IOError:
             pass
+
+def cleanup(env, lock=True):
+    if lock:
+        lockfile = Lockfile(env["lockfile_path"])
+        lockfile.acquire()
+
+    cleanup_filelists(env, lock=False)
+
+    try:
+        os.remove(os.path.join(env["db_dir"], "encsync_diffs.db"))
+    except IOError:
+        pass
+
+    try:
+        os.remove(os.path.join(env["db_dir"], "duplist_copy.db"))
+    except IOError:
+        pass
