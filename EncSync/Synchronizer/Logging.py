@@ -55,7 +55,7 @@ class WorkerFailLogReceiver(Receiver):
 
         target = task.parent
 
-        if exc.__module__ is not None:
+        if exc.__class__.__module__ is not None:
             exc_name = exc.__class__.__module__ + "." + exc.__class__.__qualname__
         else:
             exc_name = exc.__class__.__qualname__
@@ -73,7 +73,7 @@ class SynchronizerFailLogReceiver(Receiver):
         if target is None:
             return
 
-        if exc.__module__ is not None:
+        if exc.__class__.__module__ is not None:
             exc_name = exc.__class__.__module__ + "." + exc.__class__.__qualname__
         else:
             exc_name = exc.__class__.__qualname__

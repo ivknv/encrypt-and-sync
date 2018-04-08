@@ -244,7 +244,7 @@ def show_error(msg):
     print(msg, file=sys.stderr)
 
 def show_exception(exc, msg="Error: "):
-    if exc.__module__ is not None:
+    if exc.__class__.__module__ is not None:
         exc_name = exc.__class__.__module__ + "." + exc.__class__.__qualname__
     else:
         exc_name = exc.__class__.__qualname__
