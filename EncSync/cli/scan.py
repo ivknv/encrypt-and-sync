@@ -114,7 +114,7 @@ class TargetReceiver(Receiver):
             print_target_totals(self.env, target)
 
     def on_duplicates_found(self, event, duplicates):
-        if env.get("no_progress", False):
+        if self.env.get("no_progress", False):
             return
 
         print("Found %d duplicate(s) of %s" % (len(duplicates) - 1, duplicates[0].path))
