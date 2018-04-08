@@ -26,10 +26,10 @@ class BaseScannable(object):
         self.modified = modified
         self.size = size
 
-    def identify(self):
+    def identify(self, ignore_unreachable=False):
         raise NotImplementedError
 
-    def listdir(self, allowed_paths=None):
+    def listdir(self, allowed_paths=None, ignore_unreachable=False):
         raise NotImplementedError
 
     def to_node(self):
@@ -46,29 +46,30 @@ class BaseScannable(object):
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, self.path)
 
-    def scan(self, allowed_paths=None, *sort_args, **sort_kwargs):
+    def scan(self, allowed_paths=None, ignore_unreachable=False, **sort_kwargs):
         if allowed_paths is None:
             allowed_paths = []
 
         if self.type is None:
-            self.identify()
+            self.identify(ignore_unreachable)
 
         res = {"f": [], "d": []}
 
         if self.type != "d":
             return res
 
-        content = list(self.listdir(allowed_paths))
+        content = list(self.listdir(allowed_paths,
+                                    ignore_unreachable=ignore_unreachable))
 
         for i in content:
             if i.type is None:
                 try:
-                    i.identify()
+                    i.identify(ignore_unreachable)
                 except FileNotFoundError:
                     i.type = None
 
         sort_kwargs.setdefault("key", lambda x: x.path)
-        content.sort(*sort_args, **sort_kwargs)
+        content.sort(**sort_kwargs)
 
         for i in content:
             if i.type in ("f", "d"):
@@ -76,14 +77,14 @@ class BaseScannable(object):
 
         return res
 
-    def full_scan(self, allowed_paths=None):
+    def full_scan(self, allowed_paths=None, ignore_unreachable=False):
         if allowed_paths is None:
             allowed_paths = []
 
         if not PathMatch.match(self.path, allowed_paths):
             return
 
-        flist = self.scan(allowed_paths)
+        flist = self.scan(allowed_paths, ignore_unreachable=ignore_unreachable)
         flist["d"].reverse()
 
         while True:
@@ -100,7 +101,7 @@ class BaseScannable(object):
             yield s
 
             try:
-                scan_result = s.scan(allowed_paths)
+                scan_result = s.scan(allowed_paths, ignore_unreachable=ignore_unreachable)
             except FileNotFoundError:
                 continue
 
@@ -111,10 +112,17 @@ class BaseScannable(object):
             del scan_result
 
 class DecryptedScannable(BaseScannable):
-    def identify(self):
+    def identify(self, ignore_unreachable=False):
         self.path = Paths.join_properly("/", self.path)
 
-        meta = self.storage.get_meta(self.path, n_retries=30)
+        try:
+            meta = self.storage.get_meta(self.path, n_retries=30)
+        except (FileNotFoundError, PermissionError) as e:
+            if ignore_unreachable:
+                self.type = None
+                return
+
+            raise e
 
         if meta["type"] == "d":
             self.path = Paths.dir_normalize(self.path)
@@ -129,7 +137,7 @@ class DecryptedScannable(BaseScannable):
         if self.type == "f":
             self.size = pad_size(self.size)
 
-    def listdir(self, allowed_paths=None):
+    def listdir(self, allowed_paths=None, ignore_unreachable=False):
         if allowed_paths is None:
             allowed_paths = []
 
@@ -163,6 +171,11 @@ class DecryptedScannable(BaseScannable):
                 # Yandex.Disk seems to randomly throw UnauthorizedError sometimes
                 if i == 9:
                     raise e
+            except (FileNotFoundError, PermissionError) as e:
+                if ignore_unreachable:
+                    return []
+
+                raise e
 
         return scannables
 
@@ -189,10 +202,17 @@ class EncryptedScannable(BaseScannable):
 
         return node
 
-    def identify(self):
+    def identify(self, ignore_unreachable=False):
         self.enc_path = Paths.join_properly("/", self.enc_path)
 
-        meta = self.storage.get_meta(self.enc_path, n_retries=30)
+        try:
+            meta = self.storage.get_meta(self.enc_path, n_retries=30)
+        except (FileNotFoundError, PermissionError) as e:
+            if ignore_unreachable:
+                self.type = None
+                return
+
+            raise e
 
         if meta["type"] == "d":
             self.enc_path = Paths.dir_normalize(self.enc_path)
@@ -207,7 +227,7 @@ class EncryptedScannable(BaseScannable):
 
         self.size = max((self.size or 0) - MIN_ENC_SIZE, 0)
 
-    def listdir(self, allowed_paths=None):
+    def listdir(self, allowed_paths=None, ignore_unreachable=False):
         if allowed_paths is None:
             allowed_paths = []
 
@@ -243,12 +263,17 @@ class EncryptedScannable(BaseScannable):
                 # Yandex.Disk seems to randomly throw UnauthorizedError sometimes
                 if i == 9:
                     raise e
+            except (FileNotFoundError, PermissionError) as e:
+                if ignore_unreachable:
+                    return []
+
+                raise e
 
         return scannables
 
-def scan_files(scannable, allowed_paths=None):
+def scan_files(scannable, allowed_paths=None, ignore_unreachable=False):
     if allowed_paths is None:
         allowed_paths = []
 
-    for i in scannable.full_scan(allowed_paths):
+    for i in scannable.full_scan(allowed_paths, ignore_unreachable=ignore_unreachable):
         yield (i, i.to_node())

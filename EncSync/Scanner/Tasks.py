@@ -45,7 +45,8 @@ class DecryptedScanTask(ScanTask):
         self.status = "pending"
         allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
 
-        files = scan_files(self.scannable, allowed_paths)
+        files = scan_files(self.scannable, allowed_paths,
+                           ignore_unreachable=self.config.ignore_unreachable)
 
         for s, n in files:
             self.cur_path = n["path"]
@@ -82,7 +83,8 @@ class EncryptedScanTask(ScanTask):
 
             self.cur_path = scannable.path
 
-            scan_result = scannable.scan(allowed_paths)
+            scan_result = scannable.scan(allowed_paths,
+                                         ignore_unreachable=self.config.ignore_unreachable)
 
             scannables = {}
 
@@ -138,7 +140,8 @@ class AsyncDecryptedScanTask(ScanTask):
 
         allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
 
-        scan_result = scannable.scan(allowed_paths)
+        scan_result = scannable.scan(allowed_paths,
+                                     ignore_unreachable=self.config.ignore_unreachable)
 
         for s in scan_result["f"] + scan_result["d"]:
             worker.emit_event("next_node", s)
@@ -172,7 +175,8 @@ class AsyncEncryptedScanTask(ScanTask):
 
         self.cur_path = scannable.path
 
-        scan_result = scannable.scan(allowed_paths)
+        scan_result = scannable.scan(allowed_paths,
+                                     ignore_unreachable=self.config.ignore_unreachable)
 
         scannables = {}
 

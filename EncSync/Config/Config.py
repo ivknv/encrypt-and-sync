@@ -38,6 +38,7 @@ class Config(object):
         self._upload_timeout = None
         self.n_retries = 5
         self.temp_encrypt_buffer_limit = 4 * 1024**2
+        self.ignore_unreachable = False
 
         self.folders = {}
         self.allowed_paths = {}

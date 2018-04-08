@@ -724,17 +724,19 @@ class EditOtherPrompter(ActionPrompter):
                                        "description": "set download speed limit"},
                                  "6": {"function": self.set_temp_encrypt_buffer_limit,
                                        "description": "set temporary encryption buffer size"},
-                                 "7": {"function": self.set_n_retries,
+                                 "7": {"function": self.set_ignore_unreachable,
+                                       "description": "set ignore unreachable files"},
+                                 "8": {"function": self.set_n_retries,
                                        "description": "set number of retries"},
-                                 "8": {"function": self.set_connect_timeout,
+                                 "9": {"function": self.set_connect_timeout,
                                        "description": "set connect timeout"},
-                                 "9": {"function": self.set_read_timeout,
+                                 "10": {"function": self.set_read_timeout,
                                        "description": "set read timeout"},
-                                 "10": {"function": self.set_upload_connect_timeout,
+                                 "11": {"function": self.set_upload_connect_timeout,
                                        "description": "set upload connect timeout"},
-                                 "11": {"function": self.set_upload_read_timeout,
+                                 "12": {"function": self.set_upload_read_timeout,
                                         "description": "set upload read timeout"},
-                                 "12": {"function": quit_prompt,
+                                 "13": {"function": quit_prompt,
                                        "description": "go back"}})
 
         self.config = config
@@ -810,6 +812,28 @@ class EditOtherPrompter(ActionPrompter):
         self.config.temp_encrypt_buffer_limit = new_temp_encrypt_buffer_limit
 
         print("Download limit: %s" % (make_size_readable(new_temp_encrypt_buffer_limit, ["", "K", "M", "G"])))
+
+    @return_on_interrupt
+    def set_ignore_unreachable(self, prompter):
+        ignore_unreachable = self.config.ignore_unreachable
+
+        if ignore_unreachable:
+            msg = "Ignore unreachable files during scan [y]/n: "
+            yes = ["y", ""]
+            no = ["n"]
+        else:
+            msg = "Ignore unreachable files during scan y/[n]: "
+            yes = ["y"]
+            no = ["n", ""]
+
+        new_ignore_unreachable = YesNoPrompter(msg, yes, no)()
+
+        self.config.ignore_unreachable = new_ignore_unreachable
+
+        if new_ignore_unreachable:
+            print("Ignore unreachable files during scan: yes")
+        else:
+            print("Ignore unreachable files during scan: no")
 
     @return_on_interrupt
     def set_n_retries(self, prompter):
@@ -965,6 +989,8 @@ def dump_config(config):
 
     output += "upload-connect-timeout %r\n" % (upload_connect_timeout,)
     output += "upload-read-timeout %r\n\n" % (upload_read_timeout,)
+
+    output += "scan-ignore-unreachable %s\n\n" % (str(config.ignore_unreachable).lower(),)
     
     output += "folders {"
 
