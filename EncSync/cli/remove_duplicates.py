@@ -184,8 +184,6 @@ def remove_duplicates(env, paths):
     if config is None:
         return ret
 
-    common.cleanup_filelists(env)
-
     # Paths were supplied by user
     user_paths = True
 
@@ -245,10 +243,10 @@ def remove_duplicates(env, paths):
         duprem.start()
         duprem.join()
 
-        if any(i.status not in ("finished", "skipped") for i in targets):
-            return 1
+    if any(i.status not in ("finished", "skipped") for i in targets):
+        return 1
 
-        if duprem.stopped:
-            return 1
+    if duprem.stopped:
+        return 1
 
-        return 0
+    return 0

@@ -154,8 +154,6 @@ def do_scan(env, names):
     if config is None:
         return ret
 
-    common.cleanup_filelists(env)
-
     n_workers = env.get("n_workers", config.scan_threads)
     ask = env.get("ask", False)
     choose_targets = env.get("choose_targets", False)
@@ -206,10 +204,10 @@ def do_scan(env, names):
         scanner.start()
         scanner.join()
 
-        if any(i.status not in ("finished", "skipped") for i in targets):
-            return 1
+    if any(i.status not in ("finished", "skipped") for i in targets):
+        return 1
 
-        if scanner.stopped:
-            return 1
+    if scanner.stopped:
+        return 1
 
-        return 0
+    return 0

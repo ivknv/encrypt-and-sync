@@ -406,8 +406,6 @@ def do_sync(env, names):
     if config is None:
         return ret
 
-    common.cleanup_filelists(env)
-
     no_scan = env.get("no_scan", False)
     no_check = env.get("no_check", False)
     no_remove = env.get("no_remove", False)
@@ -475,10 +473,10 @@ def do_sync(env, names):
         synchronizer.start()
         synchronizer.join()
 
-        if any(i.status not in ("finished", "skipped") for i in targets):
-            return 1
+    if any(i.status not in ("finished", "skipped") for i in targets):
+        return 1
 
-        if synchronizer.stopped:
-            return 1
+    if synchronizer.stopped:
+        return 1
 
-        return 0
+    return 0
