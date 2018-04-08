@@ -57,7 +57,11 @@ class DecryptedScanTask(ScanTask):
                 return False
 
             if n["type"] is not None:
-                self.flist.insert_node(n)
+                try:
+                    self.flist.insert_node(n)
+                except UnicodeError as e:
+                    if not self.config.ignore_unreachable:
+                        raise e
 
         self.status = "finished"
 
@@ -112,7 +116,14 @@ class EncryptedScanTask(ScanTask):
                         self.duplist.insert(s.type, s.IVs, s.path)
 
                 self.cur_path = original.path
-                self.flist.insert_node(original.to_node())
+
+                try:
+                    self.flist.insert_node(original.to_node())
+                except UnicodeError as e:
+                    if not self.config.ignore_unreachable:
+                        raise e
+
+                    continue
 
                 if self.stop_condition(worker):
                     return False
@@ -148,7 +159,13 @@ class AsyncDecryptedScanTask(ScanTask):
 
             self.cur_path = s.path
 
-            self.flist.insert_node(s.to_node())
+            try:
+                self.flist.insert_node(s.to_node())
+            except UnicodeError as e:
+                if not self.config.ignore_unreachable:
+                    raise e
+
+                continue
 
             if self.stop_condition(worker):
                 return False
@@ -205,7 +222,14 @@ class AsyncEncryptedScanTask(ScanTask):
                     self.duplist.insert(s.type, s.IVs, s.path)
 
             self.cur_path = original.path
-            self.flist.insert_node(original.to_node())
+
+            try:
+                self.flist.insert_node(original.to_node())
+            except UnicodeError as e:
+                if not self.config.ignore_unreachable:
+                    raise e
+
+                continue
 
             if self.stop_condition(worker):
                 return False
