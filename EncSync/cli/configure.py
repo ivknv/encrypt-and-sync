@@ -748,7 +748,7 @@ class EditOtherPrompter(ActionPrompter):
 
         self.config.sync_threads = new_sync_threads
 
-        print("Sync threads: %d" % (new_sync_threads))
+        print("Sync threads: %d" % (new_sync_threads,))
 
     @return_on_interrupt
     def set_scan_threads(self, prompter):
@@ -783,7 +783,7 @@ class EditOtherPrompter(ActionPrompter):
 
         self.config.upload_limit = new_upload_limit
 
-        print("Upload limit: %s" % (make_size_readable(new_upload_limit, ["", "K", "M"])))
+        print("Upload limit: %s" % (make_size_readable(new_upload_limit, ["", "K", "M"]),))
 
     @return_on_interrupt
     def set_download_limit(self, prompter):
@@ -796,7 +796,7 @@ class EditOtherPrompter(ActionPrompter):
 
         self.config.download_limit = new_download_limit
 
-        print("Download limit: %s" % (make_size_readable(new_download_limit, ["", "K", "M"])))
+        print("Download limit: %s" % (make_size_readable(new_download_limit, ["", "K", "M"]),))
 
     @return_on_interrupt
     def set_temp_encrypt_buffer_limit(self, prompter):

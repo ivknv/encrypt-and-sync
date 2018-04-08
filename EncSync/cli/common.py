@@ -78,6 +78,9 @@ def get_progress_str(task):
     return "[%6.2f%%:%6.2f%%][%s]" % (finished_percent, failed_percent, path)
 
 def make_size_readable(size, suffixes=None):
+    if abs(size) == float("inf") or size != size:
+        return str(size)
+
     if suffixes is None:
         suffixes= [" B", " KiB", " MiB", " GiB", " TiB"]
 
