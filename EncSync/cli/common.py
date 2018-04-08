@@ -314,7 +314,8 @@ def cleanup(env, lock=True):
         lockfile = Lockfile(env["lockfile_path"])
         lockfile.acquire()
 
-    cleanup_filelists(env, lock=False)
+    if env.get("config") is not None:
+        cleanup_filelists(env, lock=False)
 
     try:
         os.remove(os.path.join(env["db_dir"], "encsync_diffs.db"))
