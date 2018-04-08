@@ -154,6 +154,8 @@ class TaskReceiver(Receiver):
         print(progress_str + ": sent %6.2f%%" % uploaded_percent)
 
 def download(env, paths):
+    lockfile = Lockfile(env["lockfile_path"])
+
     try:
         lockfile.acquire()
     except portalocker.exceptions.AlreadyLocked:
@@ -215,10 +217,10 @@ def download(env, paths):
         downloader.start()
         downloader.join()
 
-        if any(i.status not in ("finished", "skipped") for i in targets):
-            return 1
+    if any(i.status not in ("finished", "skipped") for i in targets):
+        return 1
 
-        if downloader.stopped:
-            return 1
+    if downloader.stopped:
+        return 1
 
     return 0
