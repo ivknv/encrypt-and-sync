@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import io
 import unittest
 
 from EncSync import Encryption
@@ -98,3 +99,37 @@ class EncryptionTestCase(unittest.TestCase):
 
         self.assertEqual(Encryption.decrypt_path("/a", key, "/a"), ("/a", b""))
         self.assertEqual(Encryption.decrypt_path("/a/", key, "/a"), ("/a/", b""))
+
+    def test_encrypt_inplace(self):
+        key = b"1234" * 4
+        iv = b"78" * 8
+
+        f = io.BytesIO(b"12345" * 4763)
+        f.seek(0)
+
+        Encryption.encrypt_file_inplace(f, key, iv=iv)
+        f.seek(0, 2)
+        self.assertEqual(f.tell(), Encryption.MIN_ENC_SIZE + Encryption.pad_size(5 * 4763))
+        f.seek(0)
+
+        out = io.BytesIO()
+
+        Encryption.decrypt_file(f, out, key)
+        out.seek(0)
+
+        self.assertEqual(out.read(), b"12345" * 4763)
+
+    def test_decrypt_inplace(self):
+        key = b"1234" * 4
+        iv = b"78" * 8
+
+        f = io.BytesIO(b"12345" * 4763)
+        f.seek(0)
+
+        Encryption.encrypt_file_inplace(f, key, iv=iv)
+        f.seek(0)
+
+        Encryption.decrypt_file_inplace(f, key)
+        f.seek(0)
+
+        self.assertEqual(f.read(), b"12345" * 4763)

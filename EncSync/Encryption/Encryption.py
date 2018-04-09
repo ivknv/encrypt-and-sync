@@ -13,13 +13,14 @@ from .filename_encodings import *
 from .. import Paths
 
 __all__ = ["MIN_ENC_SIZE", "pad_size", "encrypt_file", "decrypt_file",
+           "encrypt_file_inplace", "decrypt_file_inplace",
            "encrypt_data", "decrypt_data", "encrypt_filename",
            "decrypt_filename", "get_filename_IV", "gen_IV",
            "encrypt_path", "decrypt_path"]
 
 chunksize = 4096
 
-# Minimum encrypted file size
+# Minimum encrypted file size (header size)
 MIN_ENC_SIZE = struct.calcsize("Q") + 16
 
 DUMMY_IV = b"0" * 16
@@ -125,6 +126,79 @@ def encrypt_file(in_file, out_file, key, filesize=None, iv=None):
             if close_out:
                 out_file.close()
 
+def encrypt_file_inplace(in_file, key, filesize=None, iv=None):
+    """
+        Encrypt a file with a given key inplace.
+
+        :param in_file: path to the input file (`str` or `bytes`) or a file-like object
+        :param key: `bytes`, key to encrypt with
+        :param filesize: `int`, size of the input file, can be given to avoid its computation
+        :param iv: `bytes` or `None`, initialization vector (IV) to use, will be generated if `None`
+    """
+
+    ivlen = 16
+
+    if iv is None:
+        iv = Random.get_random_bytes(ivlen)
+
+    try:
+        encryptor = AES.new(key, AES.MODE_CBC, iv)
+    except ValueError as e:
+        raise EncryptionError(str(e))
+
+    close_in = False
+
+    padding = b" "
+
+    try:
+        if isinstance(in_file, (str, bytes)):
+            filesize = os.path.getsize(in_file)
+            in_file = open(in_file, "rb+")
+            close_in = True
+        elif filesize is None:
+            fpos = in_file.tell()
+            in_file.seek(0, 2)
+            filesize = in_file.tell()
+            in_file.seek(fpos, 0)
+
+        chunk = in_file.read(chunksize + MIN_ENC_SIZE)
+        chunk, tail = chunk[:chunksize], chunk[chunksize:]
+
+        chunklen = len(chunk)
+        rem = chunklen % 16
+
+        in_file.seek(0)
+        in_file.write(struct.pack("<Q", filesize))
+        in_file.write(iv)
+
+        if not chunk:
+            return
+
+        if rem:
+            chunk += padding * (16 - rem)
+
+        in_file.write(encryptor.encrypt(chunk))
+
+        while True:
+            chunk = in_file.read(chunksize)
+            seek_offset = len(chunk)
+            chunk, tail = tail + chunk[:chunksize - len(tail)], chunk[chunksize - len(tail):]
+
+            if not chunk:
+                break
+
+            chunklen = len(chunk)
+            rem = chunklen % 16
+
+            if rem:
+                chunk += padding * (16 - rem)
+
+            in_file.seek(-seek_offset, 1)
+            in_file.write(encryptor.encrypt(chunk))
+    finally:
+        if close_in and not isinstance(in_file, (str, bytes)):
+            in_file.close()
+
 def encrypt_data(in_data, key, iv=None):
     """
         Encrypts data with a given key.
@@ -215,7 +289,7 @@ def decrypt_data(in_data, key):
 
 def decrypt_file(in_file, out_file, key):
     """
-        Decrypt previously encrypted file.
+        Decrypt a previously encrypted file.
 
         :param in_file: path to the input file (`str` or `bytes`) or file-like object to be decrypted
         :param out_file: path to the output file (`str` or `bytes`) or file-like object
@@ -227,12 +301,12 @@ def decrypt_file(in_file, out_file, key):
     close_in, close_out = False, False
 
     if isinstance(in_file, (str, bytes)):
-        in_file = open(in_file, "rb")
         close_in = True
+        in_file = open(in_file, "rb")
 
     if isinstance(out_file, (str, bytes)):
-        out_file = open(out_file, "wb")
         close_out = True
+        out_file = open(out_file, "wb")
 
     try:
         try:
@@ -256,11 +330,55 @@ def decrypt_file(in_file, out_file, key):
         out_file.truncate(out_filesize)
     finally:
         try:
-            if close_in:
+            if close_in and not isinstance(in_file, (str, bytes)):
                 in_file.close()
         finally:
-            if close_out:
+            if close_out and not isinstance(out_file, (str, bytes)):
                 out_file.close()
+
+def decrypt_file_inplace(in_file, key):
+    """
+        Decrypt a previously encrypted file inplace.
+
+        :param in_file: path to the file (`str` or `bytes`) or file-like object to be decrypted
+        :param key: `bytes`, key to use
+    """
+
+    ivlen = 16
+
+    close_in = False
+
+    try:
+        if isinstance(in_file, (str, bytes)):
+            close_in = True
+            in_file = open(in_file, "rb+")
+
+        try:
+            out_filesize = struct.unpack("<Q", in_file.read(struct.calcsize("Q")))[0]
+        except struct.error:
+            raise DecryptionError("Invalid encrypted data")
+
+        iv = in_file.read(ivlen)
+
+        try:
+            decryptor = AES.new(key, AES.MODE_CBC, iv)
+        except ValueError as e:
+            raise DecryptionError(str(e))
+
+        while True:
+            chunk = in_file.read(chunksize)
+
+            if not chunk:
+                break
+
+            in_file.seek(-(len(chunk) + MIN_ENC_SIZE), 1)
+            in_file.write(decryptor.decrypt(chunk))
+            in_file.seek(MIN_ENC_SIZE, 1)
+
+        in_file.truncate(out_filesize)
+    finally:
+        if close_in and not isinstance(in_file, (bytes, str)):
+            in_file.close()
 
 def encrypt_filename(filename, key, iv=b"", filename_encoding="base64"):
     """
