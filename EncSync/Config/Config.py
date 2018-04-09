@@ -37,7 +37,7 @@ class Config(object):
         self.timeout = (15.0, 30.0)
         self._upload_timeout = None
         self.n_retries = 5
-        self.temp_encrypt_buffer_limit = 4 * 1024**2
+        self.temp_encrypt_buffer_limit = 50 * 1024**2
         self.ignore_unreachable = False
 
         self.folders = {}
