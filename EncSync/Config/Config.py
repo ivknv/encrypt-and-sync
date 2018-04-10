@@ -142,6 +142,12 @@ class Config(object):
 
         return f
 
+    def encrypt_file_inplace(self, in_file):
+        Encryption.encrypt_file_inplace(in_file, self.key)
+
+    def decrypt_file_inplace(self, in_file):
+        Encryption.decrypt_file_inplace(in_file, self.key)
+
     def decrypt_file(self, in_file, out_file):
         Encryption.decrypt_file(in_file, out_file, self.key)
 
