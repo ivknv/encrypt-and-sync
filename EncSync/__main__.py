@@ -29,6 +29,8 @@ from .cli.configure import configure
 from .cli.logout import logout
 from .cli.authenticate_storages import authenticate_storages
 
+from . import __version__ as ENCSYNC_VERSION
+
 def any_not_none(keys, container):
     for key in keys:
         if getattr(container, key) is not None:
@@ -63,6 +65,10 @@ def main(args=None):
         args = sys.argv
 
     parser, ns = parse_args(args)
+
+    if ns.version:
+        print("EncSync %s" % (ENCSYNC_VERSION,))
+        return 0
 
     if getattr(ns, "action", None) is None:
         parser.print_help()
@@ -182,6 +188,9 @@ def positive_int(arg):
 def parse_args(args):
     parser = argparse.ArgumentParser(description="Synchronizes encrypted files",
                                      prog=args[0])
+
+    parser.add_argument("-V", "--version", action="store_true",
+                        help="Print EncSync version number and exit")
 
     subparsers = parser.add_subparsers(title="Actions", metavar="<action>")
     global_group = parser.add_argument_group("Global options")
