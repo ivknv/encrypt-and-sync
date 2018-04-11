@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import re
-import functools
 
 from .Exceptions import UnknownStorageError
 

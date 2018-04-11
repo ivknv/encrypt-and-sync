@@ -35,17 +35,15 @@ def _yadisk_meta_to_dict(meta):
             "link":     None}
 
 class YaDiskDownloadController(DownloadController):
-    def __init__(self, ynd, in_path, out_file, limit=float("inf"), timeout=None, n_retries=None):
-        self.speed_limiter = ControlledSpeedLimiter(self, limit)
+    def __init__(self, config, ynd, in_path, out_file, **kwargs):
+        self.speed_limiter = ControlledSpeedLimiter(self, None)
 
-        DownloadController.__init__(self, out_file, limit)
+        DownloadController.__init__(self, config, out_file, **kwargs)
 
         self.in_path = in_path
         self.link = None
         self.response = None
         self.yadisk = ynd
-        self.timeout = timeout
-        self.n_retries = n_retries
 
     @property
     def limit(self):
@@ -135,15 +133,13 @@ class YaDiskDownloadController(DownloadController):
             raise TemporaryStorageError(str(e))
 
 class YaDiskUploadController(UploadController):
-    def __init__(self, ynd, in_file, out_path, limit=float("inf"), timeout=None, n_retries=None):
-        in_file = LimitedFile(in_file, self, limit)
-        UploadController.__init__(self, in_file, limit)
+    def __init__(self, config, ynd, in_file, out_path, **kwargs):
+        in_file = LimitedFile(in_file, self, None)
+
+        UploadController.__init__(self, config, in_file, **kwargs)
 
         self.yadisk = ynd
         self.out_path = out_path
-        self.timeout = timeout
-
-        self.n_retries = n_retries
 
     @property
     def limit(self):
@@ -246,33 +242,15 @@ class YaDiskStorage(Storage):
         except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
-    def upload(self, in_file, out_path, timeout=None, n_retries=None, limit=None):
-        if limit is None:
-            limit = self.config.upload_limit
-
-        if n_retries is None:
-            n_retries = self.config.n_retries
-
-        if timeout is None:
-            timeout = self.config.upload_timeout
-
-        controller = YaDiskUploadController(self.yadisk, in_file, out_path,
-                                            limit, timeout, n_retries)
+    def upload(self, in_file, out_path, **kwargs):
+        controller = YaDiskUploadController(self.config, self.yadisk,
+                                            in_file, out_path, **kwargs)
 
         return controller
 
-    def download(self, in_path, out_file, timeout=None, n_retries=None, limit=None):
-        if limit is None:
-            limit = self.config.download_limit
-
-        if n_retries is None:
-            n_retries = self.config.n_retries
-
-        if timeout is None:
-            timeout = self.config.timeout
-
-        controller = YaDiskDownloadController(self.yadisk, in_path, out_file,
-                                              limit, timeout, n_retries)
+    def download(self, in_path, out_file, **kwargs):
+        controller = YaDiskDownloadController(self.config, self.yadisk,
+                                              in_path, out_file, **kwargs)
 
         return controller
 

@@ -72,7 +72,7 @@ class FolderStorage(object):
 
         return self.config.encrypt_path(full_path, self.prefix, ivs, self.filename_encoding)
 
-    def get_file(self, path, ivs=None):
+    def get_file(self, path, *args, ivs=None, **kwargs):
         """
             Get a file-like object at `path`.
 
@@ -84,7 +84,7 @@ class FolderStorage(object):
 
         raise NotImplementedError
 
-    def get_encrypted_file(self, path, ivs=None):
+    def get_encrypted_file(self, path, *args, ivs=None, **kwargs):
         """
             Get an encrypted file-like object at `path`.
 

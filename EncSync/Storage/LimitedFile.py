@@ -8,9 +8,12 @@ from .ControlledSpeedLimiter import ControlledSpeedLimiter
 __all__ = ["LimitedFile"]
 
 class LimitedFile(object):
-    def __init__(self, file, controller, limit=float("inf")):
+    def __init__(self, file, controller, limit=None):
         self.file = file
         self.limit = limit
+
+        if self.limit is None:
+            self.limit = float("inf")
 
         if self.limit != float("inf"):
             self.limit = int(self.limit)

@@ -158,14 +158,16 @@ class UploadTask(SyncTask):
             upload_timeout = self.config.upload_timeout
 
             if self.dst.encrypted:
-                download_generator = self.src.get_encrypted_file(self.path)
+                download_generator = self.src.get_encrypted_file(self.path,
+                                                                 timeout=self.config.timeout,
+                                                                 limit=self.download_limit)
             else:
-                download_generator = self.src.get_file(self.path)
+                download_generator = self.src.get_file(self.path,
+                                                       timeout=self.config.timeout,
+                                                       limit=self.download_limit)
 
             self.download_controller = next(download_generator)
             if self.download_controller is not None:
-                self.download_controller.timeout = self.config.timeout
-                self.download_controller.limit = self.download_limit
                 self.download_controller.add_receiver(DownloadControllerReceiver(self))
 
             try:
@@ -198,9 +200,11 @@ class UploadTask(SyncTask):
                 if read_timeout < new_read_timeout:
                     upload_timeout = (connect_timeout, new_read_timeout)
 
-            controller, ivs = self.dst.upload(temp_file, self.path, timeout=upload_timeout)
+            controller, ivs = self.dst.upload(temp_file, self.path,
+                                              timeout=upload_timeout,
+                                              limit=self.upload_limit)
+
             self.upload_controller = controller
-            self.upload_controller.upload_limit = self.upload_limit
             controller.add_receiver(UploadControllerReceiver(self))
 
             if self.stop_condition():

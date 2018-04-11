@@ -25,8 +25,8 @@ else:
         return False
 
 class LocalDownloadController(DownloadController):
-    def __init__(self, in_path, out_file):
-        DownloadController.__init__(self, out_file)
+    def __init__(self, config, in_path, out_file, **kwargs):
+        DownloadController.__init__(self, config, out_file, **kwargs)
 
         self.in_path = in_path
 
@@ -60,8 +60,8 @@ class LocalDownloadController(DownloadController):
                 self.downloaded += len(content)
 
 class LocalUploadController(UploadController):
-    def __init__(self, in_file, out_path):
-        UploadController.__init__(self, in_file)
+    def __init__(self, config, in_file, out_path, **kwargs):
+        UploadController.__init__(self, config, in_file, **kwargs)
 
         self.out_path = out_path
 
@@ -182,16 +182,12 @@ class LocalStorage(Storage):
     def upload(self, in_file, out_path, *args, **kwargs):
         out_path = Paths.to_sys(out_path)
 
-        controller = LocalUploadController(in_file, out_path)
-
-        return controller
+        return LocalUploadController(self.config, in_file, out_path)
 
     def download(self, in_path, out_file, *args, **kwargs):
         in_path = Paths.to_sys(in_path)
 
-        controller = LocalDownloadController(in_path, out_file)
-
-        return controller
+        return LocalDownloadController(self.config, in_path, out_file)
 
     def is_file(self, path, *args, **kwargs):
         return os.path.isfile(Paths.to_sys(path))

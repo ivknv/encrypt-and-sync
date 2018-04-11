@@ -9,14 +9,27 @@ class DownloadController(Emitter):
         Events: downloaded_changed
     """
 
-    def __init__(self, out_file, limit=float("inf")):
+    def __init__(self, config, out_file, limit=None, timeout=None, n_retries=None):
         Emitter.__init__(self)
 
+        self.config = config
         self.out_file = out_file
-        self.limit = limit
         self._downloaded = 0
         self.stopped = False
         self.size = None
+
+        if limit is None:
+            limit = config.download_speed_limit
+
+        if timeout is None:
+            timeout = config.timeout
+
+        if n_retries is None:
+            n_retries = config.n_retries
+
+        self.limit = limit
+        self.timeout = timeout
+        self.n_retries = n_retries
 
     @property
     def downloaded(self):

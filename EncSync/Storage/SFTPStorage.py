@@ -46,14 +46,12 @@ class SFTPConnection(pysftp.Connection):
         pysftp.Connection.__init__(self, *args, **kwargs)
 
 class SFTPUploadController(UploadController):
-    def __init__(self, connection, in_file, out_path, limit=None, timeout=None, n_retries=None):
-        self.speed_limiter = ControlledSpeedLimiter(self, limit)
-        UploadController.__init__(self, in_file, limit)
+    def __init__(self, config, connection, in_file, out_path, **kwargs):
+        self.speed_limiter = ControlledSpeedLimiter(self, None)
+        UploadController.__init__(self, config, in_file, **kwargs)
 
         self.connection = connection
         self.out_path = out_path
-        self.timeout = timeout
-        self.n_retries = n_retries
 
     @property
     def limit(self):
@@ -94,14 +92,13 @@ class SFTPUploadController(UploadController):
         auto_retry(self._work, self.n_retries, 0.0)
 
 class SFTPDownloadController(DownloadController):
-    def __init__(self, connection, in_path, out_file, limit=None, timeout=None, n_retries=None):
-        self.speed_limiter = ControlledSpeedLimiter(self, limit)
-        DownloadController.__init__(self, out_file, limit)
+    def __init__(self, config, connection, in_path, out_file, **kwargs):
+        self.speed_limiter = ControlledSpeedLimiter(self, None)
+
+        DownloadController.__init__(self, config, out_file, **kwargs)
 
         self.in_path = in_path
         self.connection = connection
-        self.timeout = timeout
-        self.n_retries = n_retries
 
     @property
     def limit(self):
@@ -325,21 +322,17 @@ class SFTPStorage(Storage):
                     else:
                         recur(Paths.join(path, s.filename))
 
-                connection.rmdir(Paths.join(path, s.filename))
+                connection.rmdir(path)
 
             recur(path)
 
         auto_retry(attempt, n_retries, 0.0)
 
-    def upload(self, in_file, out_path, n_retries=None, timeout=None, limit=None):
+    def upload(self, in_file, out_path, **kwargs):
+        n_retries = kwargs.get("n_retries")
+
         if n_retries is None:
             n_retries = self.config.n_retries
-
-        if timeout is None:
-            timeout = self.config.timeout
-
-        if limit is None:
-            limit = self.config.upload_limit
 
         host_address, out_path = self.split_path(out_path)
 
@@ -347,20 +340,14 @@ class SFTPStorage(Storage):
             return self.get_connection(host_address)
 
         connection = auto_retry(attempt, n_retries, 0.0)
-        controller = SFTPUploadController(connection, in_file, out_path,
-                                          limit, timeout, n_retries)
+        return SFTPUploadController(self.config, connection,
+                                    in_file, out_path, **kwargs)
 
-        return controller
+    def download(self, in_path, out_file, **kwargs):
+        n_retries = kwargs.get("n_retries")
 
-    def download(self, in_path, out_file, n_retries=None, timeout=None, limit=None):
         if n_retries is None:
             n_retries = self.config.n_retries
-
-        if timeout is None:
-            timeout = self.config.timeout
-
-        if limit is None:
-            limit = self.config.download_limit
 
         host_address, in_path = self.split_path(in_path)
 
@@ -368,10 +355,8 @@ class SFTPStorage(Storage):
             return self.get_connection(host_address)
 
         connection = auto_retry(attempt, n_retries, 0.0)
-        controller = SFTPDownloadController(connection, in_path, out_file,
-                                            limit, timeout, n_retries)
-
-        return controller
+        return SFTPDownloadController(self.config, connection,
+                                      in_path, out_file, **kwargs)
 
     def is_file(self, path, n_retries=None, timeout=None):
         if n_retries is None:

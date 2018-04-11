@@ -56,15 +56,13 @@ def auto_retry(attempt, n_retries, retry_interval):
         time.sleep(retry_interval)
 
 class DropboxUploadController(UploadController):
-    def __init__(self, dbx, in_file, out_path, limit=float("inf"), timeout=None, n_retries=None):
-        in_file = LimitedFile(in_file, self, limit)
+    def __init__(self, config, dbx, in_file, out_path, **kwargs):
+        in_file = LimitedFile(in_file, self, None)
 
-        UploadController.__init__(self, in_file, limit)
+        UploadController.__init__(self, config, in_file, **kwargs)
 
         self.dbx = dbx
         self.out_path = out_path
-        self.timeout = timeout
-        self.n_retries = n_retries
 
     @property
     def limit(self):
@@ -178,19 +176,18 @@ class DropboxUploadController(UploadController):
             raise e
 
 class DropboxDownloadController(DownloadController):
-    def __init__(self, dbx, in_path, out_file, limit=float("inf"), timeout=None, n_retries=None):
+    def __init__(self, config, dbx, in_path, out_file, **kwargs):
         self.response = None
-        self.speed_limiter = ControlledSpeedLimiter(self, limit)
+        self.speed_limiter = ControlledSpeedLimiter(self, None)
 
-        DownloadController.__init__(self, out_file, limit)
+        DownloadController.__init__(self, config, out_file, **kwargs)
 
         self.dbx = dbx
         self.in_path = in_path
-        self.timeout = timeout
-        self.n_retries = n_retries
 
     def __del__(self):
         DownloadController.__del__(self)
+
         if self.response is not None:
             self.response.close()
 
@@ -489,37 +486,15 @@ class DropboxStorage(Storage):
 
             raise e
 
-    def download(self, in_path, out_file, timeout=None, n_retries=None, limit=None):
-        if timeout is None:
-            timeout = self.config.timeout
+    def download(self, in_path, out_file, **kwargs):
+        return DropboxDownloadController(self.config, self.dbx,
+                                         in_path, out_file, **kwargs)
 
-        if n_retries is None:
-            n_retries = self.config.n_retries
-
-        if limit is None:
-            limit = self.config.download_limit
-
-        controller = DropboxDownloadController(self.dbx, in_path, out_file,
-                                               limit, timeout, n_retries)
-
-        return controller
-
-    def upload(self, in_file, out_path, timeout=None, n_retries=None, limit=None):
-        if timeout is None:
-            timeout = self.config.timeout
-
-        if n_retries is None:
-            n_retries = self.config.n_retries
-
-        if limit is None:
-            limit = self.config.upload_limit
-
+    def upload(self, in_file, out_path, **kwargs):
         out_path = out_path.rstrip("/")
 
-        controller = DropboxUploadController(self.dbx, in_file, out_path,
-                                             limit, timeout, n_retries)
-
-        return controller
+        return DropboxUploadController(self.config, self.dbx,
+                                       in_file, out_path, **kwargs)
 
     def exists(self, path, timeout=None, n_retries=None):
         if timeout is None:
