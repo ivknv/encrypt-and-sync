@@ -62,16 +62,24 @@ class FileList(BaseFileList):
     def remove_node(self, path):
         path = prepare_path(path)
 
-        #self.connection.execute("DELETE FROM filelist WHERE path=? OR path=?",
-        #                        (path, Paths.dir_normalize(path)))
-        self.connection.execute("UPDATE filelist SET deleted=1 WHERE path=? OR path=?",
+        self.connection.execute("DELETE FROM filelist WHERE path=? OR path=?",
                                 (path, Paths.dir_normalize(path)))
 
     def remove_node_children(self, path):
         path = prepare_path(Paths.dir_normalize(path))
         path = escape_glob(path)
 
-        #self.connection.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
+        self.connection.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
+
+    def mark_node_as_deleted(self, path):
+        path = prepare_path(path)
+        self.connection.execute("UPDATE filelist SET deleted=1 WHERE path=? OR path=?",
+                                (path, Paths.dir_normalize(path)))
+
+    def mark_node_children_as_deleted(self, path):
+        path = prepare_path(Paths.dir_normalize(path))
+        path = escape_glob(path)
+
         self.connection.execute("UPDATE filelist SET deleted=1 WHERE path GLOB ?",
                                 (path + "*",))
 
