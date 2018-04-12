@@ -259,7 +259,7 @@ class EncryptedScannable(BaseScannable):
                     if PathMatch.match(scannable.path, allowed_paths):
                         scannables.append(scannable)
                 break
-            except (TemporaryStorageError, yadisk.exceptions.UnauthorizedError) as e:
+            except (TemporaryStorageError, UnauthorizedError) as e:
                 # Yandex.Disk seems to randomly throw UnauthorizedError sometimes
                 if i == 9:
                     raise e
