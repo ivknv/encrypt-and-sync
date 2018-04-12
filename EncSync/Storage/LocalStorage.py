@@ -116,7 +116,6 @@ class LocalStorage(Storage):
                         "link":     real_path}
 
             if stat.S_ISLNK(s.st_mode):
-                s = os.stat(path)
                 real_path = Paths.from_sys(os.path.realpath(path))
 
             resource_type = "dir"
