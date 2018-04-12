@@ -3,6 +3,8 @@
 from .Authenticator import Authenticator
 
 from ..Storage import Storage
+from ..Storage.Exceptions import UnknownStorageError
+from ..cli.common import show_error
 
 __all__ = ["GenericAuthenticator"]
 
@@ -15,7 +17,10 @@ class GenericAuthenticator(Authenticator):
         self.storage_name = storage_name
 
     def login(self, config, *args, **kwargs):
-        config.storages[self.storage_name] = Storage.get_storage(self.storage_name)(config)
+        try:
+            config.storages[self.storage_name] = Storage.get_storage(self.storage_name)(config)
+        except UnknownStorageError as e:
+            show_error("Error: %s" % (e,))
 
     def logout(self, config, *args, **kwargs):
         pass

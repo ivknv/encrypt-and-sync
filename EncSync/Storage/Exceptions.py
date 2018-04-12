@@ -16,10 +16,4 @@ class TemporaryStorageError(StorageError):
     pass
 
 class UnknownStorageError(StorageError):
-    def __init__(self, name, msg=None):
-        if msg is None:
-            msg = "Unknown storage: %r" % (name,)
-
-        StorageError.__init__(self, msg)
-
-        self.name = name
+    pass
