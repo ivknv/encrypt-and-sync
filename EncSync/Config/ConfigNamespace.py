@@ -22,6 +22,7 @@ class ConfigNamespace(Namespace):
         self["upload-read-timeout"] = commands.UploadReadTimeoutCommand
         self["n-retries"] = commands.NRetriesCommand
         self["scan-ignore-unreachable"] = commands.ScanIgnoreUnreachableCommand
+        self["temp-dir"] = commands.TempDirCommand
 
         self["folders"] = blocks.FoldersBlock
         self["targets"] = blocks.TargetsBlock

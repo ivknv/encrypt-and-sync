@@ -14,7 +14,7 @@ class RemoteFolderStorage(FolderStorage):
         if self.encrypted:
             path = self.encrypt_path(path, ivs)[0]
 
-            tmp_file = tempfile.TemporaryFile("w+b")
+            tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
 
             controller = self.storage.download(path, tmp_file, *args, **kwargs)
             yield controller
@@ -28,7 +28,7 @@ class RemoteFolderStorage(FolderStorage):
 
             yield tmp_file
         else:
-            tmp_file = tempfile.TemporaryFile("w+b")
+            tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
         
             controller = self.storage.download(path, tmp_file, *args, **kwargs)
             yield controller
@@ -45,7 +45,7 @@ class RemoteFolderStorage(FolderStorage):
         if self.encrypted:
             path = self.encrypt_path(path, ivs)[0]
 
-            tmp_file = tempfile.TemporaryFile("w+b")
+            tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
 
             controller = self.storage.download(path, tmp_file, *args, **kwargs)
             yield controller
@@ -56,7 +56,7 @@ class RemoteFolderStorage(FolderStorage):
 
             yield tmp_file
         else:
-            tmp_file = tempfile.TemporaryFile("w+b")
+            tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
 
             controller = self.storage.download(path, tmp_file, *args, **kwargs)
             yield controller

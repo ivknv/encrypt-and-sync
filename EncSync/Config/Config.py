@@ -39,6 +39,7 @@ class Config(object):
         self.n_retries = 5
         self.temp_encrypt_buffer_limit = 50 * 1024**2
         self.ignore_unreachable = False
+        self.temp_dir = None
 
         self.folders = {}
         self.allowed_paths = {}
@@ -122,7 +123,7 @@ class Config(object):
         if size < self.temp_encrypt_buffer_limit:
             f = io.BytesIO()
         else:
-            f = tempfile.TemporaryFile(mode="w+b")
+            f = tempfile.TemporaryFile(mode="w+b", dir=self.temp_dir)
 
         Encryption.encrypt_file(in_file, f, self.key)
         f.seek(0)
@@ -135,7 +136,7 @@ class Config(object):
         if size < self.temp_encrypt_buffer_limit:
             f = io.BytesIO()
         else:
-            f = tempfile.TemporaryFile(mode="w+b")
+            f = tempfile.TemporaryFile(mode="w+b", dir=self.temp_dir)
 
         Encryption.decrypt_file(in_file, f, self.key)
         f.seek(0)
@@ -243,3 +244,5 @@ class Config(object):
                     block[i] = pattern
 
             self.allowed_paths[storage_name] = PathMatch.compile_patterns(blocks)
+
+        self.temp_dir = os.path.abspath(os.path.expanduser(self.temp_dir))

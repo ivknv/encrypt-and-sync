@@ -736,7 +736,9 @@ class EditOtherPrompter(ActionPrompter):
                                        "description": "set upload connect timeout"},
                                  "12": {"function": self.set_upload_read_timeout,
                                         "description": "set upload read timeout"},
-                                 "13": {"function": quit_prompt,
+                                 "13": {"function": self.set_temp_dir,
+                                        "description": "set temporary directory path"},
+                                 "14": {"function": quit_prompt,
                                        "description": "go back"}})
 
         self.config = config
@@ -929,6 +931,18 @@ class EditOtherPrompter(ActionPrompter):
             new_upload_read_timeout = None
 
         self.config.upload_timeout = (upload_connect_timeout, new_upload_read_timeout)
+
+    @return_on_interrupt
+    def set_temp_dir(self, prompter):
+        new_path = input("Temporary directory path [default: %s]: " % (config.temp_dir or "-",))
+
+        if new_path == "-":
+            new_path = None
+
+        if new_path:
+            self.config.temp_dir = new_path
+
+        print("Temporary directory path: %s" % (self.config.temp_dir,))
  
 def configure(env):
     print("Interactive EncSync configuration")
@@ -991,6 +1005,9 @@ def dump_config(config):
     output += "upload-read-timeout %r\n\n" % (upload_read_timeout,)
 
     output += "scan-ignore-unreachable %s\n\n" % (str(config.ignore_unreachable).lower(),)
+
+    if config.temp_dir is not None:
+        output += "temp-dir %s\n\n" % (quaote(config.temp_dir))
     
     output += "folders {"
 

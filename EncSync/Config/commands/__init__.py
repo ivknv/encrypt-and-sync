@@ -6,3 +6,4 @@ from .limit_commands import UploadLimitCommand, DownloadLimitCommand, TempEncryp
 from .timeout_commands import *
 from .n_retries import *
 from .scan_ignore_unreachable import ScanIgnoreUnreachableCommand
+from .temp_dir import TempDirCommand
