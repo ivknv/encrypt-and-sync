@@ -17,10 +17,12 @@ def authenticate_storages(env, storage_names=None):
         storage_names = {i["type"] for i in config.folders.values()}
 
     for name in storage_names:
-        assert(name != "_generic")
-
         try:
-            authenticator = Authenticator.get_authenticator(name)()
+
+            if name == "_generic":
+                authenticator = Authenticator.get_authenticator("_generic")(name)
+            else:
+                authenticator = Authenticator.get_authenticator(name)()
         except UnknownAuthenticatorError:
             authenticator = Authenticator.get_authenticator("_generic")(name)
 
