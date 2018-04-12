@@ -100,7 +100,7 @@ class EncryptedStorage(object):
         folder_storage = self.get_folder_storage(folder["name"])
         path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        yield from folder_storage.get_file(path, ivs)
+        yield from folder_storage.get_file(path, ivs=ivs)
 
     def get_encrypted_file(self, path, ivs=None):
         folder = self.identify_folder(path)
@@ -123,7 +123,7 @@ class EncryptedStorage(object):
         folder_storage = self.get_folder_storage(folder["name"])
         path = Paths.cut_prefix(path, folder_storage.prefix)
 
-        yield from folder_storage.get_encrypted_file(path, ivs)
+        yield from folder_storage.get_encrypted_file(path, ivs=ivs)
 
     def is_dir(self, path, *args, **kwargs):
         folder = self.identify_folder(path)

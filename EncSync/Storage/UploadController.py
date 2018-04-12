@@ -18,7 +18,7 @@ class UploadController(Emitter):
         self.stopped = False
 
         if limit is None:
-            limit = config.upload_speed_limit
+            limit = config.upload_limit
 
         if timeout is None:
             timeout = config.upload_timeout

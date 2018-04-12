@@ -19,7 +19,7 @@ class DownloadController(Emitter):
         self.size = None
 
         if limit is None:
-            limit = config.download_speed_limit
+            limit = config.download_limit
 
         if timeout is None:
             timeout = config.timeout

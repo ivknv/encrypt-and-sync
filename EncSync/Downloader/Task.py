@@ -196,12 +196,12 @@ class DownloadTask(Task):
         try:
             if self.dst.is_encrypted(self.dst_path):
                 if self.parent.expected_total_children == -1:
-                    download_generator = self.src.get_encrypted_file(self.src_path, self.IVs)
+                    download_generator = self.src.get_encrypted_file(self.src_path, ivs=self.IVs)
                 else:
                     download_generator = self.src.get_encrypted_file(self.src_path)
             else:
                 if self.parent.expected_total_children == -1:
-                    download_generator = self.src.get_file(self.src_path, self.IVs)
+                    download_generator = self.src.get_file(self.src_path, ivs=self.IVs)
                 else:
                     download_generator = self.src.get_file(self.src_path)
 
