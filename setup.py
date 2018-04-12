@@ -8,6 +8,9 @@ from setuptools import setup, find_packages
 
 requirements = ["s3m>=1.0.5", "pycryptodome", "portalocker"]
 
+if sys.platform.startswith("win"):
+    requirements.append("pypiwin32")
+
 if os.environ.get("USE_FASTER_SCRIPTS", None):
     entry_points = {}
 
