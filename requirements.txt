@@ -1,7 +1,2 @@
-requests
 pycryptodome
 s3m>=1.0.5
-yadisk>=1.2.3
-dropbox
-pysftp
-paramiko
