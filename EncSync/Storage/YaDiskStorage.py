@@ -69,7 +69,8 @@ class YaDiskDownloadController(DownloadController):
                 raise ControllerInterrupt
 
             self.response = self.yadisk.make_session().get(self.link, stream=True,
-                                                           timeout=self.timeout)
+                                                           timeout=self.timeout,
+                                                           headers={"Connection": "close"})
 
             if self.response.status_code != 200:
                 self.response = None
