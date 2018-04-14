@@ -245,7 +245,7 @@ class Config(object):
 
             self.allowed_paths[storage_name] = PathMatch.compile_patterns(blocks)
 
-        if self.temp_dir == "-":
+        if self.temp_dir == "-" or self.temp_dir is None:
             self.temp_dir = None
         else:
             self.temp_dir = os.path.abspath(os.path.expanduser(self.temp_dir))
