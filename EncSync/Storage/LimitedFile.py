@@ -30,7 +30,7 @@ class LimitedFile(object):
         return self.readline()
 
     def seek(self, *args, **kwargs):
-        self.file.seek(*args, **kwargs)
+        return self.file.seek(*args, **kwargs)
 
     def tell(self):
         return self.file.tell()
