@@ -268,7 +268,9 @@ class RmTask(SyncTask):
         except FileNotFoundError:
             pass
 
-        self.flist2.remove_node_children(dst_path)
+        if self.node_type == "d":
+            self.flist2.remove_node_children(dst_path)
+
         self.flist2.remove_node(dst_path)
         self.autocommit()
 
