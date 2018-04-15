@@ -73,15 +73,6 @@ class SyncTarget(StagedTask):
 
     def autocommit(self):
         try:
-            if self.shared_flist1.time_since_last_commit() >= COMMIT_INTERVAL:
-                self.emit_event("autocommit_started", self.shared_flist1)
-                self.shared_flist1.seamless_commit()
-                self.emit_event("autocommit_finished", self.shared_flist1)
-        except Exception as e:
-            self.emit_event("autocommit_failed", self.shared_flist1)
-            raise e
-
-        try:
             if self.shared_flist2.time_since_last_commit() >= COMMIT_INTERVAL:
                 self.emit_event("autocommit_started", self.shared_flist2)
                 self.shared_flist2.seamless_commit()
@@ -236,7 +227,6 @@ class SyncTarget(StagedTask):
 
         self.differences = self.difflist.select_rm_differences(self.folder1["name"], self.folder2["name"])
 
-        self.shared_flist1.begin_transaction()
         self.shared_flist2.begin_transaction()
 
         self.synchronizer.start_workers(self.synchronizer.n_workers,
@@ -248,24 +238,20 @@ class SyncTarget(StagedTask):
             return
 
         self.shared_flist2.commit()
-        self.shared_flist1.commit()
 
     def init_dirs(self):
         self.differences = self.difflist.select_dirs_differences(self.folder1["name"], self.folder2["name"])
 
-        self.shared_flist1.begin_transaction()
         self.shared_flist2.begin_transaction()
 
         self.synchronizer.start_worker(SyncWorker, self.synchronizer).join()
 
     def finalize_dirs(self):
-        self.shared_flist1.commit()
         self.shared_flist2.commit()
 
     def init_files(self):
         self.differences = self.difflist.select_files_differences(self.folder1["name"], self.folder2["name"])
 
-        self.shared_flist1.begin_transaction()
         self.shared_flist2.begin_transaction()
 
         self.synchronizer.start_workers(self.synchronizer.n_workers,
@@ -273,7 +259,6 @@ class SyncTarget(StagedTask):
         self.synchronizer.join_workers()
 
     def finalize_files(self):
-        self.shared_flist1.commit()
         self.shared_flist2.commit()
 
     def init_check(self):

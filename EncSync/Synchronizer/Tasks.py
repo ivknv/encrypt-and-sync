@@ -65,8 +65,7 @@ class SyncTask(Task):
         self.upload_limit = float("inf") # Bytes per second
         self.download_limit = float("inf") # Bytes per second
 
-        self.flist1 = target.shared_flist1
-        self.flist2 = target.shared_flist2
+        self.flist = target.shared_flist2
 
         self.src = target.src
         self.dst = target.dst
@@ -173,9 +172,6 @@ class UploadTask(SyncTask):
             try:
                 temp_file = next(download_generator)
             except FileNotFoundError:
-                self.flist1.remove_node(src_path)
-                self.autocommit()
-
                 self.status = "skipped"
                 return True
 
@@ -218,7 +214,7 @@ class UploadTask(SyncTask):
                        "modified":    time.mktime(time.gmtime()),
                        "IVs":         ivs}
 
-            self.flist2.insert_node(newnode)
+            self.dst_flist.insert_node(newnode)
             self.autocommit()
 
             self.status = "finished"
@@ -247,7 +243,7 @@ class MkdirTask(SyncTask):
                    "padded_size": 0,
                    "IVs":         ivs}
 
-        self.flist2.insert_node(newnode)
+        self.dst_flist.insert_node(newnode)
         self.autocommit()
 
         self.status = "finished"
@@ -269,9 +265,9 @@ class RmTask(SyncTask):
             pass
 
         if self.node_type == "d":
-            self.flist2.remove_node_children(dst_path)
+            self.dst_flist.remove_node_children(dst_path)
 
-        self.flist2.remove_node(dst_path)
+        self.dst_flist.remove_node(dst_path)
         self.autocommit()
 
         self.status = "finished"
