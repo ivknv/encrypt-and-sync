@@ -247,10 +247,7 @@ class SyncTarget(StagedTask):
         if self.no_remove:
             return
 
-        self.shared_flist2.clear_deleted()
         self.shared_flist2.commit()
-
-        self.shared_flist1.clear_deleted()
         self.shared_flist1.commit()
 
     def init_dirs(self):

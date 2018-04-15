@@ -173,7 +173,7 @@ class UploadTask(SyncTask):
             try:
                 temp_file = next(download_generator)
             except FileNotFoundError:
-                self.flist1.mark_node_as_deleted(src_path)
+                self.flist1.remove_node(src_path)
                 self.autocommit()
 
                 self.status = "skipped"
@@ -268,8 +268,8 @@ class RmTask(SyncTask):
         except FileNotFoundError:
             pass
 
-        self.flist2.mark_node_children_as_deleted(dst_path)
-        self.flist2.mark_node_as_deleted(dst_path)
+        self.flist2.remove_node_children(dst_path)
+        self.flist2.remove_node(dst_path)
         self.autocommit()
 
         self.status = "finished"

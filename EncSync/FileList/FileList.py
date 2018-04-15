@@ -26,12 +26,10 @@ class FileList(BaseFileList):
                                         modified DATETIME,
                                         padded_size INTEGER,
                                         path TEXT UNIQUE ON CONFLICT REPLACE,
-                                        IVs TEXT,
-                                        deleted INTEGER)""")
+                                        IVs TEXT)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS path_index
                                        ON filelist(path ASC)""")
-            self.connection.execute("""CREATE INDEX IF NOT EXISTS deleted_index
-                                       ON filelist(path ASC)""")
+
     def get_root(self):
         """
             Get the root node which is also the folder prefix.
@@ -70,18 +68,6 @@ class FileList(BaseFileList):
         path = escape_glob(path)
 
         self.connection.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
-
-    def mark_node_as_deleted(self, path):
-        path = prepare_path(path)
-        self.connection.execute("UPDATE filelist SET deleted=1 WHERE path=? OR path=?",
-                                (path, Paths.dir_normalize(path)))
-
-    def mark_node_children_as_deleted(self, path):
-        path = prepare_path(Paths.dir_normalize(path))
-        path = escape_glob(path)
-
-        self.connection.execute("UPDATE filelist SET deleted=1 WHERE path GLOB ?",
-                                (path + "*",))
 
     def clear(self):
         self.connection.execute("DELETE FROM filelist")
@@ -138,6 +124,3 @@ class FileList(BaseFileList):
     def update_size(self, path, new_size):
         self.connection.execute("UPDATE filelist SET padded_size=? WHERE path=?",
                                 (new_size, path))
-
-    def clear_deleted(self):
-        self.connection.execute("DELETE FROM filelist WHERE deleted=1")
