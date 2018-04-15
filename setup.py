@@ -23,7 +23,7 @@ else:
     scripts = []
 
 setup(name="EncSync",
-      version="0.6.0",
+      version="0.6.1",
       description="A file synchronization utility with client-side encryption support",
       author="Ivan Konovalov",
       packages=find_packages(exclude=["tests"]),
