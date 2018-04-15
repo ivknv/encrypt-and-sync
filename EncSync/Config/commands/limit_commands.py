@@ -10,7 +10,7 @@ __all__ = ["UploadLimitCommand", "DownloadLimitCommand", "TempEncryptBufferLimit
 class UploadLimitCommand(Command):
     def evaluate(self, config):
         if len(self.args) != 2:
-            raise EvaluationError("Expected 1 argument")
+            raise EvaluationError(self, "Expected 1 argument")
 
         try:
             limit = parse_size(self.args[1])
