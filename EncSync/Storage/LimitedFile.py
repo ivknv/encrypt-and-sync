@@ -27,7 +27,12 @@ class LimitedFile(object):
         return self
 
     def __next__(self):
-        return self.readline()
+        line = self.readline()
+
+        if not line:
+            raise StopIteration
+
+        return line
 
     def seek(self, *args, **kwargs):
         return self.file.seek(*args, **kwargs)
