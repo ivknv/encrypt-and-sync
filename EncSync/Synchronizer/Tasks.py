@@ -65,7 +65,7 @@ class SyncTask(Task):
         self.upload_limit = float("inf") # Bytes per second
         self.download_limit = float("inf") # Bytes per second
 
-        self.flist = target.shared_flist2
+        self.dst_flist = target.shared_flist2
 
         self.src = target.src
         self.dst = target.dst
