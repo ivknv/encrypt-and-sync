@@ -6,8 +6,6 @@ from .Logging import logger
 
 __all__ = ["DuplicateRemoverWorker"]
 
-COMMIT_INTERVAL = 7.5 * 60 # Seconds
-
 class DuplicateRemoverWorker(Worker):
     """
         Events: next_task, error

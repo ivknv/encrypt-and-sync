@@ -6,12 +6,11 @@ import threading
 
 from ..Task import Task
 from ..FileList import DuplicateList
+from ..constants import AUTOCOMMIT_INTERVAL
 from .Worker import DuplicateRemoverWorker
 from .Task import DuplicateRemoverTask
 
 __all__ = ["DuplicateRemoverTarget"]
-
-COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
 class DuplicateRemoverTarget(Task):
     """
@@ -40,7 +39,7 @@ class DuplicateRemoverTarget(Task):
         return self.status not in (None, "pending")
 
     def autocommit(self):
-        if self.shared_duplist.time_since_last_commit() >= COMMIT_INTERVAL:
+        if self.shared_duplist.time_since_last_commit() >= AUTOCOMMIT_INTERVAL:
             try:
                 self.emit_event("autocommit_started", self.shared_duplist)
                 self.shared_duplist.seamless_commit()

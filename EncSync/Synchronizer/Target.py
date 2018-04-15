@@ -10,13 +10,12 @@ from ..Scanner import Scanner
 from ..DuplicateRemover import DuplicateRemover
 from ..DiffList import DiffList
 from ..FolderStorage import get_folder_storage
+from ..constants import AUTOCOMMIT_INTERVAL
 from .. import FileComparator
 from .Worker import SyncWorker
 from .Tasks import UploadTask, MkdirTask, RmTask
 
 __all__ = ["SyncTarget"]
-
-COMMIT_INTERVAL = 7.5 * 60 # Seconds
 
 class SyncTarget(StagedTask):
     """
@@ -73,7 +72,7 @@ class SyncTarget(StagedTask):
 
     def autocommit(self):
         try:
-            if self.shared_flist2.time_since_last_commit() >= COMMIT_INTERVAL:
+            if self.shared_flist2.time_since_last_commit() >= AUTOCOMMIT_INTERVAL:
                 self.emit_event("autocommit_started", self.shared_flist2)
                 self.shared_flist2.seamless_commit()
                 self.emit_event("autocommit_finished", self.shared_flist2)
