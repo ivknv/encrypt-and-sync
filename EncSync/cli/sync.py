@@ -8,6 +8,7 @@ from .authenticate_storages import authenticate_storages
 from .common import show_error, get_progress_str
 from .scan import ScannerReceiver
 from .remove_duplicates import DuplicateRemoverReceiver
+from .Pager import Pager
 
 from ..Synchronizer import Synchronizer
 from ..Scanner import Scanner
@@ -126,49 +127,69 @@ def view_rm_diffs(env, target):
 
     diffs = difflist.select_rm_differences(target.folder1["name"], target.folder2["name"])
 
-    print("Removals:")
+    pager = Pager()
+    pager.stdin.write("Removals:\n")
+
     for diff in diffs:
-        print("  %s %s" % (diff["node_type"], diff["path"]))
+        pager.stdin.write("  %s %s\n" % (diff["node_type"], diff["path"]))
+
+    pager.run()
 
 def view_dirs_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
     diffs = difflist.select_dirs_differences(target.folder1["name"], target.folder2["name"])
 
-    print("New directories:")
+    pager = Pager()
+    pager.stdin.write("New directories:\n")
+
     for diff in diffs:
-        print("  %s" % (diff["path"],))
+        pager.stdin.write("  %s\n" % (diff["path"],))
+
+    pager.run()
 
 def view_new_file_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
     diffs = difflist.select_new_file_differences(target.folder1["name"], target.folder2["name"])
 
-    print("New files to upload:")
+    pager = Pager()
+    pager.stdin.write("New files to upload:\n")
+
     for diff in diffs:
-        print("  %s" % (diff["path"],))
+        pager.stdin.write("  %s\n" % (diff["path"],))
+
+    pager.run()
 
 def view_update_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
     diffs = difflist.select_update_differences(target.folder1["name"], target.folder2["name"])
 
-    print("Files to update:")
+    pager = Pager()
+    pager.stdin.write("Files to update:\n")
+
     for diff in diffs:
-        print("  %s" % (diff["path"],))
+        pager.stdin.write("  %s\n" % (diff["path"],))
+
+    pager.run()
 
 def view_duplicates(env, target):
+    pager = Pager()
+
     if target.src.encrypted:
         duplicates = select_duplicates(env, target.src)
 
         for duplicate in duplicates:
-            print("  %s %s" % (duplicate[0], duplicate[2]))
+            pager.stdin.write("  %s %s\n" % (duplicate[0], duplicate[2]))
 
     if target.dst.encrypted:
         duplicates = select_duplicates(env, target.dst)
 
         for duplicate in duplicates:
-            print("  %s %s" % (duplicate[0], duplicate[2]))
+            pager.stdin.write("  %s %s\n" % (duplicate[0], duplicate[2]))
+
+    pager.run()
 
 def print_target_totals(target):
     n_finished = target.progress["finished"] + target.progress["skipped"]
