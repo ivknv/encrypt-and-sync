@@ -49,12 +49,6 @@ def count_duplicates(env, folder_storage):
 
     return duplist.get_children_count(folder_storage.prefix)
 
-def select_duplicates(env, folder_storage):
-    duplist = DuplicateList(folder_storage.storage.name, env["db_dir"])
-    duplist.create()
-
-    return duplist.find_children(folder_storage.prefix)
-
 def print_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
@@ -125,10 +119,15 @@ def view_diffs(env, target):
 def view_rm_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_rm_differences(target.folder1["name"], target.folder2["name"])
-
     pager = Pager()
     pager.stdin.write("Removals:\n")
+
+    diff_count = difflist.count_rm_differences(target.folder1["name"], target.folder2["name"])
+
+    diffs = difflist.select_rm_differences(target.folder1["name"], target.folder2["name"])
+
+    if diff_count < 50:
+        pager.command = None
 
     for diff in diffs:
         pager.stdin.write("  %s %s\n" % (diff["node_type"], diff["path"]))
@@ -138,10 +137,15 @@ def view_rm_diffs(env, target):
 def view_dirs_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_dirs_differences(target.folder1["name"], target.folder2["name"])
-
     pager = Pager()
     pager.stdin.write("New directories:\n")
+
+    diff_count = difflist.count_dirs_differences(target.folder1["name"], target.folder2["name"])
+
+    diffs = difflist.select_dirs_differences(target.folder1["name"], target.folder2["name"])
+
+    if diff_count < 50:
+        pager.command = None
 
     for diff in diffs:
         pager.stdin.write("  %s\n" % (diff["path"],))
@@ -151,10 +155,15 @@ def view_dirs_diffs(env, target):
 def view_new_file_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_new_file_differences(target.folder1["name"], target.folder2["name"])
-
     pager = Pager()
     pager.stdin.write("New files to upload:\n")
+
+    diff_count = difflist.count_new_file_differences(target.folder1["name"], target.folder2["name"])
+
+    if diff_count < 50:
+        pager.command = None
+
+    diffs = difflist.select_new_file_differences(target.folder1["name"], target.folder2["name"])
 
     for diff in diffs:
         pager.stdin.write("  %s\n" % (diff["path"],))
@@ -164,10 +173,18 @@ def view_new_file_diffs(env, target):
 def view_update_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    diffs = difflist.select_update_differences(target.folder1["name"], target.folder2["name"])
-
     pager = Pager()
     pager.stdin.write("Files to update:\n")
+
+    diff_count = difflist.count_update_differences(target.folder1["name"], target.folder2["name"])
+
+    if diff_count < 50:
+        pager.command = None
+
+    diffs = difflist.select_update_differences(target.folder1["name"], target.folder2["name"])
+
+    for diff in diffs:
+        pager.stdin.write("  %s\n" % (diff["path"],))
 
     for diff in diffs:
         pager.stdin.write("  %s\n" % (diff["path"],))
@@ -175,16 +192,28 @@ def view_update_diffs(env, target):
     pager.run()
 
 def view_duplicates(env, target):
+    duplist1 = DuplicateList(target.src.storage.name, env["db_dir"])
+    duplist1.create()
+
+    duplist2 = DuplicateList(target.dst.storage.name, env["db_dir"])
+    duplist2.create()
+
     pager = Pager()
 
+    count = duplist1.get_children_count(target.src.prefix)
+    count += duplist2.get_children_count(target.dst.prefix)
+
+    if count < 50:
+        pager.command = None
+
     if target.src.encrypted:
-        duplicates = select_duplicates(env, target.src)
+        duplicates = duplist1.find_children(target.src.prefix)
 
         for duplicate in duplicates:
             pager.stdin.write("  %s %s\n" % (duplicate[0], duplicate[2]))
 
     if target.dst.encrypted:
-        duplicates = select_duplicates(env, target.dst)
+        duplicates = duplist2.find_children(target.dst.prefix)
 
         for duplicate in duplicates:
             pager.stdin.write("  %s %s\n" % (duplicate[0], duplicate[2]))

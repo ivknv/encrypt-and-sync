@@ -22,7 +22,7 @@ class Pager(object):
         :param mode: `str`, `self.stdin` mode
     """
 
-    def __init__(self, pagers=("less", "more"), mode="w"):
+    def __init__(self, pagers=("less", "more"), mode="w+"):
         self.mode = mode
         self.command = None
 
@@ -51,7 +51,7 @@ class Pager(object):
 
         if "b" not in self.mode:
             for line in self.stdin:
-                print(line)
+                print(line, end="")
         else:
             for line in self.stdin:
-                print(line.decode("utf8"))
+                print(line.decode("utf8"), end="")

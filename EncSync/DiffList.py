@@ -81,8 +81,8 @@ class DiffList(object):
     def count_files_differences(self, folder1, folder2):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
-                                       WHERE type='new' AND node_type='f' AND
-                                             folder1=?  AND folder2=?""",
+                                       WHERE (type='new' OR type='update') AND
+                                             node_type='f' AND folder1=?  AND folder2=?""",
                                     (folder1, folder2))
             return self.connection.fetchone()[0]
 
