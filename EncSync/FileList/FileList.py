@@ -50,12 +50,12 @@ class FileList(BaseFileList):
             raise ValueError("Node type is None")
 
         self.connection.execute("""INSERT INTO filelist VALUES
-                                   (?, ?, ?, ?, ?, ?)""",
+                                   (?, ?, ?, ?, ?)""",
                                 (node["type"],
                                  format_timestamp(node["modified"]),
                                  node["padded_size"],
                                  prepare_path(node["path"]),
-                                 node["IVs"], 0))
+                                 node["IVs"]))
 
     def remove_node(self, path):
         path = prepare_path(path)
