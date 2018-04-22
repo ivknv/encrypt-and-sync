@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from functools import lru_cache
+import collections
+import socket
 import stat
 import threading
 import time
@@ -25,6 +26,9 @@ def auto_retry(attempt, n_retries, retry_interval):
     for i in range(n_retries + 1):
         try:
             return attempt()
+        except socket.timeout:
+            if i == n_retries:
+                raise TemporaryStorageError("Socket timeout")
         except OSError as e:
             # This assumes that attempt() will try to establish a new connection
             if not str(e).startswith("Socket is closed"):
@@ -233,6 +237,11 @@ class SFTPStorage(Storage):
 
         if connection is None:
             raise error
+
+        if isinstance(self.config.timeout, collections.Iterable):
+            connection.timeout = self.config.timeout[1]
+        else:
+            connection.timeout = self.config.timeout
 
         return connection
 
