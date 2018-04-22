@@ -228,8 +228,12 @@ class SyncTarget(StagedTask):
 
         self.shared_flist2.begin_transaction()
 
-        self.synchronizer.start_workers(self.synchronizer.n_workers,
-                                        SyncWorker, self.synchronizer)
+        if self.src.storage.parallelizable or self.dst.storage.parallelizable:
+            n_workers = self.synchronizer.n_workers
+        else:
+            n_workers = 1
+
+        self.synchronizer.start_workers(n_workers, SyncWorker, self.synchronizer)
         self.synchronizer.join_workers()
 
     def finalize_rm(self):
@@ -253,8 +257,12 @@ class SyncTarget(StagedTask):
 
         self.shared_flist2.begin_transaction()
 
-        self.synchronizer.start_workers(self.synchronizer.n_workers,
-                                        SyncWorker, self.synchronizer)
+        if self.src.storage.parallelizable or self.dst.storage.parallelizable:
+            n_workers = self.synchronizer.n_workers
+        else:
+            n_workers = 1
+
+        self.synchronizer.start_workers(n_workers, SyncWorker, self.synchronizer)
         self.synchronizer.join_workers()
 
     def finalize_files(self):
