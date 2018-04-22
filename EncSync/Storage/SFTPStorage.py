@@ -290,7 +290,8 @@ class SFTPStorage(Storage):
         def attempt():
             connection = self.get_connection(host_address)
 
-            for s in connection.listdir_attr(path):
+            # Using listdir_iter() for better memory usage
+            for s in connection.sftp_client.listdir_iter(path):
                 resource_type = None
                 modified = 0
                 size = 0
