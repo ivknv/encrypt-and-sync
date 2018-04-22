@@ -15,6 +15,7 @@ from .UploadController import UploadController
 from .ControlledSpeedLimiter import ControlledSpeedLimiter
 
 from .. import Paths
+from ..LRUCache import LRUCache
 
 __all__ = ["SFTPStorage"]
 
@@ -24,6 +25,13 @@ def auto_retry(attempt, n_retries, retry_interval):
     for i in range(n_retries + 1):
         try:
             return attempt()
+        except OSError as e:
+            # This assumes that attempt() will try to establish a new connection
+            if not str(e).startswith("Socket is closed"):
+                raise e
+
+            if i == n_retries:
+                raise TemporaryStorageError(str(e))
         except paramiko.ssh_exception.SSHException as e:
             if type(e) is not paramiko.ssh_exception.SSHException:
                 raise e
@@ -188,12 +196,31 @@ class SFTPStorage(Storage):
 
     def get_connection(self, address):
         username, host, port = self.split_host_address(address)
-        return self._get_connection(username, host, port, threading.get_ident())
+        tid = threading.get_ident()
+        connection = self._get_connection(username, host, port, tid)
 
-    @lru_cache(maxsize=1024)
+        # Check if the connection is closed
+        channel = connection.sftp_client.get_channel()
+
+        if not channel.closed:
+            return connection
+
+        # Overwrite cache
+        connection = self.make_connection(username, host, port, tid)
+        self._get_connection.cache[((username, host, port, tid), ())] = connection
+
+        return connection
+
+    @LRUCache.decorate(max_size=1024)
     def _get_connection(self, username, host, port, tid):
+        return self.make_connection(username, host, port, tid)
+
+    def make_connection(self, username, host, port, tid):
         agent = paramiko.Agent()
         keys = agent.get_keys()
+
+        if not keys:
+            keys = (None,)
 
         connection = None
         error = None
