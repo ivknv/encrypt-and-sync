@@ -152,8 +152,12 @@ class DownloadTarget(Task):
 
         self.status = "pending"
 
-        self.downloader.start_workers(self.downloader.n_workers,
-                                      DownloaderWorker, self.downloader)
+        if self.src.storage.parallelizable or self.dst.storage.parallelizable:
+            n_workers = self.downloader.n_workers
+        else:
+            n_workers = 1
+
+        self.downloader.start_workers(n_workers, DownloaderWorker, self.downloader)
         self.downloader.join_workers()
 
         if self.stop_condition():
