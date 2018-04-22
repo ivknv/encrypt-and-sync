@@ -217,10 +217,7 @@ class SFTPStorage(Storage):
 
     def make_connection(self, username, host, port, tid):
         agent = paramiko.Agent()
-        keys = agent.get_keys()
-
-        if not keys:
-            keys = (None,)
+        keys = agent.get_keys() + (None,)
 
         connection = None
         error = None
