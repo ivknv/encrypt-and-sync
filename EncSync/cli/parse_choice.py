@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from collections import OrderedDict
 import re
 
 __all__ = ["interpret_choice"]
@@ -110,14 +111,14 @@ class Word(object):
         output.clear()
 
 def interpret_choice(line, values):
-    output = {}
+    output = OrderedDict()
 
     for i in line.split():
         word = Word(i)
         word.identify()
         word.interpret(values, output)
 
-    return [i[1] for i in sorted(output.items())]
+    return [i[1] for i in output.items()]
 
 def is_negative(word):
     return word.startswith("!")
