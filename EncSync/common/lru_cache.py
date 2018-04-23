@@ -37,7 +37,7 @@ class LRUCache(object):
         return stored[0]
 
     def __iter__(self):
-        return self.keys()
+        return iter(self.keys())
 
     def __contains__(self, key):
         return key in self._cache
