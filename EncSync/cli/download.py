@@ -9,7 +9,7 @@ from .. import Paths
 from ..Downloader import Downloader
 from ..Downloader.Exceptions import NotFoundInDBError
 from ..Event.Receiver import Receiver
-from ..Lockfile import Lockfile
+from ..common import Lockfile
 
 from . import common
 from .authenticate_storages import authenticate_storages

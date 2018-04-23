@@ -19,7 +19,7 @@ from ..DiffList import DiffList
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from ..Synchronizer.Exceptions import TooLongFilenameError
-from ..Lockfile import Lockfile
+from ..common import Lockfile
 
 __all__ = ["do_sync", "SynchronizerReceiver"]
 

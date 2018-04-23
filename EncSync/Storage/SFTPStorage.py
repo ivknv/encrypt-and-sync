@@ -16,7 +16,7 @@ from .UploadController import UploadController
 from .ControlledSpeedLimiter import ControlledSpeedLimiter
 
 from .. import Paths
-from ..LRUCache import LRUCache
+from ..common import LRUCache
 
 __all__ = ["SFTPStorage"]
 

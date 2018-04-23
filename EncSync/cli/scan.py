@@ -11,7 +11,7 @@ from ..FileList import FileList, DuplicateList
 from .SignalManagers import GenericSignalManager
 from .parse_choice import interpret_choice
 from .authenticate_storages import authenticate_storages
-from ..Lockfile import Lockfile
+from ..common import Lockfile
 
 from . import common
 from .common import show_error

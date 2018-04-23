@@ -3,7 +3,7 @@
 import time
 import weakref
 
-from ..SpeedLimiter import SpeedLimiter
+from ..common import SpeedLimiter
 
 __all__ = ["ControlledSpeedLimiter"]
 

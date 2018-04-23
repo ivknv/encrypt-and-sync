@@ -5,14 +5,20 @@ from datetime import datetime
 import os
 import sys
 
-from . import Paths
-from .Storage import Storage
+from .. import Paths
+from ..Storage import Storage
 
 __all__ = ["format_timestamp", "parse_timestamp", "node_tuple_to_dict",
            "normalize_node", "escape_glob", "validate_folder_name",
-           "validate_storage_name", "is_windows", "get_file_size", "parse_size"]
+           "validate_storage_name", "is_windows", "get_file_size", "parse_size",
+           "DummyException"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+class DummyException(Exception):
+    """Should not be raised anywhere."""
+
+    pass
 
 def format_timestamp(timestamp):
     try:

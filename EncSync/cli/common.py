@@ -15,8 +15,8 @@ from ..Downloader import DownloadTask
 from ..Synchronizer import SyncTask
 from ..DuplicateRemover import DuplicateRemoverTask
 from ..Encryption import DecryptionError
+from ..common import recognize_path, Lockfile
 from .. import Paths
-from ..Lockfile import Lockfile
 
 __all__ = ["positive_int", "get_finished_percent", "get_failed_percent",
            "get_progress_str", "make_size_readable", "local_path", "remote_path",
@@ -134,18 +134,6 @@ def non_remote_path(arg):
         return arg
 
     raise argparse.ArgumentTypeError("%r is a remote path" % arg)
-
-def recognize_path(path, default="local"):
-    before, div, after = path.partition("://")
-
-    if not div:
-        return (before, default)
-
-    sub_map = {"disk": "yadisk"}
-
-    before = sub_map.get(before, before)
-
-    return (after, before)
 
 def prepare_remote_path(path, cwd="/"):
     return Paths.join(cwd, path)

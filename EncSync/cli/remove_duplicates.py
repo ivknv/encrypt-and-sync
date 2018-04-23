@@ -8,7 +8,7 @@ from ..DuplicateRemover import DuplicateRemover
 from ..FileList import DuplicateList
 from ..Event.Receiver import Receiver
 from .. import Paths
-from ..Lockfile import Lockfile
+from ..common import Lockfile
 
 from .authenticate_storages import authenticate_storages
 

@@ -3,15 +3,12 @@
 
 from . import Paths
 from .Encryption import pad_size, MIN_ENC_SIZE
-from .common import normalize_node
+from .common import normalize_node, DummyException
 from .Storage.Exceptions import TemporaryStorageError
 from . import PathMatch
 
 __all__ = ["BaseScannable", "DecryptedScannable", "EncryptedScannable",
            "scan_files"]
-
-class DummyException(Exception):
-    pass
 
 try:
     from yadisk.exceptions import UnauthorizedError

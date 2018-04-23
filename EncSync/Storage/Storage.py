@@ -4,7 +4,7 @@ import re
 
 from .Exceptions import UnknownStorageError
 
-from ..LazyDict import LazyDict
+from ..common import LazyDict
 
 __all__ = ["Storage"]
 
