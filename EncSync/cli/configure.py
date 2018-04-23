@@ -934,7 +934,7 @@ class EditOtherPrompter(ActionPrompter):
 
     @return_on_interrupt
     def set_temp_dir(self, prompter):
-        new_path = input("Temporary directory path [default: %s]: " % (config.temp_dir or "-",))
+        new_path = input("Temporary directory path [default: %s]: " % (self.config.temp_dir or "-",))
 
         if new_path == "-":
             new_path = None
@@ -1007,7 +1007,7 @@ def dump_config(config):
     output += "scan-ignore-unreachable %s\n\n" % (str(config.ignore_unreachable).lower(),)
 
     if config.temp_dir is not None:
-        output += "temp-dir %s\n\n" % (quaote(config.temp_dir))
+        output += "temp-dir %s\n\n" % (quote(config.temp_dir))
     
     output += "folders {"
 
