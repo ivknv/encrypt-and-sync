@@ -343,6 +343,12 @@ class TargetReceiver(Receiver):
                 ask = self.env.get("ask", False)
                 no_diffs = self.env.get("no_diffs", False)
 
+                if not target.total_children:
+                    print("[%s -> %s]: nothing to do" % (target.folder1["name"],
+                                                         target.folder2["name"]))
+                    target.status = "finished"
+                    return
+
                 if ask and not no_diffs:
                     action = ask_continue()
 
