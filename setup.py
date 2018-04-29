@@ -15,14 +15,15 @@ if os.environ.get("USE_FASTER_SCRIPTS", None):
     entry_points = {}
 
     if sys.platform.startswith("win"):
-        scripts = ["bin/encsync.bat", "bin/encsync3.bat"]
+        scripts = ["bin/eas.bat", "bin/eas3.bat"]
     else:
-        scripts = ["bin/encsync3", "bin/encsync"]
+        scripts = ["bin/eas3", "bin/eas"]
 else:
-    entry_points = {"console_scripts": ["encsync=EncSync.__main__:main"]}
+    entry_points = {"console_scripts": ["eas=eas.__main__:main",
+                                        "encrypt-and-sync=eas.__main__:main"]}
     scripts = []
 
-setup(name="EncSync",
+setup(name="eas",
       version="0.6.2",
       description="A file synchronization utility with client-side encryption support",
       author="Ivan Konovalov",

@@ -22,7 +22,7 @@ __all__ = ["positive_int", "get_finished_percent", "get_failed_percent",
            "get_progress_str", "make_size_readable", "local_path", "remote_path",
            "non_local_path", "non_remote_path", "recognize_path", "prepare_remote_path",
            "authenticate", "ask_master_password", "make_config", "show_error",
-           "create_encsync_dirs", "cleanup_filelists", "cleanup", "show_exception"]
+           "create_eas_dirs", "cleanup_filelists", "cleanup", "show_exception"]
 
 try:
     JSONDecodeError = json.JSONDecodeError
@@ -242,7 +242,7 @@ def show_exception(exc, msg="Error: "):
 
     show_error("%s%s: %s" % (msg, exc_name, exc))
 
-def create_encsync_dirs(env):
+def create_eas_dirs(env):
     paths = (env["config_dir"], env["db_dir"], env["log_dir"])
 
     for path in paths:
@@ -308,7 +308,7 @@ def cleanup(env, lock=True):
         cleanup_filelists(env, lock=False)
 
     try:
-        os.remove(os.path.join(env["db_dir"], "encsync_diffs.db"))
+        os.remove(os.path.join(env["db_dir"], "eas_diffs.db"))
     except IOError:
         pass
 

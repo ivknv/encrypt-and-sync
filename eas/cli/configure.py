@@ -945,7 +945,7 @@ class EditOtherPrompter(ActionPrompter):
         print("Temporary directory path: %s" % (self.config.temp_dir,))
  
 def configure(env):
-    print("Interactive EncSync configuration")
+    print("Interactive Encrypt & Sync configuration")
 
     ConfigurePrompter(env)()
 

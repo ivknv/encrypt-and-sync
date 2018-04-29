@@ -4,7 +4,7 @@
 import random
 import unittest
 
-from EncSync.Encryption.filename_encodings import base41_encode, base41_decode
+from eas.Encryption.filename_encodings import base41_encode, base41_decode
 
 def random_bytes(a, b):
     return bytes(random.randint(0, 255) for i in range(a, b))

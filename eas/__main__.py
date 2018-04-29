@@ -29,7 +29,7 @@ from .cli.configure import configure
 from .cli.logout import logout
 from .cli.authenticate_storages import authenticate_storages
 
-from . import __version__ as ENCSYNC_VERSION
+from . import __version__ as EAS_VERSION
 
 def any_not_none(keys, container):
     for key in keys:
@@ -67,7 +67,7 @@ def main(args=None):
     parser, ns = parse_args(args)
 
     if ns.version:
-        print("EncSync %s" % (ENCSYNC_VERSION,))
+        print("Encrypt & Sync %s" % (EAS_VERSION,))
         return 0
 
     if getattr(ns, "action", None) is None:
@@ -87,16 +87,16 @@ def main(args=None):
 
     if ns.config_dir is not None or genv.get("config_dir") is None:
         if ns.config_dir is None:
-            ns.config_dir = "~/.encsync"
+            ns.config_dir = "~/.eas"
 
         genv["config_dir"] = os.path.abspath(os.path.expanduser(ns.config_dir))
         genv["db_dir"] = os.path.join(genv["config_dir"], "databases")
         genv["log_dir"] = os.path.join(genv["config_dir"], "logs")
         genv["lockfile_path"] = os.path.join(genv["config_dir"], ".lockfile")
-        genv["config_path"] = os.path.join(genv["config_dir"], "encsync.conf")
+        genv["config_path"] = os.path.join(genv["config_dir"], "eas.conf")
         genv["enc_data_path"] = os.path.join(genv["config_dir"], "encrypted_data.json")
 
-    common.create_encsync_dirs(genv)
+    common.create_eas_dirs(genv)
 
     if not os.path.exists(genv["config_path"]):
         generate_config(genv, genv["config_path"])
@@ -190,7 +190,7 @@ def parse_args(args):
                                      prog=args[0])
 
     parser.add_argument("-V", "--version", action="store_true",
-                        help="Print EncSync version number and exit")
+                        help="Print Encrypt & Sync version number and exit")
 
     subparsers = parser.add_subparsers(title="Actions", metavar="<action>")
     global_group = parser.add_argument_group("Global options")

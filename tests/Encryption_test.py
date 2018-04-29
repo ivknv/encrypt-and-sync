@@ -4,7 +4,7 @@
 import io
 import unittest
 
-from EncSync import Encryption
+from eas import Encryption
 
 class EncryptionTestCase(unittest.TestCase):
     def test_pad_size(self):

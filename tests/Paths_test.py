@@ -4,7 +4,7 @@
 import os
 import sys
 import unittest
-from EncSync import Paths
+from eas import Paths
 
 def is_win():
     return sys.platform.startswith("win")

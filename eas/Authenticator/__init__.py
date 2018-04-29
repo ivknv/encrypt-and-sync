@@ -9,7 +9,7 @@ __all__ = ["Authenticator"]
 
 def _get_yadisk_authenticator():
     try:
-        return importlib.import_module("EncSync.Authenticator.YaDiskAuthenticator").YaDiskAuthenticator
+        return importlib.import_module("eas.Authenticator.YaDiskAuthenticator").YaDiskAuthenticator
     except ImportError as e:
         if e.name in ("yadisk", "requests"):
             raise ImportError("Missing optional dependency: %r" % (e.name,), name=e.name)
@@ -18,7 +18,7 @@ def _get_yadisk_authenticator():
 
 def _get_dropbox_authenticator():
     try:
-        return importlib.import_module("EncSync.Authenticator.DropboxAuthenticator").DropboxAuthenticator
+        return importlib.import_module("eas.Authenticator.DropboxAuthenticator").DropboxAuthenticator
     except ImportError as e:
         if e.name in ("dropbox", "requests"):
             raise ImportError("Missing optional dependency: %r" % (e.name,), name=e.name)

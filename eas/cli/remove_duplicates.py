@@ -176,7 +176,7 @@ def remove_duplicates(env, paths):
     try:
         lockfile.acquire()
     except portalocker.exceptions.AlreadyLocked:
-        common.show_error("Error: there can be only one EncSync (the lockfile is already locked)")
+        common.show_error("Error: there can be only one Encrypt & Sync (the lockfile is already locked)")
         return 1
 
     config, ret = common.make_config(env)

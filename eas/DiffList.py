@@ -10,9 +10,9 @@ __all__ = ["DiffList"]
 class DiffList(object):
     def __init__(self, directory=None, *args, **kwargs):
         if directory is None:
-            path = "encsync_diffs.db"
+            path = "eas_diffs.db"
         else:
-            path = os.path.join(directory, "encsync_diffs.db")
+            path = os.path.join(directory, "eas_diffs.db")
 
         kwargs.setdefault("isolation_level", None)
 
