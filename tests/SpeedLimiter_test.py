@@ -4,7 +4,7 @@
 import time
 import unittest
 
-from eas.SpeedLimiter import SpeedLimiter
+from eas.common import SpeedLimiter
 
 class SpeedLimiterTestCase(unittest.TestCase):
     def test_limit(self):
