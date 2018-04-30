@@ -80,7 +80,7 @@ def main(args=None):
     
     if ns.master_password is None and not ns.force_ask_password and ns.action != "password_prompt":
         try:
-            genv["master_password"] = os.environ["ENCSYNC_MASTER_PASSWORD"]
+            genv["master_password"] = os.environ["EAS_MASTER_PASSWORD"]
         except KeyError:
             pass
     else:
