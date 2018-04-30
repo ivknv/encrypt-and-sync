@@ -17,8 +17,9 @@ class RemoveDuplicatesCommand(Command):
         parser.add_argument("paths", nargs="*", help="Paths to remove duplicates from")
         parser.add_argument("-a", "--all", action="store_true",
                             help="Remove duplicates from all folders")
-        parser.add_argument("--ask", action="store_true",
-                            help="Ask for user's action in certain cases")
+        parser.add_argument("--ask", action="store_true", help="(deprecated)")
+        parser.add_argument("--no-ask", action="store_true",
+                            help="Don't ask for any user input")
         parser.add_argument("--choose-targets", action="store_true",
                             help="Choose which folders to remove duplicates for")
         parser.add_argument("--no-journal", action="store_true",
@@ -44,7 +45,7 @@ class RemoveDuplicatesCommand(Command):
         env = Environment(console.env)
 
         env["all"] = ns.all
-        env["ask"] = ns.ask
+        env["ask"] = not ns.no_ask
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
         env["no_progress"] = ns.no_progress

@@ -76,6 +76,7 @@ def main(args=None):
 
     # Top-level environment
     genv = Environment()
+    genv["force_ask_password"] = ns.force_ask_password
     
     if ns.master_password is None and not ns.force_ask_password and ns.action != "password_prompt":
         try:
@@ -108,6 +109,8 @@ def main(args=None):
 
     env = Environment(genv)
 
+    env["ask"] = not getattr(ns, "no_ask", False)
+
     if ns.action == "sync":
         env["no_check"] = not ns.integrity_check
         env["no_scan"] = ns.no_scan
@@ -122,16 +125,12 @@ def main(args=None):
 
     if ns.action in ("scan", "sync", "rmdup"):
         env["all"] = ns.all
-        env["ask"] = ns.ask
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
 
     if ns.action in ("scan", "sync", "rmdup", "download", "login", "logout",
                      "console", "execute", "execute_script"):
         env["no_auth_check"] = ns.no_auth_check
-
-    if ns.action == "login":
-        env["ask"] = not ns.no_ask
 
     actions = {"scan": lambda: do_scan(env, ns.folders),
                "sync": lambda: do_sync(env, ns.folders),
@@ -205,8 +204,9 @@ def parse_args(args):
     scan_parser.add_argument("folders", nargs="*", help="List of folders to scan")
     scan_parser.add_argument("-a", "--all", action="store_true",
                              help="Scan all folders")
-    scan_parser.add_argument("--ask", action="store_true",
-                             help="Ask for user's action in certain cases")
+    scan_parser.add_argument("--ask", action="store_true", help="(deprecated)")
+    scan_parser.add_argument("--no-ask", action="store_true",
+                             help="Don't ask for any user input")
     scan_parser.add_argument("--choose-targets", action="store_true",
                              help="Choose which folders to scan")
     scan_parser.add_argument("--no-journal", action="store_true",
@@ -233,8 +233,9 @@ def parse_args(args):
                              help="Don't show the list of differences")
     sync_parser.add_argument("-a", "--all", action="store_true",
                              help="Sync all targets")
-    sync_parser.add_argument("--ask", action="store_true",
-                             help="Ask for user's action in certain cases")
+    sync_parser.add_argument("--ask", action="store_true", help="(deprecated)")
+    sync_parser.add_argument("--no-ask", action="store_true",
+                             help="Don't ask for any user input")
     sync_parser.add_argument("--choose-targets", action="store_true",
                              help="Choose which targets to sync")
     sync_parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
@@ -254,6 +255,8 @@ def parse_args(args):
     download_parser.add_argument("paths", nargs="+", help="List of paths to download")
     download_parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                                  help="Number of workers to use")
+    download_parser.add_argument("--no-ask", action="store_true",
+                                 help="Don't ask for any user input")
     download_parser.add_argument("--no-auth-check", action="store_true",
                                  help="Disable the authentication check")
     download_parser.add_argument("--no-progress", action="store_true",
@@ -265,8 +268,9 @@ def parse_args(args):
     rmdup_parser.add_argument("paths", nargs="*", help="Paths to remove duplicates from")
     rmdup_parser.add_argument("-a", "--all", action="store_true",
                               help="Remove duplicates from all folders")
-    rmdup_parser.add_argument("--ask", action="store_true",
-                              help="Ask for user's action in certain cases")
+    rmdup_parser.add_argument("--ask", action="store_true", help="(deprecated)")
+    rmdup_parser.add_argument("--no-ask", action="store_true",
+                             help="Don't ask for any user input")
     rmdup_parser.add_argument("--choose-targets", action="store_true",
                               help="Choose which folders to remove duplicates for")
     rmdup_parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
@@ -281,10 +285,14 @@ def parse_args(args):
     
     encrypt_parser = subparsers.add_parser("encrypt", help="Encrypt files")
     encrypt_parser.add_argument("paths", nargs="+", help="List of files to encrypt")
+    encrypt_parser.add_argument("--no-ask", action="store_true",
+                                help="Don't ask for any user input")
     encrypt_parser.set_defaults(action="encrypt")
 
     decrypt_parser = subparsers.add_parser("decrypt", help="Decrypt files")
     decrypt_parser.add_argument("paths", nargs="+", help="List of files to decrypt")
+    decrypt_parser.add_argument("--no-ask", action="store_true",
+                                help="Don't ask for any user input")
     decrypt_parser.set_defaults(action="decrypt")
     
     encrypt_path_parser = subparsers.add_parser("encrypt-path",
@@ -296,6 +304,8 @@ def parse_args(args):
                                      help="Filename encoding to use")
     encrypt_path_parser.add_argument("-p", "--prefix", default="/",
                                      help="Path prefix to keep unencrypted")
+    encrypt_path_parser.add_argument("--no-ask", action="store_true",
+                                     help="Don't ask for any user input")
     encrypt_path_parser.set_defaults(action="encrypt_path")
 
     decrypt_path_parser = subparsers.add_parser("decrypt-path",
@@ -307,6 +317,8 @@ def parse_args(args):
                                      help="Filename encoding to use")
     decrypt_path_parser.add_argument("-p", "--prefix", default="/",
                                      help="Path prefix to keep as is")
+    decrypt_path_parser.add_argument("--no-ask", action="store_true",
+                                     help="Don't ask for any user input")
     decrypt_path_parser.set_defaults(action="decrypt_path")
 
     duplicates_parser = subparsers.add_parser("duplicates", help="Show duplicates")
@@ -317,6 +329,8 @@ def parse_args(args):
     console_parser = subparsers.add_parser("console", help="Run console")
     console_parser.add_argument("--no-auth-check", action="store_true",
                                 help="Disable the authentication check")
+    console_parser.add_argument("--no-ask", action="store_true",
+                                help="Don't ask for any user input")
     console_parser.set_defaults(action="console")
     
     make_config_parser = subparsers.add_parser("make-config",
@@ -342,6 +356,8 @@ def parse_args(args):
     set_key_parser.set_defaults(action="set_key")
 
     get_key_parser = subparsers.add_parser("get-key", help="Get encryption key")
+    get_key_parser.add_argument("--no-ask", action="store_true",
+                             help="Don't ask for any user input")
     get_key_parser.set_defaults(action="get_key")
 
     set_master_password_parser = subparsers.add_parser("set-master-password",

@@ -20,6 +20,8 @@ class DownloadCommand(Command):
                             help="Don't show intermediate progress")
         parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                             help="Number of workers to use")
+        parser.add_argument("--no-ask", action="store_true",
+                            help="Don't ask for any user input")
 
         ns = parser.parse_args(self.args[1:])
         paths = []
@@ -37,6 +39,7 @@ class DownloadCommand(Command):
         env = Environment(console.env)
 
         env["no_progress"] = ns.no_progress
+        env["ask"] = not ns.no_ask
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

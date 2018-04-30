@@ -18,7 +18,9 @@ class ScanCommand(Command):
         parser.add_argument("-a", "--all", action="store_true",
                             help="Scan all folders")
         parser.add_argument("--ask", action="store_true",
-                            help="Ask for user's action in certain cases")
+                            help="(deprecated)")
+        parser.add_argument("--no-ask", action="store_true",
+                            help="Don't ask for any user input")
         parser.add_argument("--choose-targets", action="store_true",
                             help="Choose which folders to scan")
         parser.add_argument("--no-journal", action="store_true",
@@ -33,7 +35,7 @@ class ScanCommand(Command):
         env = Environment(console.env)
 
         env["all"] = ns.all
-        env["ask"] = ns.ask
+        env["ask"] = not ns.no_ask
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
         env["no_progress"] = ns.no_progress

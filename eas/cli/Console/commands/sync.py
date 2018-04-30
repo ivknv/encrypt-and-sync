@@ -20,7 +20,9 @@ class SyncCommand(Command):
         parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                             help="Number of workers to use")
         parser.add_argument("--ask", action="store_true",
-                            help="Ask for user's action in certain cases")
+                            help="(deprecated)")
+        parser.add_argument("--no-ask", action="store_true",
+                            help="Don't ask for any user input")
         parser.add_argument("--choose-targets", action="store_true",
                             help="Choose which targets to sync")
         parser.add_argument("--no-scan", action="store_true", help="Disable scan")
@@ -39,7 +41,7 @@ class SyncCommand(Command):
 
         env = Environment(console.env)
         env["all"] = ns.all
-        env["ask"] = ns.ask
+        env["ask"] = not ns.no_ask
         env["no_check"] = not ns.integrity_check
         env["no_scan"] = ns.no_scan
         env["no_diffs"] = ns.no_diffs

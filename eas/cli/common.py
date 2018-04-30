@@ -148,10 +148,14 @@ def authenticate(env, enc_data_path):
 
     master_password = env.get("master_password")
 
-    if master_password is None:
+    if master_password is None and (env.get("ask", True) or env.get("force_ask_password")):
         master_password = ask_master_password()
         if master_password is None:
             return None, 130
+
+    if master_password is None:
+        show_error("Error: no master password was provided")
+        return None, 1
 
     while True:
         key = Config.encode_key(master_password)
