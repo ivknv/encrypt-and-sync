@@ -4,7 +4,7 @@
 from .BaseFileList import BaseFileList
 from .. import Paths
 from ..common import node_tuple_to_dict, format_timestamp
-from ..common import escape_glob, validate_folder_name, validate_storage_name
+from ..common import escape_glob, validate_folder_name
 
 __all__ = ["FileList"]
 

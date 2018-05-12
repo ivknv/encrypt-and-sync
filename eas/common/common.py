@@ -6,12 +6,11 @@ import os
 import sys
 
 from .. import Paths
-from ..Storage import Storage
 
 __all__ = ["format_timestamp", "parse_timestamp", "node_tuple_to_dict",
            "normalize_node", "escape_glob", "validate_folder_name",
-           "validate_storage_name", "is_windows", "get_file_size", "parse_size",
-           "recognize_path", "DummyException"]
+           "is_windows", "get_file_size", "parse_size", "recognize_path",
+           "DummyException"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -55,9 +54,6 @@ def escape_glob(s):
 
 def validate_folder_name(name):
     return all(c.isalnum() or c in "_-+." for c in name)
-
-def validate_storage_name(name):
-    return name in Storage.registered_storages
 
 def is_windows():
     return sys.platform.startswith("win")

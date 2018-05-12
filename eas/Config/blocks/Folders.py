@@ -6,7 +6,8 @@ import os
 from ...EncScript.Exceptions import EvaluationError
 from ...EncScript.Namespace import Namespace
 from ...EncScript import Command
-from ...common import recognize_path, validate_folder_name, validate_storage_name
+from ...common import recognize_path, validate_folder_name
+from ...Storage import Storage
 from ... import Paths
 
 from ..ConfigBlock import ConfigBlock
@@ -53,7 +54,7 @@ class FolderBlock(ConfigBlock):
 
         path, path_type = recognize_path(path)
 
-        if not validate_storage_name(path_type):
+        if path_type not in Storage.registered_storages:
             raise EvaluationError(self, "Invalid storage type: %r" % (path_type,))
 
         if path_type == "local":

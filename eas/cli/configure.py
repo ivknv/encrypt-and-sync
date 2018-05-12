@@ -4,10 +4,11 @@
 import shlex
 
 from .common import make_config, show_error, recognize_path, make_size_readable
-from ..common import validate_folder_name, validate_storage_name, parse_size
+from ..common import validate_folder_name, parse_size
 from ..constants import FILENAME_ENCODINGS
 from .Prompter import LoopedPrompter
 from .parse_choice import interpret_choice
+from ..Storage import Storage
 
 from .set_master_password import set_master_password
 from .set_key import set_key
@@ -106,7 +107,7 @@ class ChangePathPrompter(LoopedPrompter):
 
         path, path_type = recognize_path(self.response)
 
-        if not validate_storage_name(path_type):
+        if path_type not in Storage.registered_storages:
             show_error("Unknown storage: %r" % (path_type,))
         else:
             self.quit = True
@@ -115,7 +116,7 @@ class PathPrompter(LoopedPrompter):
     def postinput(self):
         path, path_type = recognize_path(self.response)
 
-        if not validate_storage_name(path_type):
+        if path_type not in Storage.registered_storages:
             show_error("Unknown storage: %r" % (path_type,))
         elif not path:
             show_error("Path must not be empty")
