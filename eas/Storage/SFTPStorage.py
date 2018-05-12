@@ -250,7 +250,7 @@ class SFTPStorage(Storage):
             n_retries = self.config.n_retries
 
         host_address, path = self.split_path(path)
-        hostname, sep, filename = path.partition("/")
+        hostname, sep, filename = path.rpartition("/")
 
         def attempt():
             connection = self.get_connection(host_address)
