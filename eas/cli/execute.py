@@ -3,7 +3,7 @@
 
 from .common import make_config, show_error
 
-from .Console import Console
+from .console import Console
 
 __all__ = ["execute", "execute_script"]
 

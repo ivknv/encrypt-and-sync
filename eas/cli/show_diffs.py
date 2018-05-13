@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from . import common
-from ..FileComparator import compare_lists
+from ..file_comparator import compare_lists
 
 __all__ = ["show_diffs"]
 

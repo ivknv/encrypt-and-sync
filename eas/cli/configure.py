@@ -6,9 +6,9 @@ import shlex
 from .common import make_config, show_error, recognize_path, make_size_readable
 from ..common import validate_folder_name, parse_size
 from ..constants import FILENAME_ENCODINGS
-from .Prompter import LoopedPrompter
+from .prompter import LoopedPrompter
 from .parse_choice import interpret_choice
-from ..Storage import Storage
+from ..storage import Storage
 
 from .set_master_password import set_master_password
 from .set_key import set_key

@@ -3,7 +3,7 @@
 
 import os
 from .common import ask_master_password, show_error
-from ..Config import Config
+from ..config import Config
 
 __all__ = ["generate_encrypted_data"]
 

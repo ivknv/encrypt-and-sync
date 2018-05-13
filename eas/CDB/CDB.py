@@ -5,7 +5,7 @@ import s3m
 
 import time
 
-from .Logging import logger
+from .logging import logger
 
 __all__ = ["connect", "Connection"]
 

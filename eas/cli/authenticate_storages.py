@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from ..Authenticator import Authenticator
-from ..Authenticator.Exceptions import AuthenticatorError, UnknownAuthenticatorError
+from ..authenticator import Authenticator
+from ..authenticator.exceptions import AuthenticatorError, UnknownAuthenticatorError
 
 from .common import show_error, make_config
 

@@ -8,13 +8,13 @@ import json
 import sys
 import os
 
-from ..Config import Config
-from ..Config.utils import check_master_key
-from ..Config.Exceptions import InvalidConfigError, InvalidEncryptedDataError
-from ..Downloader import DownloadTask
-from ..Synchronizer import SyncTask
-from ..DuplicateRemover import DuplicateRemoverTask
-from ..Encryption import DecryptionError
+from ..config import Config
+from ..config.utils import check_master_key
+from ..config.exceptions import InvalidConfigError, InvalidEncryptedDataError
+from ..downloader import DownloadTask
+from ..synchronizer import SyncTask
+from ..duplicate_remover import DuplicateRemoverTask
+from ..encryption import DecryptionError
 from ..common import recognize_path, Lockfile
 from .. import Paths
 

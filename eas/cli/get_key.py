@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ..Config import Config
-from ..Config.Exceptions import InvalidEncryptedDataError
+from ..config import Config
+from ..config.exceptions import InvalidEncryptedDataError
 from .common import authenticate, show_error
 
 __all__ = ["get_key"]

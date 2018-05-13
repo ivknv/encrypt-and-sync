@@ -8,17 +8,17 @@ from .authenticate_storages import authenticate_storages
 from .common import show_error, get_progress_str
 from .scan import ScannerReceiver
 from .remove_duplicates import DuplicateRemoverReceiver
-from .Pager import Pager
+from .pager import Pager
 
-from ..Synchronizer import Synchronizer
-from ..Scanner import Scanner
-from ..DuplicateRemover import DuplicateRemover
-from ..Event.Receiver import Receiver
-from ..FileList import DuplicateList
-from ..DiffList import DiffList
-from .SignalManagers import GenericSignalManager
+from ..synchronizer import Synchronizer
+from ..scanner import Scanner
+from ..duplicate_remover import DuplicateRemover
+from ..event.receiver import Receiver
+from ..filelist import DuplicateList
+from ..difflist import DiffList
+from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
-from ..Synchronizer.Exceptions import TooLongFilenameError
+from ..synchronizer.exceptions import TooLongFilenameError
 from ..common import Lockfile
 
 __all__ = ["do_sync", "SynchronizerReceiver"]

@@ -5,10 +5,10 @@ import time
 
 import portalocker
 
-from ..Scanner import Scanner
-from ..Event.Receiver import Receiver
-from ..FileList import FileList, DuplicateList
-from .SignalManagers import GenericSignalManager
+from ..scanner import Scanner
+from ..event.receiver import Receiver
+from ..filelist import FileList, DuplicateList
+from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
 from .authenticate_storages import authenticate_storages
 from ..common import Lockfile

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ..Config import Config
-from ..Config.Exceptions import InvalidEncryptedDataError
+from ..config import Config
+from ..config.exceptions import InvalidEncryptedDataError
 from .common import ask_master_password, authenticate, show_error
 
 __all__ = ["set_key"]

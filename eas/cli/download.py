@@ -6,15 +6,15 @@ import os
 import portalocker
 
 from .. import Paths
-from ..Downloader import Downloader
-from ..Downloader.Exceptions import NotFoundInDBError
-from ..Event.Receiver import Receiver
+from ..downloader import Downloader
+from ..downloader.exceptions import NotFoundInDBError
+from ..event.receiver import Receiver
 from ..common import Lockfile
 
 from . import common
 from .authenticate_storages import authenticate_storages
 from .common import show_error, get_progress_str, make_size_readable
-from .SignalManagers import GenericSignalManager
+from .generic_signal_manager import GenericSignalManager
 
 def print_target_totals(target):
     n_finished = target.progress["finished"] + target.progress["skipped"]

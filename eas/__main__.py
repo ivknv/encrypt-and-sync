@@ -8,7 +8,7 @@ import sys
 import portalocker
 
 from .cli import common
-from .cli.Environment import Environment
+from .cli.environment import Environment
 from .cli.scan import do_scan
 from .cli.show_diffs import show_diffs
 from .cli.sync import do_sync
@@ -19,7 +19,7 @@ from .cli.decrypt import decrypt, decrypt_path
 from .cli.show_duplicates import show_duplicates
 from .cli.generate_config import generate_config
 from .cli.generate_encrypted_data import generate_encrypted_data
-from .cli.Console import run_console
+from .cli.console import run_console
 from .cli.execute import execute, execute_script
 from .cli.set_key import set_key
 from .cli.get_key import get_key
@@ -40,14 +40,14 @@ def any_not_none(keys, container):
 
 def setup_logging(env):
     import logging
-    from . import Downloader, Synchronizer, Scanner, DuplicateRemover, CDB
+    from . import downloader, synchronizer, scanner, duplicate_remover, CDB
 
-    loggers = ((Downloader.Logging.logger, "downloader.log"),
-               (Synchronizer.Logging.logger, "synchronizer.log"),
-               (Synchronizer.Logging.fail_logger, "synchronizer-fails.log"),
-               (Scanner.Logging.logger, "scanner.log"),
-               (DuplicateRemover.Logging.logger, "duplicate-remover.log"),
-               (CDB.Logging.logger, "cdb.log"))
+    loggers = ((downloader.logging.logger, "downloader.log"),
+               (synchronizer.logging.logger, "synchronizer.log"),
+               (synchronizer.logging.fail_logger, "synchronizer-fails.log"),
+               (scanner.logging.logger, "scanner.log"),
+               (duplicate_remover.logging.logger, "duplicate-remover.log"),
+               (CDB.logging.logger, "cdb.log"))
 
     for logger, filename in loggers:
         formatter = logging.Formatter("%(asctime)s - %(name)s-Thread-%(thread)d: %(message)s")

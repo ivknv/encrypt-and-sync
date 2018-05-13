@@ -4,16 +4,16 @@ import os
 
 import portalocker
 
-from ..DuplicateRemover import DuplicateRemover
-from ..FileList import DuplicateList
-from ..Event.Receiver import Receiver
+from ..duplicate_remover import DuplicateRemover
+from ..filelist import DuplicateList
+from ..event.receiver import Receiver
 from .. import Paths
 from ..common import Lockfile
 
 from .authenticate_storages import authenticate_storages
 
 from . import common
-from .SignalManagers import GenericSignalManager
+from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
 
 __all__ = ["remove_duplicates", "DuplicateRemoverReceiver"]

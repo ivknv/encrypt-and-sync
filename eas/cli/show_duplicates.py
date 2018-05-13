@@ -4,7 +4,7 @@
 import sqlite3
 
 from . import common
-from ..FileList import DuplicateList
+from ..filelist import DuplicateList
 
 __all__ = ["show_duplicates"]
 
