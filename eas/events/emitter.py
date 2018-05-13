@@ -6,16 +6,9 @@ import threading
 __all__ = ["Emitter"]
 
 class Emitter(object):
-    total_count = 0
-
     def __init__(self):
-        Emitter.total_count += 1
-
         self._receivers = []
         self._receivers_lock = threading.RLock()
-
-    def __del__(self):
-        Emitter.total_count -= 1
 
     def add_receiver(self, receiver):
         with self._receivers_lock:
