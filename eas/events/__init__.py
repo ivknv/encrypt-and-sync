@@ -3,7 +3,7 @@
 
 __all__ = ["Event", "Emitter", "Receiver", "exceptions"]
 
-from .events import Event
+from .event import Event
 from .emitter import Emitter
 from .receiver import Receiver
 from . import exceptions
