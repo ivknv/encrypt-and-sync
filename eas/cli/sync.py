@@ -13,7 +13,7 @@ from .pager import Pager
 from ..synchronizer import Synchronizer
 from ..scanner import Scanner
 from ..duplicate_remover import DuplicateRemover
-from ..event.receiver import Receiver
+from ..events import Receiver
 from ..filelist import DuplicateList
 from ..difflist import DiffList
 from .generic_signal_manager import GenericSignalManager

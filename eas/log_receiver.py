@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .event.receiver import Receiver
+from .events import Receiver
 
 __all__ = ["LogReceiver"]
 

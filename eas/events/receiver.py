@@ -5,7 +5,7 @@ import threading
 import traceback
 import weakref
 
-from .event import Event
+from .events import Event
 
 __all__ = ["Receiver"]
 

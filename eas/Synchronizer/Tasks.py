@@ -5,7 +5,7 @@ import weakref
 
 from .logging import TaskFailLogReceiver
 
-from ..event.receiver import Receiver
+from ..events import Receiver
 from ..task import Task
 from ..encryption import pad_size, MIN_ENC_SIZE
 from ..common import get_file_size

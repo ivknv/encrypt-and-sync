@@ -6,7 +6,7 @@ import portalocker
 
 from ..duplicate_remover import DuplicateRemover
 from ..filelist import DuplicateList
-from ..event.receiver import Receiver
+from ..events import Receiver
 from .. import Paths
 from ..common import Lockfile
 

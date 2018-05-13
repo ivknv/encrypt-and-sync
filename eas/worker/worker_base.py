@@ -4,7 +4,7 @@
 import sys
 import time
 
-from ..event.emitter import Emitter
+from ..events import Emitter
 
 if sys.platform.startswith("win"):
     DEFAULT_JOIN_INTERVAL = 1

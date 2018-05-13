@@ -4,7 +4,7 @@
 import weakref
 
 from ..task import Task
-from ..event.receiver import Receiver
+from ..events import Receiver
 from ..common import get_file_size
 from ..storage.exceptions import ControllerInterrupt
 from .. import Paths

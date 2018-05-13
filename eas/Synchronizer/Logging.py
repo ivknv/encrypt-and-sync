@@ -3,7 +3,7 @@
 
 import logging
 
-from ..event.receiver import Receiver
+from ..events import Receiver
 
 __all__ = ["logger", "fail_logger", "TaskFailLogReceiver", "TargetFailLogReceiver",
            "WorkerFailLogReceiver", "SynchronizerFailLogReceiver"]

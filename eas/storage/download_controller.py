@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..event.emitter import Emitter
+from ..events import Emitter
 
 __all__ = ["DownloadController"]
 

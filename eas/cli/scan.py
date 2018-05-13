@@ -6,7 +6,7 @@ import time
 import portalocker
 
 from ..scanner import Scanner
-from ..event.receiver import Receiver
+from ..events import Receiver
 from ..filelist import FileList, DuplicateList
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
