@@ -27,10 +27,10 @@ def print_target_totals(target):
     dst_path = "%s://%s" % (target.dst_storage_name, dst_path)
     src_path = "%s://%s" % (target.src_storage_name, src_path)
 
-    print("[%s <- %s]: %d tasks in total" % (dst_path, src_path, n_total))
-    print("[%s <- %s]: %d tasks successful" % (dst_path, src_path, n_finished))
-    print("[%s <- %s]: %d tasks failed" % (dst_path, src_path, n_failed))
-    print("[%s <- %s]: %s downloaded" % (dst_path, src_path, downloaded))
+    print("[%s -> %s]: %d tasks in total" % (src_path, dst_path, n_total))
+    print("[%s -> %s]: %d tasks successful" % (src_path, dst_path, n_finished))
+    print("[%s -> %s]: %d tasks failed" % (src_path, dst_path, n_failed))
+    print("[%s -> %s]: %s downloaded" % (src_path, dst_path, downloaded))
 
 class DownloaderReceiver(Receiver):
     def __init__(self, env, downloader):
@@ -41,7 +41,7 @@ class DownloaderReceiver(Receiver):
     def on_next_target(self, event, target):
         src_path = "%s://%s" % (target.src_storage_name, target.src_path)
         dst_path = "%s://%s" % (target.dst_storage_name, target.dst_path)
-        print("Next target: [%s <- %s]" % (dst_path, src_path))
+        print("Next target: [%s -> %s]" % (src_path, dst_path))
 
     def on_error(self, event, exc):
         common.show_exception(exc)
@@ -70,7 +70,7 @@ class TargetReceiver(Receiver):
             dst_path = "%s://%s" % (target.dst_storage_name, target.dst_path)
             src_path = "%s://%s" % (target.src_storage_name, target.src_path)
 
-            print("[%s <- %s]: %s" % (dst_path, src_path, status))
+            print("[%s -> %s]: %s" % (src_path, dst_path, status))
         else:
             target.pool.add_receiver(self.pool_worker)
 
