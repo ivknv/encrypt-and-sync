@@ -133,6 +133,19 @@ Usage:
    read-timeout 15
    read-timeout 25
 
+-----------------------
+scan-ignore-unreachable
+-----------------------
+
+Makes the scanner ignore unreachable files (e.g. encoding errors, denied permission, etc.).
+:code:`false` is the default value.
+
+Usage:
+
+.. code:: bash
+
+   scan-ignore-unreachable [true | false]
+
 --------
 temp-dir
 --------
