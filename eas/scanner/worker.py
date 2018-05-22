@@ -1,34 +1,32 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from .logging import logger
-from ..worker import Waiter
+from ..worker import PoolWaiterThread
 from ..log_receiver import LogReceiver
 
 __all__ = ["ScanWorker"]
 
-class ScanWorker(Waiter):
+class ScanWorker(PoolWaiterThread):
     """
         Events: next_node, error
     """
 
-    def __init__(self, parent, target):
-        Waiter.__init__(self, parent)
+    def __init__(self, scanner):
+        self._stopped = False
 
-        self.cur_target = target
+        PoolWaiterThread.__init__(self)
+
         self.cur_task = None
-
-        self.flist = target.shared_flist
-        self.duplist = target.shared_duplist
+        self.scanner = scanner
 
         self.add_receiver(LogReceiver(logger))
 
     def get_info(self):
-        if self.cur_target is None:
+        if self.cur_task is None:
             return {}
 
         try:
-            storage_name = self.cur_target.storage.name
+            storage_name = self.cur_task.parent.storage.name
         except AttributeError:
             return
 
@@ -40,17 +38,16 @@ class ScanWorker(Waiter):
         return {"operation": "%s scan" % (storage_name,),
                 "path": cur_path}
 
-    def get_next_task(self):
-        return self.cur_target.get_next_task()
+    @property
+    def stopped(self):
+        return self._stopped or self.scanner.stopped
 
-    def add_task(self, task):
-        self.cur_target.add_task(task)
-
-    def stop_condition(self):
-        return self.stopped or self.parent.stopped
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def stop(self):
-        Waiter.stop(self)
+        super().stop()
 
         # Intentional assignment for thread safety
         task = self.cur_task
@@ -60,27 +57,25 @@ class ScanWorker(Waiter):
 
     def handle_task(self, task):
         try:
-            if self.stop_condition():
+            if self.stopped:
                 return False
 
             self.cur_task = task
 
-            handle_more = task.complete(self)
+            handle_more = task.run() is not False
 
             self.cur_task = None
 
-            if self.stop_condition():
+            if self.stopped:
                 return False
 
             return handle_more
         except Exception as e:
             self.emit_event("error", e)
             task.status = "failed"
-            self.cur_target.status = "failed"
+            task.parent.status = "failed"
             self.stop()
 
             return False
-
-    def after_work(self):
-        self.cur_task = None
-        self.cur_target = None
+        finally:
+            self.cur_task = None

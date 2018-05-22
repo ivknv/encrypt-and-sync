@@ -1,4 +1,6 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .scanner import *
+__all__ = ["Scanner", "ScanTarget"]
+
+from .scanner import Scanner
+from .target import ScanTarget

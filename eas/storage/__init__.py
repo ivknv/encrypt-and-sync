@@ -26,7 +26,7 @@ def _get_dropbox_storage():
 
 def _get_sftp_storage():
     try:
-        return importlib.import_module("eas.Storage.sftp_storage").SFTPStorage
+        return importlib.import_module("eas.storage.sftp_storage").SFTPStorage
     except ImportError as e:
         if e.name in ("pysftp", "paramiko"):
             raise ImportError("Missing optional dependency: %r" % (e.name,), name=e.name)

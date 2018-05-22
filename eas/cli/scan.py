@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import time
 
 import portalocker
 
-from ..scanner import Scanner
+from ..scanner import Scanner, ScanTarget
 from ..events import Receiver
 from ..filelist import FileList, DuplicateList
 from .generic_signal_manager import GenericSignalManager
@@ -78,36 +79,39 @@ class ScannerReceiver(Receiver):
     def __init__(self, env, scanner):
         Receiver.__init__(self)
 
-        self.worker_receiver = WorkerReceiver(env)
         self.target_receiver = TargetReceiver(env)
-
-    def on_started(self, event):
-        print("Scanner: started")
-
-    def on_finished(self, event):
-        print("Scanner: finished")
 
     def on_next_target(self, event, target):
         target.add_receiver(self.target_receiver)
 
         print("Performing %s scan: [%s]" % (target.type, target.name))
 
-    def on_worker_starting(self, event, worker):
-        worker.add_receiver(self.worker_receiver)
-
     def on_error(self, event, exc):
         common.show_exception(exc)
+
+class PoolReceiver(Receiver):
+    def __init__(self, env):
+        Receiver.__init__(self)
+
+        self.env = env
+        self.worker_receiver = WorkerReceiver(env)
+
+    def on_spawn(self, event, worker):
+        worker.add_receiver(self.worker_receiver)
 
 class TargetReceiver(Receiver):
     def __init__(self, env):
         Receiver.__init__(self)
 
         self.env = env
+        self.pool_receiver = PoolReceiver(env)
 
     def on_status_changed(self, event):
         target = event["emitter"]
 
-        if target.status != "pending":
+        if target.status == "pending":
+            target.pool.add_receiver(self.pool_receiver)
+        else:
             print("[%s]: %s scan %s" % (target.name, target.type, target.status))
 
         if target.status == "finished":
@@ -169,14 +173,17 @@ def do_scan(env, names):
 
     no_journal = env.get("no_journal", False)
 
-    scanner = Scanner(env["config"], env["db_dir"], n_workers,
+    scanner = Scanner(env["config"], env["db_dir"],
                       enable_journal=not no_journal)
 
     targets = []
 
     for name in names:
         try:
-            targets.append(scanner.make_target(name))
+            target = ScanTarget(scanner, name)
+            target.n_worker = n_workers
+
+            targets.append(target)
         except ValueError:
             show_error("Error: unknown folder %r" % (name,))
             return 1
@@ -201,8 +208,17 @@ def do_scan(env, names):
         return ret
 
     with GenericSignalManager(scanner):
-        scanner.start()
-        scanner.join()
+        print("Scanner: starting")
+
+        # This contraption is needed to silence a SystemExit traceback
+        # The traceback would be printed otherwise due to use of a finally clause
+        try:
+            try:
+                scanner.work()
+            finally:
+                print("Scanner: finished")
+        except SystemExit as e:
+            sys.exit(e.code)
 
     if any(i.status not in ("finished", "skipped") for i in targets):
         return 1

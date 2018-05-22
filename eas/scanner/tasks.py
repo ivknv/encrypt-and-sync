@@ -1,11 +1,11 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from functools import reduce
 
 from ..task import Task
-from .. import Paths
 from ..scannable import scan_files
+from ..worker import get_current_worker
+from .. import Paths
 
 __all__ = ["ScanTask", "DecryptedScanTask", "EncryptedScanTask",
            "AsyncDecryptedScanTask", "AsyncDecryptedScanTask"]
@@ -16,6 +16,8 @@ class ScanTask(Task):
     """
 
     def __init__(self, target, scannable=None):
+        self._stopped = False
+
         Task.__init__(self)
 
         self.parent = target
@@ -26,8 +28,9 @@ class ScanTask(Task):
         self.config = target.config
         self.cur_path = None
 
-    def stop_condition(self, worker):
-        if self.stopped or worker.stopped:
+    @property
+    def stopped(self):
+        if self._stopped or self.parent.stopped:
             return True
 
         if self.status not in (None, "pending"):
@@ -35,10 +38,16 @@ class ScanTask(Task):
 
         return self.parent.status not in (None, "pending")
 
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
+
 class DecryptedScanTask(ScanTask):
-    def complete(self, worker):
-        if self.stop_condition(worker):
+    def complete(self):
+        if self.stopped:
             return False
+
+        worker = get_current_worker()
 
         target = self.parent
 
@@ -53,7 +62,7 @@ class DecryptedScanTask(ScanTask):
 
             worker.emit_event("next_node", s)
 
-            if self.stop_condition(worker):
+            if self.stopped:
                 return False
 
             if n["type"] is not None:
@@ -68,9 +77,11 @@ class DecryptedScanTask(ScanTask):
         return False
 
 class EncryptedScanTask(ScanTask):
-    def complete(self, worker):
-        if self.stop_condition(worker):
+    def complete(self):
+        if self.stopped:
             return False
+
+        worker = get_current_worker()
 
         target = self.parent
         to_scan = [self.scannable]
@@ -79,7 +90,7 @@ class EncryptedScanTask(ScanTask):
 
         allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
 
-        while not self.stop_condition(worker):
+        while not self.stopped:
             try:
                 scannable = to_scan.pop(0)
             except IndexError:
@@ -93,7 +104,7 @@ class EncryptedScanTask(ScanTask):
             scannables = {}
 
             for s in scan_result["f"] + scan_result["d"]:
-                if self.stop_condition(worker):
+                if self.stopped:
                     return False
 
                 worker.emit_event("next_node", s)
@@ -125,13 +136,13 @@ class EncryptedScanTask(ScanTask):
 
                     continue
 
-                if self.stop_condition(worker):
+                if self.stopped:
                     return False
 
                 if original.type == "d":
                     to_scan.append(original)
 
-        if self.stop_condition(worker):
+        if self.stopped:
             return False
 
         self.status = "finished"
@@ -139,9 +150,11 @@ class EncryptedScanTask(ScanTask):
         return True
 
 class AsyncDecryptedScanTask(ScanTask):
-    def complete(self, worker):
-        if self.stop_condition(worker):
+    def complete(self):
+        if self.stopped:
             return False
+
+        worker = get_current_worker()
 
         target = self.parent
         scannable = self.scannable
@@ -167,11 +180,11 @@ class AsyncDecryptedScanTask(ScanTask):
 
                 continue
 
-            if self.stop_condition(worker):
+            if self.stopped:
                 return False
 
             if s.type == "d":
-                self.parent.add_task(AsyncDecryptedScanTask(target, s))
+                target.pool.add_task(AsyncDecryptedScanTask(target, s))
 
         del scan_result
 
@@ -180,9 +193,11 @@ class AsyncDecryptedScanTask(ScanTask):
         return True
 
 class AsyncEncryptedScanTask(ScanTask):
-    def complete(self, worker):
-        if self.stop_condition(worker):
+    def complete(self):
+        if self.stopped:
             return False
+
+        worker = get_current_worker()
 
         target = self.parent
         scannable = self.scannable
@@ -198,7 +213,7 @@ class AsyncEncryptedScanTask(ScanTask):
         scannables = {}
 
         for s in scan_result["f"] + scan_result["d"]:
-            if self.stop_condition(worker):
+            if self.stopped:
                 return False
 
             worker.emit_event("next_node", s)
@@ -231,13 +246,13 @@ class AsyncEncryptedScanTask(ScanTask):
 
                 continue
 
-            if self.stop_condition(worker):
+            if self.stopped:
                 return False
 
             if original.type == "d":
-                self.parent.add_task(AsyncEncryptedScanTask(target, original))
+                target.pool.add_task(AsyncEncryptedScanTask(target, original))
 
-        if self.stop_condition(worker):
+        if self.stopped:
             return False
 
         self.status = "finished"

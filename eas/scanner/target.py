@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import threading
@@ -6,6 +5,7 @@ import threading
 from ..task import Task
 from ..filelist import FileList, DuplicateList
 from ..scannable import DecryptedScannable, EncryptedScannable
+from ..worker import WorkerPool, get_current_worker
 from .. import path_match
 from .. import Paths
 from .tasks import EncryptedScanTask, DecryptedScanTask
@@ -20,6 +20,8 @@ class ScanTarget(Task):
     """
 
     def __init__(self, scanner, name):
+        self._stopped = True
+
         Task.__init__(self)
 
         self.scanner = scanner
@@ -35,28 +37,30 @@ class ScanTarget(Task):
         self.shared_flist = FileList(name, scanner.directory)
         self.shared_duplist = None
 
-        self.tasks = []
-        self.task_lock = threading.Lock()
+        try:
+            folder = self.config.folders[name]
+        except KeyError:
+            raise ValueError("Unknown folder: %r" % (name,))
 
-    def get_next_task(self):
-        with self.task_lock:
-            try:
-                return self.tasks.pop(0)
-            except IndexError:
-                pass
+        self.type = folder["type"]
+        self.encrypted = folder["encrypted"]
+        self.path = folder["path"]
+        self.filename_encoding = folder["filename_encoding"]
 
-    def add_task(self, task):
-        with self.task_lock:
-            self.tasks.append(task)
+        self.n_workers = 1
 
-        for w in self.scanner.get_worker_list():
-            w.set_dirty()
+        self.pool = WorkerPool(None)
 
-    def stop_condition(self):
-        if self.stopped or self.scanner.stop_condition():
+    @property
+    def stopped(self):
+        if self._stopped or self.scanner.stopped:
             return True
 
         return self.status not in (None, "pending")
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def begin_scan(self):
         self.shared_flist.clear()
@@ -64,7 +68,7 @@ class ScanTarget(Task):
         if self.encrypted:
             self.shared_duplist.remove_children(self.path)
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         if self.encrypted:
@@ -78,7 +82,7 @@ class ScanTarget(Task):
         except FileNotFoundError:
             return
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         path = self.path
@@ -104,11 +108,13 @@ class ScanTarget(Task):
             else:
                 task = DecryptedScanTask(self, scannable)
 
-            self.add_task(task)
+            self.pool.add_task(task)
 
-    def complete(self, worker):
-        if self.stop_condition():
+    def complete(self):
+        if self.stopped:
             return True
+
+        worker = get_current_worker()
 
         self.storage = self.config.storages[self.type]
         self.shared_duplist = DuplicateList(self.storage.name, self.scanner.directory)
@@ -123,36 +129,35 @@ class ScanTarget(Task):
         self.status = "pending"
 
         try:
-
             self.shared_flist.begin_transaction()
             self.shared_duplist.begin_transaction()
 
             self.begin_scan()
 
-            if self.stop_condition():
+            if self.stopped:
                 self.shared_flist.rollback()
                 self.shared_duplist.rollback()
                 return True
+
+            self.pool.clear()
 
             if self.storage.parallelizable:
-                self.scanner.start_workers(self.scanner.n_workers, ScanWorker,
-                                           self.scanner, self)
-                self.scanner.wait_workers()
-                self.scanner.stop_workers()
-            elif self.tasks:
-                self.scanner.start_worker(ScanWorker, self.scanner, self)
+                self.pool.spawn_many(self.n_workers, ScanWorker, self.scanner)
+            elif self.pool.queue is not None:
+                self.pool.spawn(ScanWorker, self.scanner)
 
-            self.scanner.wait_workers()
-            self.scanner.stop_workers()
+            self.pool.wait_idle()
+            self.pool.stop()
 
-            if self.stop_condition():
-                self.scanner.stop_workers()
-                self.scanner.join_workers()
+            if self.stopped:
+                self.pool.join()
                 self.shared_flist.rollback()
                 self.shared_duplist.rollback()
                 return True
 
-            self.scanner.join_workers()
+            self.pool.join()
+
+            self.pool.queue = None
 
             if self.status == "pending":
                 self.shared_flist.commit()
@@ -164,7 +169,8 @@ class ScanTarget(Task):
                 self.shared_flist.rollback()
                 self.shared_duplist.rollback()
         except Exception as e:
-            self.scanner.stop_workers()
+            self.pool.stop()
+            self.pool.queue = None
             self.shared_flist.rollback()
             self.shared_duplist.rollback()
 

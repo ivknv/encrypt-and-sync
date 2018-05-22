@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 import portalocker
 
 from .. import Paths
-from ..downloader import Downloader
+from ..downloader import Downloader, DownloadTarget
 from ..downloader.exceptions import NotFoundInDBError
 from ..events import Receiver
 from ..common import Lockfile
@@ -35,30 +36,30 @@ class DownloaderReceiver(Receiver):
     def __init__(self, env, downloader):
         Receiver.__init__(self)
 
-        self.worker_receiver = WorkerReceiver(env, downloader)
-
         self.downloader = downloader
-
-    def on_started(self, event):
-        print("Downloader: started")
-
-    def on_finished(self, event):
-        print("Downloader: finished")
 
     def on_next_target(self, event, target):
         src_path = "%s://%s" % (target.src_storage_name, target.src_path)
         dst_path = "%s://%s" % (target.dst_storage_name, target.dst_path)
         print("Next target: [%s <- %s]" % (dst_path, src_path))
 
-    def on_worker_starting(self, event, worker):
-        worker.add_receiver(self.worker_receiver)
-
     def on_error(self, event, exc):
         common.show_exception(exc)
 
-class TargetReceiver(Receiver):
-    def __init__(self):
+class PoolReceiver(Receiver):
+    def __init__(self, env):
         Receiver.__init__(self)
+
+        self.worker_receiver = WorkerReceiver(env)
+
+    def on_spawn(self, event, worker):
+        worker.add_receiver(self.worker_receiver)
+
+class TargetReceiver(Receiver):
+    def __init__(self, env):
+        Receiver.__init__(self)
+
+        self.pool_worker = PoolReceiver(env)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -70,12 +71,14 @@ class TargetReceiver(Receiver):
             src_path = "%s://%s" % (target.src_storage_name, target.src_path)
 
             print("[%s <- %s]: %s" % (dst_path, src_path, status))
+        else:
+            target.pool.add_receiver(self.pool_worker)
 
         if status in ("finished", "failed",):
             print_target_totals(target)
 
 class WorkerReceiver(Receiver):
-    def __init__(self, env, downloader):
+    def __init__(self, env):
         Receiver.__init__(self)
 
         self.env = env
@@ -169,14 +172,14 @@ def download(env, paths):
 
     n_workers = env.get("n_workers", config.download_threads)
 
-    downloader = Downloader(config, env["db_dir"], n_workers)
+    downloader = Downloader(config, env["db_dir"])
     downloader.upload_limit = config.upload_limit
     downloader.download_limit = config.download_limit
 
     downloader_receiver = DownloaderReceiver(env, downloader)
     downloader.add_receiver(downloader_receiver)
 
-    target_receiver = TargetReceiver()
+    target_receiver = TargetReceiver(env)
 
     targets = []
 
@@ -200,10 +203,14 @@ def download(env, paths):
         else:
             src_path = Paths.join_properly("/", src_path)
 
-        target = downloader.add_download(src_path_type, src_path,
-                                         dst_path_type, dst_path)
+        target = DownloadTarget(downloader,
+                                src_path_type, src_path,
+                                dst_path_type, dst_path)
+        target.n_workers = n_workers
         target.add_receiver(target_receiver)
         targets.append(target)
+
+        downloader.add_target(target)
 
     storage_names = {i.src_storage_name for i in targets}
     storage_names |= {i.dst_storage_name for i in targets}
@@ -214,8 +221,17 @@ def download(env, paths):
         return ret
 
     with GenericSignalManager(downloader):
-        downloader.start()
-        downloader.join()
+        print("Downloader: starting")
+
+        # This contraption is needed to silence a SystemExit traceback
+        # The traceback would be printed otherwise due to use of a finally clause
+        try:
+            try:
+                downloader.work()
+            finally:
+                print("Downloader: finished")
+        except SystemExit as e:
+            sys.exit(e.code)
 
     if any(i.status not in ("finished", "skipped") for i in targets):
         return 1

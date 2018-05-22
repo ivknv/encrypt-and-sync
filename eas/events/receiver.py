@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import threading
@@ -25,5 +24,5 @@ class Receiver(object):
 
         try:
             callback(event, *event.args, **event.kwargs)
-        except:
+        except Exception:
             traceback.print_exc()

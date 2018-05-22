@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import threading
@@ -21,9 +20,13 @@ class Task(Emitter):
         self.expected_total_children = 0
         self._total_children = 0
         self._progress = Counter()
+        self._completed = threading.Event()
         self.stopped = False
 
         self._lock = threading.RLock()
+
+    def wait(self, timeout=None):
+        self._completed.wait(timeout)
 
     def stop(self):
         self.stopped = True
@@ -81,5 +84,12 @@ class Task(Emitter):
         with self._lock:
             return self._progress
 
-    def complete(self, worker):
+    def complete(self):
         raise NotImplementedError
+
+    def run(self):
+        try:
+            self._completed.clear()
+            return self.complete()
+        finally:
+            self._completed.set()

@@ -1,29 +1,36 @@
 # -*- coding: utf-8 -*-
 
 from ..log_receiver import LogReceiver
-from ..worker import Worker
+from ..worker import PoolWorkerThread
 from .logging import logger
 
 __all__ = ["DuplicateRemoverWorker"]
 
-class DuplicateRemoverWorker(Worker):
+class DuplicateRemoverWorker(PoolWorkerThread):
     """
         Events: next_task, error
     """
 
-    def __init__(self, parent):
-        Worker.__init__(self, parent)
+    def __init__(self, duprem):
+        self._stopped = False
 
-        self.target = parent.cur_target
+        PoolWorkerThread.__init__(self)
+
         self.cur_task = None
+        self.duprem = duprem
 
         self.add_receiver(LogReceiver(logger))
 
-    def stop_condition(self):
-        return self.stopped or self.parent.stopped
+    @property
+    def stopped(self):
+        return self._stopped or self.duprem.stopped
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def stop(self):
-        Worker.stop(self)
+        super().stop()
 
         # Intentional assignment for thread safety
         task = self.cur_task
@@ -31,19 +38,17 @@ class DuplicateRemoverWorker(Worker):
         if task is not None:
             task.stop()
 
-    def work(self):
-        while not self.stop_condition():
-            self.cur_task = self.target.get_next_task()
+    def handle_task(self, task):
+        self.cur_task = task
 
-            if self.cur_task is None:
-                break
+        if self.stopped:
+            return False
 
-            if self.stop_condition():
-                break
-
-            try:
-                self.emit_event("next_task", self.cur_task)
-                self.cur_task.complete(self)
-            except Exception as e:
-                self.emit_event("error", e)
-                self.cur_task.status = "failed"
+        try:
+            self.emit_event("next_task", task)
+            task.run()
+        except Exception as e:
+            self.emit_event("error", e)
+            task.status = "failed"
+        finally:
+            self.cur_task = None

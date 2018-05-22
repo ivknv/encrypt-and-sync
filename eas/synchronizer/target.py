@@ -1,16 +1,15 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import threading
 
 from .logging import TargetFailLogReceiver
 
 from ..staged_task import StagedTask
-from ..scanner import Scanner
-from ..duplicate_remover import DuplicateRemover
+from ..scanner import Scanner, ScanTarget
+from ..duplicate_remover import DuplicateRemover, DuplicateRemoverTarget
 from ..difflist import DiffList
 from ..folder_storage import get_folder_storage
 from ..constants import AUTOCOMMIT_INTERVAL
+from ..worker import WorkerPool, get_current_worker
+from ..common import threadsafe_iterator
 from .. import file_comparator
 from .worker import SyncWorker
 from .tasks import UploadTask, MkdirTask, RmTask
@@ -24,7 +23,10 @@ class SyncTarget(StagedTask):
                 autocommit_failed, autocommit_finished
     """
 
-    def __init__(self, synchronizer):
+    def __init__(self, synchronizer, folder_name1, folder_name2,
+                 enable_scan, skip_integrity_check=False):
+        self._stopped = False
+
         StagedTask.__init__(self)
 
         self.synchronizer = synchronizer
@@ -44,13 +46,38 @@ class SyncTarget(StagedTask):
         self.shared_flist1 = None
         self.shared_flist2 = None
         self.difflist = None
-        self.differences = None
 
-        self.tasks = []
-        self.task_lock = threading.Lock()
+        self.n_workers = 1
+        self.n_scan_workers = 1
 
-        self.upload_limit = self.synchronizer.upload_limit
-        self.download_limit = self.synchronizer.download_limit
+        self.upload_limit = synchronizer.upload_limit
+        self.download_limit = synchronizer.download_limit
+
+        try:
+            folder1 = self.config.folders[folder_name1]
+        except KeyError:
+            raise ValueError("Unknown folder: %r" % (folder_name1,))
+
+        try:
+            folder2 = self.config.folders[folder_name2]
+        except KeyError:
+            raise ValueError("Unknown folder: %r" % (folder_name2,))
+        
+        self.folder1 = folder1
+        self.folder2 = folder2
+        self.enable_scan = enable_scan
+        self.skip_integrity_check = skip_integrity_check
+        self.avoid_src_rescan = folder1["avoid_rescan"]
+        self.avoid_dst_rescan = folder2["avoid_rescan"]
+
+        self.pool = WorkerPool(None)
+
+        self.duprem = DuplicateRemover(self.config,
+                                       synchronizer.directory,
+                                       synchronizer.enable_journal)
+        self.scanner = Scanner(self.config,
+                               synchronizer.directory,
+                               synchronizer.enable_journal)
 
         self.set_stage("scan",  self.init_scan,  self.finalize_scan)
         self.set_stage("rmdup", self.init_rmdup, self.finalize_rmdup)
@@ -64,11 +91,16 @@ class SyncTarget(StagedTask):
     def get_n_done(self):
         return self.progress["finished"] + self.progress["failed"] + self.progress["skipped"]
 
-    def stop_condition(self):
-        if self.stopped or self.synchronizer.stopped:
+    @property
+    def stopped(self):
+        if self._stopped or self.synchronizer.stopped:
             return True
 
         return self.status not in (None, "pending")
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def autocommit(self):
         try:
@@ -118,12 +150,13 @@ class SyncTarget(StagedTask):
 
         self.emit_event("diffs_finished")
 
-    def get_next_task(self):
-        with self.task_lock:
+    @threadsafe_iterator
+    def task_iterator(self, differences):
+        while True:
             try:
-                diff = next(self.differences)
+                diff = next(differences)
             except StopIteration:
-                return
+                break
 
             assert(diff["type"] in ("new", "update", "rm"))
             assert(diff["node_type"] in ("f", "d"))
@@ -144,39 +177,36 @@ class SyncTarget(StagedTask):
             task.upload_limit = self.upload_limit
             task.download_limit = self.download_limit
 
-            return task
+            yield task
 
     def do_scan(self, *folder_names, force=False):
-        scanner = Scanner(self.config,
-                          self.synchronizer.directory,
-                          self.synchronizer.n_scan_workers,
-                          self.synchronizer.enable_journal)
         targets = []
 
         for folder_name in folder_names:
             assert(folder_name in (self.folder1["name"], self.folder2["name"]))
 
-            target = scanner.make_target(folder_name)
+            target = ScanTarget(self.scanner, folder_name)
+            target.n_workers = self.n_scan_workers
 
             if folder_name == self.folder1["name"]:
                 rescan = force or not self.avoid_src_rescan
 
                 if rescan or self.shared_flist1.is_empty(self.src.prefix):
-                    scanner.add_target(target)
+                    self.scanner.add_target(target)
                     targets.append(target)
             else:
                 rescan = force or not self.avoid_dst_rescan
 
                 if rescan or self.shared_flist2.is_empty(self.dst.prefix):
-                    scanner.add_target(target)
+                    self.scanner.add_target(target)
                     targets.append(target)
 
-        if not targets or self.stop_condition():
+        if not targets or self.stopped:
             return
 
-        self.synchronizer.start_worker(scanner).join()
+        self.scanner.work()
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         if any(i.status != "finished" for i in targets):
@@ -186,7 +216,7 @@ class SyncTarget(StagedTask):
         if not self.enable_scan:
             return
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         self.do_scan(self.folder1["name"], self.folder2["name"])
@@ -195,27 +225,26 @@ class SyncTarget(StagedTask):
         if not self.enable_scan:
             return
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         self.build_diffs_table()
 
     def init_rmdup(self):
-        duprem = DuplicateRemover(self.config,
-                                  self.synchronizer.directory,
-                                  self.synchronizer.n_workers,
-                                  self.synchronizer.enable_journal)
-
         if self.src.encrypted:
-            duprem.add_new_target(self.src.storage.name, self.src.prefix)
+            target = DuplicateRemoverTarget(self.duprem, self.src.storage.name, self.src.prefix)
+            target.n_workers = self.n_workers
+            self.duprem.add_target(target)
 
         if self.dst.encrypted:
-            duprem.add_new_target(self.dst.storage.name, self.dst.prefix)
+            target = DuplicateRemoverTarget(self.duprem, self.dst.storage.name, self.dst.prefix)
+            target.n_workers = self.n_workers
+            self.duprem.add_target(target)
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
-        self.synchronizer.start_worker(duprem).join()
+        self.duprem.work()
 
     def finalize_rmdup(self):
         pass
@@ -224,17 +253,20 @@ class SyncTarget(StagedTask):
         if self.no_remove:
             return
 
-        self.differences = self.difflist.select_rm_differences(self.folder1["name"], self.folder2["name"])
+        differences = self.difflist.select_rm_differences(self.folder1["name"],
+                                                          self.folder2["name"])
 
         self.shared_flist2.begin_transaction()
 
         if self.src.storage.parallelizable or self.dst.storage.parallelizable:
-            n_workers = self.synchronizer.n_workers
+            n_workers = self.n_workers
         else:
             n_workers = 1
 
-        self.synchronizer.start_workers(n_workers, SyncWorker, self.synchronizer)
-        self.synchronizer.join_workers()
+        self.pool.clear()
+        self.pool.queue = self.task_iterator(differences)
+        self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
+        self.pool.join()
 
     def finalize_rm(self):
         if self.no_remove:
@@ -243,27 +275,34 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_dirs(self):
-        self.differences = self.difflist.select_dirs_differences(self.folder1["name"], self.folder2["name"])
+        differences = self.difflist.select_dirs_differences(self.folder1["name"],
+                                                            self.folder2["name"])
 
         self.shared_flist2.begin_transaction()
 
-        self.synchronizer.start_worker(SyncWorker, self.synchronizer).join()
+        self.pool.clear()
+        self.pool.queue = self.task_iterator(differences)
+        self.pool.spawn(SyncWorker, self.synchronizer)
+        self.pool.join()
 
     def finalize_dirs(self):
         self.shared_flist2.commit()
 
     def init_files(self):
-        self.differences = self.difflist.select_files_differences(self.folder1["name"], self.folder2["name"])
+        differences = self.difflist.select_files_differences(self.folder1["name"],
+                                                             self.folder2["name"])
 
         self.shared_flist2.begin_transaction()
 
         if self.src.storage.parallelizable or self.dst.storage.parallelizable:
-            n_workers = self.synchronizer.n_workers
+            n_workers = self.n_workers
         else:
             n_workers = 1
 
-        self.synchronizer.start_workers(n_workers, SyncWorker, self.synchronizer)
-        self.synchronizer.join_workers()
+        self.pool.clear()
+        self.pool.queue = self.task_iterator(differences)
+        self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
+        self.pool.join()
 
     def finalize_files(self):
         self.shared_flist2.commit()
@@ -272,7 +311,7 @@ class SyncTarget(StagedTask):
         if self.skip_integrity_check:
             return
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         self.emit_event("integrity_check")
@@ -280,7 +319,7 @@ class SyncTarget(StagedTask):
         self.do_scan(self.folder2["name"], force=True)
 
     def finalize_check(self):
-        if self.stop_condition():
+        if self.stopped:
             return
 
         if self.skip_integrity_check:
@@ -295,11 +334,13 @@ class SyncTarget(StagedTask):
             self.emit_event("integrity_check_finished")
             self.status = "finished"
 
-    def complete(self, worker):
-        if self.stop_condition():
+    def complete(self):
+        if self.stopped:
             return True
 
         self.status = "pending"
+
+        worker = get_current_worker()
 
         try:
             self.difflist = DiffList(self.synchronizer.directory)
@@ -340,12 +381,10 @@ class SyncTarget(StagedTask):
                 return True
 
             for stage in stages:
-                if self.stop_condition():
+                if self.stopped:
                     return
 
                 self.run_stage(stage)
-
-                self.differences = None
 
             if self.status == "pending":
                 if self.progress["skipped"] == self.total_children:
@@ -360,7 +399,6 @@ class SyncTarget(StagedTask):
             if self.status == "finished":
                 self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])
         finally:
-            self.differences = None
             self.difflist = None
             self.shared_flist1 = None
             self.shared_flist2 = None

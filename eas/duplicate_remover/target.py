@@ -7,6 +7,9 @@ import threading
 from ..task import Task
 from ..filelist import DuplicateList
 from ..constants import AUTOCOMMIT_INTERVAL
+from ..worker import WorkerPool
+from ..common import threadsafe_iterator
+from .. import Paths
 from .worker import DuplicateRemoverWorker
 from .task import DuplicateRemoverTask
 
@@ -17,7 +20,9 @@ class DuplicateRemoverTarget(Task):
         Events: autocommit_started, autocommit_failed, autocommit_finished
     """
 
-    def __init__(self, duprem, storage_name):
+    def __init__(self, duprem, storage_name, path):
+        self._stopped = False
+
         Task.__init__(self)
 
         self.duprem = duprem
@@ -29,14 +34,36 @@ class DuplicateRemoverTarget(Task):
         self.filename_encoding = None
 
         self.shared_duplist = None
-        self.duplicates = None
-        self.task_lock = threading.Lock()
 
-    def stop_condition(self):
-        if self.stopped or self.duprem.stopped:
+        path = Paths.join_properly("/", path)
+        self.path = path
+
+        folder = self.config.identify_folder(storage_name, path)
+
+        if folder is None:
+            msg = "%r does not belong to any folders" % (storage_name + "://" + path,)
+            raise ValueError(msg)
+
+        if not folder["encrypted"]:
+            raise ValueError("%r is not encrypted" % (storage_name + "://" + path,))
+
+        self.filename_encoding = folder["filename_encoding"]
+        self.prefix = folder["path"]
+
+        self.n_workers = 1
+
+        self.pool = WorkerPool(None)
+
+    @property
+    def stopped(self):
+        if self._stopped or self.duprem.stopped:
             return True
 
         return self.status not in (None, "pending")
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def autocommit(self):
         if self.shared_duplist.time_since_last_commit() >= AUTOCOMMIT_INTERVAL:
@@ -48,21 +75,23 @@ class DuplicateRemoverTarget(Task):
                 self.emit_event("autocommit_failed", self.shared_duplist)
                 raise e
 
-    def get_next_task(self):
-        with self.task_lock:
+    @threadsafe_iterator
+    def task_iterator(self, duplicates):
+        while True:
+            task = DuplicateRemoverTask(self)
+            task.storage = self.storage
+            task.prefix = self.prefix
+            task.filename_encoding = self.filename_encoding
+
             try:
-                task = DuplicateRemoverTask(self)
-                task.storage = self.storage
-                task.prefix = self.prefix
-                task.ivs, task.path = next(self.duplicates)[1:]
-                task.filename_encoding = self.filename_encoding
-
-                return task
+                task.ivs, task.path = next(duplicates)[1:]
             except StopIteration:
-                pass
+                break
 
-    def complete(self, worker):
-        if self.stop_condition():
+            yield task
+
+    def complete(self):
+        if self.stopped:
             return True
 
         self.status = "pending"
@@ -76,7 +105,7 @@ class DuplicateRemoverTarget(Task):
 
         self.shared_duplist.create()
 
-        if self.stop_condition():
+        if self.stopped:
             return True
 
         copy_src_path = self.shared_duplist.connection.path
@@ -89,28 +118,30 @@ class DuplicateRemoverTarget(Task):
             copy_duplist = DuplicateList(self.storage.name, self.duprem.directory,
                                          filename="duplist_copy.db")
 
-            if self.stop_condition():
+            if self.stopped:
                 return True
 
             self.expected_total_children = copy_duplist.get_children_count(self.path)
-            self.duplicates = copy_duplist.find_children(self.path)
+            duplicates = copy_duplist.find_children(self.path)
 
             if self.status == "pending" and self.total_children == 0:
                 self.status = "finished"
-                self.duplicates = None
                 self.shared_duplist = None
                 return True
 
-            if self.storage.parallelizable:
-                n = self.duprem.n_workers
-            else:
-                n = 1
-
             self.shared_duplist.begin_transaction()
 
+            self.pool.clear()
+            self.pool.queue = self.task_iterator(duplicates)
+
+            if self.storage.parallelizable:
+                n_workers = self.n_workers
+            else:
+                n_workers = 1
+
             try:
-                self.duprem.start_workers(n, DuplicateRemoverWorker, self.duprem)
-                self.duprem.join_workers()
+                self.pool.spawn_many(n_workers, DuplicateRemoverWorker, self.duprem)
+                self.pool.join()
             finally:
                 self.shared_duplist.commit()
 
@@ -134,7 +165,6 @@ class DuplicateRemoverTarget(Task):
             except IOError:
                 pass
 
-        self.duplicates = None
         self.shared_duplist = None
 
         return True

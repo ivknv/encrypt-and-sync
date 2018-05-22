@@ -6,6 +6,8 @@ __all__ = ["DuplicateRemoverTask"]
 
 class DuplicateRemoverTask(Task):
     def __init__(self, target):
+        self._stopped = False
+
         Task.__init__(self)
 
         self.parent = target
@@ -17,20 +19,22 @@ class DuplicateRemoverTask(Task):
         self.storage = None
         self.duplist = target.shared_duplist
 
-    def stop_condition(self, worker):
-        if worker.stopped:
-            return True
-
-        if self.parent.stop_condition():
+    @property
+    def stopped(self):
+        if self._stopped or self.parent.stopped:
             return True
 
         return self.status not in (None, "pending")
 
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
+
     def autocommit(self):
         self.parent.autocommit()
 
-    def complete(self, worker):
-        if self.stop_condition(worker):
+    def complete(self):
+        if self.stopped:
             return True
 
         self.status = "pending"

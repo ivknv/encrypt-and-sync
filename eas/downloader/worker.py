@@ -1,28 +1,36 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from .logging import logger
-from ..worker import Worker
+from ..worker import PoolWorkerThread
 from ..log_receiver import LogReceiver
 
 __all__ = ["DownloaderWorker"]
 
-class DownloaderWorker(Worker):
+class DownloaderWorker(PoolWorkerThread):
     """
         Events: next_task, error
     """
 
     def __init__(self, downloader):
-        Worker.__init__(self, downloader)
+        self._stopped = False
+
+        super().__init__()
+
         self.cur_task = None
+        self.downloader = downloader
 
         self.add_receiver(LogReceiver(logger))
 
-    def stop_condition(self):
-        return self.stopped or self.parent.stopped
+    @property
+    def stopped(self):
+        return self._stopped or self.downloader.stopped
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def stop(self):
-        Worker.stop(self)
+        super().stop()
 
         # Intentional assignment for thread safety
         task = self.cur_task
@@ -31,35 +39,31 @@ class DownloaderWorker(Worker):
             task.stop()
 
     def get_info(self):
-        if self.cur_task is not None:
-            try:
-                progress = float(self.cur_task.downloaded) / self.cur_task.size
-            except ZeroDivisionError:
-                progress = 1.0
-
+        if self.cur_task is None:
             return {"operation": "downloading",
-                    "path":      self.cur_task.src_path,
-                    "progress":  progress}
+                    "progress":  0.0}
+
+        try:
+            progress = float(self.cur_task.downloaded) / self.cur_task.size
+        except ZeroDivisionError:
+            progress = 1.0
 
         return {"operation": "downloading",
-                "progress":  0.0}
+                "path":      self.cur_task.src_path,
+                "progress":  progress}
 
-    def work(self):
-        while not self.stop_condition():
-            try:
-                if self.parent.cur_target is not None:
-                    self.cur_task = self.parent.cur_target.get_next_task()
+    def handle_task(self, task):
+        try:
+            if self.stopped:
+                return False
 
-                if self.cur_task is None:
-                    break
+            self.cur_task = task
+            self.emit_event("next_task", task)
 
-                self.emit_event("next_task", self.cur_task)
+            task.run()
+        except Exception as e:
+            self.emit_event("error", e)
 
-                self.cur_task.complete(self)
-            except Exception as e:
-                self.emit_event("error", e)
-
-                if self.cur_task is not None:
-                    self.cur_task.status = "failed"
-            finally:
-                self.cur_task = None
+            task.status = "failed"
+        finally:
+            self.cur_task = None

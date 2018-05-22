@@ -1,21 +1,23 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from .logging import logger, WorkerFailLogReceiver
-from ..worker import Worker
+from ..worker import PoolWorkerThread
 from ..log_receiver import LogReceiver
 
 __all__ = ["SyncWorker"]
 
-class SyncWorker(Worker):
+class SyncWorker(PoolWorkerThread):
     """
         Events: next_task, error
     """
 
-    def __init__(self, parent):
-        Worker.__init__(self, parent)
+    def __init__(self, synchronizer):
+        self._stopped = False
+
+        PoolWorkerThread.__init__(self)
 
         self.cur_task = None
+        self.synchronizer = synchronizer
 
         self.add_receiver(LogReceiver(logger))
         self.add_receiver(WorkerFailLogReceiver())
@@ -23,11 +25,16 @@ class SyncWorker(Worker):
     def get_info(self):
         return {}
 
-    def stop_condition(self):
-        return self.stopped or self.parent.stopped
+    @property
+    def stopped(self):
+        return self._stopped or self.synchronizer.stopped
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def stop(self):
-        Worker.stop(self)
+        super().stop()
 
         # Intentional assignment for thread safety
         task = self.cur_task
@@ -35,30 +42,23 @@ class SyncWorker(Worker):
         if task is not None:
             task.stop()
 
-    def work(self):
-        while not self.stop_condition():
-            try:
-                if self.stop_condition():
-                    break
+    def handle_task(self, task):
+        try:
+            self.cur_task = task
 
-                task = self.parent.cur_target.get_next_task()
-                self.cur_task = task
+            if self.stopped:
+                return False
 
-                if task is None or self.stop_condition():
-                    break
+            self.emit_event("next_task", task)
 
-                self.emit_event("next_task", task)
+            if task.status not in (None, "pending"):
+                return
 
-                if task.status not in (None, "pending"):
-                    continue
+            task.run()
 
-                task.complete(self)
-
-                self.cur_task = None
-            except Exception as e:
-                self.emit_event("error", e)
-                if self.cur_task is not None:
-                    self.cur_task.status = "failed"
-
-    def after_work(self):
-        self.cur_task = None
+            self.cur_task = None
+        except Exception as e:
+            self.emit_event("error", e)
+            task.status = "failed"
+        finally:
+            self.cur_task = None

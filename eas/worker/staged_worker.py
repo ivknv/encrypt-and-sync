@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from .exceptions import UnknownStageError, DuplicateStageError
@@ -21,7 +20,6 @@ class StagedWorker(Worker):
     def run_stage(self, stage):
         try:
             self.enter_stage(stage)
-            self.join_workers()
         finally:
             if self.stage is not None:
                 self.exit_stage()
@@ -54,8 +52,6 @@ class StagedWorker(Worker):
 
     def exit_stage(self):
         assert(self.stage is not None)
-
-        self.stop_workers()
 
         exit_callback = self.stage["exit"]
 

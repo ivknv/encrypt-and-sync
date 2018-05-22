@@ -1,61 +1,85 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import threading
 import sys
+import time
 
-from .worker_base import WorkerBase
+from ..events import Emitter
 
-DEFAULT_DAEMON = sys.platform.startswith("win")
+__all__ = ["Worker"]
 
-class Worker(WorkerBase):
-    def __init__(self, parent=None, daemon=None):
-        WorkerBase.__init__(self, parent)
+if sys.platform.startswith("win"):
+    DEFAULT_JOIN_INTERVAL = 1
+else:
+    DEFAULT_JOIN_INTERVAL = None
 
-        if daemon is None:
-            daemon = DEFAULT_DAEMON
+class Worker(Emitter):
+    """
+        Events: started, stopping, finished
+    """
 
-        self.workers = {}
-        self.workers_lock = threading.Lock()
+    def __init__(self):
+        Emitter.__init__(self)
 
-        self.daemon = daemon
+        self.stopped = False
 
-        self.thread = None
+        self.retval = None
 
-    def start(self):
-        if self.thread is None or not self.thread.is_alive() and self.thread.ident is not None:
-            self.thread = threading.Thread(target=self.run, daemon=self.daemon)
-        self.thread.start()
+    def get_info(self):
+        return {}
 
-    def actual_join(self, timeout=None):
-        if self.thread is not None:
-            self.thread.join(timeout)
+    def stop(self):
+        self.stopped = True
+        self.emit_event("stopping")
 
-    def is_alive(self):
-        return self.thread is not None and self.thread.is_alive()
+    def before_work(self):
+        pass
 
-    @property
-    def ident(self):
-        if self.thread is None:
-            return None
-        return self.thread.ident
+    def work(self):
+        pass
 
-    def add_worker(self, worker):
-        with self.workers_lock:
-            self.workers[worker.ident] = worker
-
-        return worker
-
-    def join_worker(self, worker, timeout=None, interval=None):
-        worker.join(timeout, interval)
-
-        if not worker.is_alive():
-            with self.workers_lock:
-                self.workers.pop(worker.ident, None)
-
-    def get_worker_list(self):
-        with self.workers_lock:
-            return list(self.workers.values())
+    def after_work(self):
+        pass
 
     def run(self):
-        WorkerBase.run(self)
+        self.stopped = False
+        self.emit_event("started")
+
+        try:
+            self.before_work()
+
+            try:
+                self.retval = self.work()
+            finally:
+                self.after_work()
+        finally:
+            self.emit_event("finished")
+
+    def start(self):
+        raise NotImplementedError
+
+    def actual_join(self, timeout=None):
+        raise NotImplementedError
+
+    def join(self, timeout=None, interval=None):
+        if interval is None:
+            interval = DEFAULT_JOIN_INTERVAL
+
+        if interval is None:
+            self.actual_join(timeout)
+        elif timeout is None:
+            while self.is_alive():
+                self.actual_join(interval)
+        else:
+            interval = min(interval, timeout)
+
+            while self.is_alive() and timeout > 0.0:
+                last_time = time.time()
+                self.actual_join(interval)
+                timeout -= time.time() - last_time
+
+    def is_alive(self):
+        raise NotImplementedError
+
+    def start_if_not_alive(self):
+        if not self.is_alive():
+            self.start()

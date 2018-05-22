@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import threading
@@ -8,6 +7,8 @@ from ..encryption import MIN_ENC_SIZE
 from ..filelist import FileList
 from ..scannable import EncryptedScannable, DecryptedScannable, scan_files
 from ..encrypted_storage import EncryptedStorage
+from ..worker import WorkerPool
+from ..common import threadsafe_iterator
 from .. import Paths
 from .worker import DownloaderWorker
 from .task import DownloadTask
@@ -15,40 +16,41 @@ from .task import DownloadTask
 __all__ = ["DownloadTarget"]
 
 class DownloadTarget(Task):
-    def __init__(self, downloader, src_storage_name, dst_storage_name):
+    def __init__(self, downloader, src_storage_name, src_path, dst_storage_name, dst_path):
+        self._stopped = False
+
         Task.__init__(self)
 
         self.src_storage_name = src_storage_name
         self.dst_storage_name = dst_storage_name
+        self.src_path = src_path
+        self.dst_path = dst_path
 
         self.type = None
         self.downloader = downloader
         self.config = downloader.config
         self.src = None
         self.dst = None
-        self.src_path = ""
-        self.dst_path = ""
         self.size = 0
         self.downloaded = 0
-
-        self.tasks = None
-        self.task_lock = threading.Lock()
 
         self.upload_limit = downloader.upload_limit
         self.download_limit = downloader.download_limit
 
-    def stop_condition(self):
-        if self.stopped or self.downloader.stopped:
+        self.n_workers = 1
+
+        self.pool = WorkerPool(None)
+
+    @property
+    def stopped(self):
+        if self._stopped or self.downloader.stopped:
             return True
 
         return self.status not in (None, "pending")
 
-    def get_next_task(self):
-        with self.task_lock:
-            try:
-                return next(self.tasks)
-            except StopIteration:
-                pass
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def node_to_task(self, node, dst_type):
         new_task = DownloadTask(self)
@@ -81,7 +83,8 @@ class DownloadTarget(Task):
 
         return new_task
 
-    def task_generator(self, nodes):
+    @threadsafe_iterator
+    def task_iterator(self, nodes):
         try:
             dst_type = self.dst.get_meta(self.dst_path)["type"]
         except FileNotFoundError:
@@ -138,29 +141,31 @@ class DownloadTarget(Task):
                 nodes = (i[1] for i in scan_files(scannable))
                 nodes = (j for i in ([scannable.to_node()], nodes) for j in i)
 
-        self.tasks = self.task_generator(nodes)
+        self.pool.queue = self.task_iterator(nodes)
 
-    def complete(self, worker):
+    def complete(self):
         self.src = EncryptedStorage(self.config, self.src_storage_name, self.downloader.directory)
         self.dst = EncryptedStorage(self.config, self.dst_storage_name, self.downloader.directory)
 
         if self.total_children == 0:
             self.set_tasks()
             
-        if self.stop_condition():
+        if self.stopped:
             return True
 
         self.status = "pending"
 
         if self.src.storage.parallelizable or self.dst.storage.parallelizable:
-            n_workers = self.downloader.n_workers
+            n_workers = self.n_workers
         else:
             n_workers = 1
 
-        self.downloader.start_workers(n_workers, DownloaderWorker, self.downloader)
-        self.downloader.join_workers()
+        self.pool.clear()
 
-        if self.stop_condition():
+        self.pool.spawn_many(n_workers, DownloaderWorker, self.downloader)
+        self.pool.join()
+
+        if self.stopped:
             return True
 
         if self.status in (None, "pending"):

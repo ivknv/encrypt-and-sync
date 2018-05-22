@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import signal
@@ -17,7 +16,12 @@ class GenericSignalManager(SignalManager):
 
         def quit_handler(signum, frame):
             target_manager.change_status("suspended")
-            target_manager.full_stop()
+            target_manager.stop()
+            target = target_manager.cur_target
+
+            if target is not None:
+                target.pool.join()
+
             _exit(signum)
 
         for sigstr in ("SIGINT", "SIGTERM", "SIGHUP"):

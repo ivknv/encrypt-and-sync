@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import weakref
@@ -47,6 +46,8 @@ class DownloadTask(Task):
     """
 
     def __init__(self, target):
+        self._stopped = False
+
         Task.__init__(self)
 
         self.type = None # "f" or "d"
@@ -67,8 +68,6 @@ class DownloadTask(Task):
 
         self._upload_limit = target.upload_limit
         self._download_limit = target.download_limit
-
-        self.worker = None
 
     @property
     def upload_limit(self):
@@ -128,14 +127,16 @@ class DownloadTask(Task):
         if old_value != value:
             self.emit_event("uploaded_changed")
 
-    def stop_condition(self):
-        if self.stopped or self.worker.stopped:
-            return True
-
-        if self.parent.stop_condition():
+    @property
+    def stopped(self):
+        if self._stopped or self.parent.stopped:
             return True
 
         return self.status not in (None, "pending")
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     def recursive_mkdir(self, path):
         path = Paths.join_properly("/", path)
@@ -178,19 +179,19 @@ class DownloadTask(Task):
             name = Paths.split(self.src_path)[1]
             self.dst_path = Paths.join(self.dst_path, name)
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         if not self.check_if_download():
             self.status = "skipped"
             return
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         self.recursive_mkdir(Paths.split(self.dst_path)[0])
 
-        if self.stop_condition():
+        if self.stopped:
             return
 
         try:
@@ -213,7 +214,7 @@ class DownloadTask(Task):
                 self.download_controller.begin()
                 self.download_size = self.download_controller.size
 
-            if self.stop_condition():
+            if self.stopped:
                 return
 
             tmpfile = next(download_generator)
@@ -227,7 +228,7 @@ class DownloadTask(Task):
             self.upload_controller, ivs = self.dst.upload(tmpfile, self.dst_path)
             self.upload_controller.limit = self.upload_limit
 
-            if self.stop_condition():
+            if self.stopped:
                 return
 
             self.upload_controller.add_receiver(UploadControllerReceiver(self))
@@ -237,10 +238,8 @@ class DownloadTask(Task):
         except ControllerInterrupt:
             return
 
-    def complete(self, worker):
-        self.worker = worker
-
-        if self.stop_condition():
+    def complete(self):
+        if self.stopped:
             return True
 
         self.status = "pending"
@@ -251,7 +250,7 @@ class DownloadTask(Task):
         else:
             self.download_file()
 
-        if self.stop_condition():
+        if self.stopped:
             return True
 
         if self.status in ("pending", None):

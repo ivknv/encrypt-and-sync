@@ -50,6 +50,8 @@ class SyncTask(Task):
     """
 
     def __init__(self, target):
+        self._stopped = False
+
         Task.__init__(self)
 
         self.parent = target
@@ -72,11 +74,16 @@ class SyncTask(Task):
 
         self.add_receiver(TaskFailLogReceiver())
 
-    def stop_condition(self):
-        if self.stopped or self.parent.stop_condition():
+    @property
+    def stopped(self):
+        if self._stopped or self.parent.stopped:
             return True
 
         return self.status not in (None, "pending")
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
 
     @property
     def uploaded(self):
@@ -144,9 +151,9 @@ class UploadTask(SyncTask):
         if self.download_controller is not None:
             self.download_controller.stop()
 
-    def complete(self, worker):
+    def complete(self):
         try:
-            if self.stop_condition():
+            if self.stopped:
                 return True
 
             self.status = "pending"
@@ -175,7 +182,7 @@ class UploadTask(SyncTask):
                 self.status = "skipped"
                 return True
 
-            if self.stop_condition():
+            if self.stopped:
                 return True
 
             self.size = get_file_size(temp_file)
@@ -203,7 +210,7 @@ class UploadTask(SyncTask):
             self.upload_controller = controller
             controller.add_receiver(UploadControllerReceiver(self))
 
-            if self.stop_condition():
+            if self.stopped:
                 return True
 
             controller.work()
@@ -227,8 +234,8 @@ class UploadTask(SyncTask):
             self.download_controller = None
 
 class MkdirTask(SyncTask):
-    def complete(self, worker):
-        if self.stop_condition():
+    def complete(self):
+        if self.stopped:
             return True
 
         self.status = "pending"
@@ -251,8 +258,8 @@ class MkdirTask(SyncTask):
         return True
 
 class RmTask(SyncTask):
-    def complete(self, worker):
-        if self.stop_condition():
+    def complete(self):
+        if self.stopped:
             return True
 
         self.status = "pending"

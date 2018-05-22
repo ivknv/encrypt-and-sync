@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 import portalocker
 
-from ..duplicate_remover import DuplicateRemover
+from ..duplicate_remover import DuplicateRemover, DuplicateRemoverTarget
 from ..filelist import DuplicateList
 from ..events import Receiver
 from .. import Paths
@@ -90,14 +91,7 @@ class DuplicateRemoverReceiver(Receiver):
         self.env = env
         self.interactive_continue = interactive_continue
 
-        self.target_receiver = TargetReceiver()
-        self.worker_receiver = WorkerReceiver(env, duprem)
-
-    def on_started(self, event):
-        print("Duplicate remover: started")
-
-    def on_finished(self, event):
-        print("Duplicate remover: finished")
+        self.target_receiver = TargetReceiver(env)
 
     def on_next_target(self, event, target):
         target.add_receiver(self.target_receiver)
@@ -123,25 +117,38 @@ class DuplicateRemoverReceiver(Receiver):
         elif action == "skip":
             target.change_status("skipped")
 
-    def on_worker_starting(self, event, worker):
-        worker.add_receiver(self.worker_receiver)
-
     def on_error(self, event, exc):
         common.show_exception(exc)
 
+class PoolReceiver(Receiver):
+    def __init__(self, env):
+        Receiver.__init__(self)
+
+        self.worker_receiver = WorkerReceiver(env)
+
+    def on_spawn(self, event, worker):
+        worker.add_receiver(self.worker_receiver)
+
 class TargetReceiver(Receiver):
+    def __init__(self, env):
+        Receiver.__init__(self)
+
+        self.pool_receiver = PoolReceiver(env)
+
     def on_status_changed(self, event):
         target = event["emitter"]
         status = target.status
 
         if status != "pending":
             print("[%s://%s]: %s" % (target.storage_name, target.path, status))
+        else:
+            target.pool.add_receiver(self.pool_receiver)
 
         if status in ("finished", "failed"):
             print_target_totals(target)
 
 class WorkerReceiver(Receiver):
-    def __init__(self, env, duprem):
+    def __init__(self, env):
         Receiver.__init__(self)
 
         self.env = env
@@ -204,7 +211,7 @@ def remove_duplicates(env, paths):
     n_workers = env.get("n_workers", config.sync_threads)
     no_journal = env.get("no_journal", False)
 
-    duprem = DuplicateRemover(config, env["db_dir"], n_workers, not no_journal)
+    duprem = DuplicateRemover(config, env["db_dir"], enable_journal=not no_journal)
     targets = []
 
     for path in paths:
@@ -216,7 +223,8 @@ def remove_duplicates(env, paths):
             path = Paths.join_properly("/", path)
 
         try:
-            target = duprem.make_target(path_type, path)
+            target = DuplicateRemoverTarget(duprem, path_type, path)
+            target.n_workers = n_workers
             targets.append(target)
         except ValueError as e:
             if user_paths:
@@ -229,7 +237,7 @@ def remove_duplicates(env, paths):
         duprem.add_target(target)
 
     print("Duplicate remover targets:")
-    for target in duprem.get_targets():
+    for target in targets:
         print("[%s://%s]" % (target.storage_name, target.path))
 
     duprem.add_receiver(DuplicateRemoverReceiver(env, duprem))
@@ -240,8 +248,17 @@ def remove_duplicates(env, paths):
         return ret
 
     with GenericSignalManager(duprem):
-        duprem.start()
-        duprem.join()
+        print("Duplicate remover: starting")
+
+        # This contraption is needed to silence a SystemExit traceback
+        # The traceback would be printed otherwise due to use of a finally clause
+        try:
+            try:
+                duprem.work()
+            finally:
+                print("Duplicate remover: finished")
+        except SystemExit as e:
+            sys.exit(e.code)
 
     if any(i.status not in ("finished", "skipped") for i in targets):
         return 1

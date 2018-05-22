@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+
 import portalocker
 
 from . import common
@@ -10,9 +12,7 @@ from .scan import ScannerReceiver
 from .remove_duplicates import DuplicateRemoverReceiver
 from .pager import Pager
 
-from ..synchronizer import Synchronizer
-from ..scanner import Scanner
-from ..duplicate_remover import DuplicateRemover
+from ..synchronizer import Synchronizer, SyncTarget
 from ..events import Receiver
 from ..filelist import DuplicateList
 from ..difflist import DiffList
@@ -233,40 +233,36 @@ def print_target_totals(target):
                                            target.folder2["name"], n_failed))
 
 class SynchronizerReceiver(Receiver):
-    def __init__(self, env, synchronizer):
-        Receiver.__init__(self)
-
-        self.env = env
-
-        self.worker_receiver = WorkerReceiver(env, synchronizer)
-        self.target_receiver = TargetReceiver(env)
-
-    def on_started(self, event):
-        print("Synchronizer: started")
-
-    def on_finished(self, event):
-        print("Synchronizer: finished")
-
-    def on_next_target(self, event, target):
-        target.add_receiver(self.target_receiver)
-        print("Next target: [%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
-
-    def on_worker_starting(self, event, worker):
-        if isinstance(worker, Scanner):
-            worker.add_receiver(ScannerReceiver(self.env, worker))
-        elif isinstance(worker, DuplicateRemover):
-            worker.add_receiver(DuplicateRemoverReceiver(self.env, worker, False))
-        else:
-            worker.add_receiver(self.worker_receiver)
-
-    def on_error(self, event, exc):
-        common.show_exception(exc)
-
-class TargetReceiver(Receiver):
     def __init__(self, env):
         Receiver.__init__(self)
 
         self.env = env
+
+    def on_next_target(self, event, target):
+        target.add_receiver(TargetReceiver(self.env, target))
+        print("Next target: [%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
+
+    def on_error(self, event, exc):
+        common.show_exception(exc)
+
+class PoolReceiver(Receiver):
+    def __init__(self, env):
+        Receiver.__init__(self)
+
+        self.worker_receiver = WorkerReceiver(env)
+
+    def on_spawn(self, event, worker):
+        worker.add_receiver(self.worker_receiver)
+
+class TargetReceiver(Receiver):
+    def __init__(self, env, target):
+        Receiver.__init__(self)
+
+        self.env = env
+
+        self.pool_receiver = PoolReceiver(env)
+        self.scanner_receiver = ScannerReceiver(env, target.scanner)
+        self.duprem_receiver = DuplicateRemoverReceiver(env, target.duprem, False)
 
     def on_status_changed(self, event):
         target = event["emitter"]
@@ -275,6 +271,8 @@ class TargetReceiver(Receiver):
         if status != "pending":
             print("[%s -> %s]: %s" % (target.folder1["name"],
                                       target.folder2["name"], status))
+        else:
+            target.pool.add_receiver(self.pool_receiver)
 
         if status in ("finished", "failed"):
             print_target_totals(target)
@@ -324,6 +322,11 @@ class TargetReceiver(Receiver):
         if stage == "check" and target.skip_integrity_check:
             return
 
+        if stage in ("scan", "check"):
+            target.scanner.add_receiver(self.scanner_receiver)
+        elif stage == "rmdup":
+            target.duprem.add_receiver(self.duprem_receiver)
+
         print("[%s -> %s]: entered stage %r" % (target.folder1["name"],
                                                 target.folder2["name"], stage))
 
@@ -370,7 +373,7 @@ class TargetReceiver(Receiver):
                                                target.folder2["name"], stage))
 
 class WorkerReceiver(Receiver):
-    def __init__(self, env, synchronizer):
+    def __init__(self, env):
         Receiver.__init__(self)
 
         self.env = env
@@ -489,22 +492,23 @@ def do_sync(env, names):
 
     synchronizer = Synchronizer(config,
                                 env["db_dir"],
-                                n_sync_workers,
-                                n_scan_workers,
                                 enable_journal=not no_journal)
 
     synchronizer.upload_limit = config.upload_limit
     synchronizer.download_limit = config.download_limit
 
-    synchronizer_receiver = SynchronizerReceiver(env, synchronizer)
+    synchronizer_receiver = SynchronizerReceiver(env)
     synchronizer.add_receiver(synchronizer_receiver)
 
     targets = []
 
     for name1, name2 in zip(names[::2], names[1::2]):
-        target = synchronizer.make_target(name1, name2, not no_scan)
+        target = SyncTarget(synchronizer, name1, name2, not no_scan)
         target.skip_integrity_check = no_check
         target.no_remove = no_remove
+        target.n_workers = n_sync_workers
+        target.n_scan_workers = n_scan_workers
+
         targets.append(target)
 
     if (ask and env.get("all", False)) or choose_targets:
@@ -526,8 +530,17 @@ def do_sync(env, names):
         return ret
 
     with GenericSignalManager(synchronizer):
-        synchronizer.start()
-        synchronizer.join()
+        print("Synchronizer: starting")
+
+        # This contraption is needed to silence a SystemExit traceback
+        # The traceback would be printed otherwise due to use of a finally clause
+        try:
+            try:
+                synchronizer.work()
+            finally:
+                print("Synchronizer: finished")
+        except SystemExit as e:
+            sys.exit(e.code)
 
     if any(i.status not in ("finished", "skipped") for i in targets):
         return 1
