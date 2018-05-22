@@ -536,7 +536,7 @@ def do_sync(env, names):
         # The traceback would be printed otherwise due to use of a finally clause
         try:
             try:
-                synchronizer.work()
+                synchronizer.run()
             finally:
                 print("Synchronizer: finished")
         except SystemExit as e:

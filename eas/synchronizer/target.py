@@ -204,7 +204,7 @@ class SyncTarget(StagedTask):
         if not targets or self.stopped:
             return
 
-        self.scanner.work()
+        self.scanner.run()
 
         if self.stopped:
             return
@@ -244,7 +244,7 @@ class SyncTarget(StagedTask):
         if self.stopped:
             return
 
-        self.duprem.work()
+        self.duprem.run()
 
     def finalize_rmdup(self):
         pass

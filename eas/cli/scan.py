@@ -214,7 +214,7 @@ def do_scan(env, names):
         # The traceback would be printed otherwise due to use of a finally clause
         try:
             try:
-                scanner.work()
+                scanner.run()
             finally:
                 print("Scanner: finished")
         except SystemExit as e:

@@ -4,9 +4,9 @@ import threading
 
 from .events import Emitter
 
-__all__ = ["TargetManager"]
+__all__ = ["TargetRunner"]
 
-class TargetManager(Emitter):
+class TargetRunner(Emitter):
     """
         Events: next_target, error
     """
@@ -90,7 +90,7 @@ class TargetManager(Emitter):
             if target is not None:
                 target.status = status
 
-    def work(self):
+    def run(self):
         try:
             while not self.stopped:
                 with self._target_lock:

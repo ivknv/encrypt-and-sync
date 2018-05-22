@@ -11,13 +11,13 @@ def _exit(signum):
     sys.exit(128 + signum)
 
 class GenericSignalManager(SignalManager):
-    def __init__(self, target_manager):
+    def __init__(self, target_runner):
         SignalManager.__init__(self)
 
         def quit_handler(signum, frame):
-            target_manager.change_status("suspended")
-            target_manager.stop()
-            target = target_manager.cur_target
+            target_runner.change_status("suspended")
+            target_runner.stop()
+            target = target_runner.cur_target
 
             if target is not None:
                 target.pool.join()

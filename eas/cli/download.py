@@ -227,7 +227,7 @@ def download(env, paths):
         # The traceback would be printed otherwise due to use of a finally clause
         try:
             try:
-                downloader.work()
+                downloader.run()
             finally:
                 print("Downloader: finished")
         except SystemExit as e:

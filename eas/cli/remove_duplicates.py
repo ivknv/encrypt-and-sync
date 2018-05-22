@@ -254,7 +254,7 @@ def remove_duplicates(env, paths):
         # The traceback would be printed otherwise due to use of a finally clause
         try:
             try:
-                duprem.work()
+                duprem.run()
             finally:
                 print("Duplicate remover: finished")
         except SystemExit as e:
