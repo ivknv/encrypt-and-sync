@@ -15,5 +15,5 @@ class ControllerInterrupt(StorageException):
 class TemporaryStorageError(StorageError):
     pass
 
-class UnknownStorageError(StorageError):
+class UnknownStorageError(KeyError):
     pass

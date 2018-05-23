@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+__all__ = ["WorkerError", "DuplicateStageError", "UnknownStageError"]
+
 class WorkerError(Exception):
     pass
 
@@ -11,7 +13,7 @@ class DuplicateStageError(WorkerError):
 
         WorkerError.__init__(self, msg)
 
-class UnknownStageError(WorkerError):
+class UnknownStageError(WorkerError, KeyError):
     def __init__(self, name):
         self.name = name
 

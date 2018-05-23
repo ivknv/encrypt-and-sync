@@ -2,7 +2,7 @@
 
 __all__ = ["UnknownAuthenticatorError", "AuthenticatorError", "LoginError", "LogoutError"]
 
-class UnknownAuthenticatorError(Exception):
+class UnknownAuthenticatorError(KeyError):
     pass
 
 class AuthenticatorError(Exception):
