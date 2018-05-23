@@ -18,7 +18,6 @@ from ..filelist import DuplicateList
 from ..difflist import DiffList
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
-from ..synchronizer.exceptions import TooLongFilenameError
 from ..common import Lockfile
 
 __all__ = ["do_sync", "SynchronizerReceiver"]

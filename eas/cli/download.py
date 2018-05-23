@@ -8,7 +8,6 @@ import portalocker
 
 from .. import Paths
 from ..downloader import Downloader, DownloadTarget
-from ..downloader.exceptions import NotFoundInDBError
 from ..events import Receiver
 from ..common import Lockfile
 
