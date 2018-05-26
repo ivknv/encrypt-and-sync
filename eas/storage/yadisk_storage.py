@@ -73,8 +73,8 @@ class YaDiskDownloadController(DownloadController):
                                                            headers={"Connection": "close"})
 
             if self.response.status_code != 200:
-                self.response = None
-                raise yadisk.utils.get_exception(self.response)
+                self.response, response = None, self.response
+                raise yadisk.utils.get_exception(response)
 
             self.size = float(self.response.headers.get("Content-Length", "0"))
 
