@@ -192,15 +192,16 @@ class UploadTask(SyncTask):
             else:
                 padded_size = pad_size(self.size)
 
-            if self.size >= 700 * 1024**2:
+            # Timeout fix for Yandex.Disk
+            if self.size >= 700 * 1024**2 and self.dst.storage.type == "yadisk":
                 if not isinstance(upload_timeout, (tuple, list)):
                     connect_timeout = read_timeout = upload_timeout
                 else:
                     connect_timeout, read_timeout = upload_timeout
 
-                new_read_timeout = 300.0
+                new_read_timeout = 500.0
 
-                if read_timeout < new_read_timeout:
+                if read_timeout is not None and read_timeout < new_read_timeout:
                     upload_timeout = (connect_timeout, new_read_timeout)
 
             controller, ivs = self.dst.upload(temp_file, self.path,
