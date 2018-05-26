@@ -162,3 +162,11 @@ class FolderStorage(object):
             path, ivs = self.encrypt_path(path, ivs)
 
         return self.storage.remove(path, *args, **kwargs)
+
+    def set_modified(self, path, new_modified, *args, ivs=None, **kwargs):
+        path = Paths.join(self.prefix, path)
+
+        if self.encrypted:
+            path, ivs = self.encrypt_path(path, ivs)
+
+        return self.storage.set_modified(path, new_modified, *args, **kwargs)

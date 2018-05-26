@@ -69,6 +69,7 @@ class SyncTarget(StagedTask):
         self.skip_integrity_check = skip_integrity_check
         self.avoid_src_rescan = folder1["avoid_rescan"]
         self.avoid_dst_rescan = folder2["avoid_rescan"]
+        self.preserve_modified = False
 
         self.pool = WorkerPool(None)
 

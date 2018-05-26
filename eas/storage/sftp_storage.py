@@ -171,6 +171,7 @@ class SFTPStorage(Storage):
     type = "remote"
     case_sensitive = True
     parallelizable = False
+    supports_set_modified = False
 
     @staticmethod
     def split_path(path):
@@ -268,7 +269,7 @@ class SFTPStorage(Storage):
             elif stat.S_ISDIR(s.st_mode):
                 resource_type = "dir"
                 size = 0
-                modified = 0
+                modified = s.st_mtime
 
                 if stat.S_ISLNK(s.st_mode):
                     real_path = connection.readlink(path)
@@ -304,7 +305,7 @@ class SFTPStorage(Storage):
                 elif stat.S_ISDIR(s.st_mode):
                     resource_type = "dir"
                     size = 0
-                    modified = 0
+                    modified = s.st_mtime
 
                     if stat.S_ISLNK(s.st_mode):
                         real_path = connection.readlink(path)

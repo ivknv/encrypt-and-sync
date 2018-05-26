@@ -216,10 +216,30 @@ class UploadTask(SyncTask):
 
             controller.work()
 
+            modified = None
+
+            src_filelist = self.parent.shared_flist1
+
+            if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
+                modified = src_filelist.find_node(src_path)["modified"]
+
+                if modified is not None:
+                    self.dst.set_modified(self.path, modified)
+
+                # Preserve parent modified date
+                if self.path not in ("", "/"):
+                    parent_modified = src_filelist.find_node(Paths.split(src_path)[0])["modified"]
+
+                    if parent_modified not in (None, 0):
+                        self.dst.set_modified(Paths.split(self.path)[0], parent_modified)
+
+            if modified is None:
+                modified = time.mktime(time.gmtime())
+
             newnode = {"type":        "f",
                        "path":        dst_path,
                        "padded_size": padded_size,
-                       "modified":    time.mktime(time.gmtime()),
+                       "modified":    modified,
                        "IVs":         ivs}
 
             self.dst_flist.insert_node(newnode)
@@ -245,9 +265,29 @@ class MkdirTask(SyncTask):
 
         ivs = self.dst.mkdir(self.path)
 
+        src_filelist = self.parent.shared_flist1
+
+        modified = None
+
+        if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
+            modified = src_filelist.find_node(src_path)["modified"]
+
+            if modified is not None:
+                self.dst.set_modified(self.path, modified)
+
+            # Preserve parent modified date
+            if self.path not in ("", "/"):
+                parent_modified = src_filelist.find_node(Paths.split(src_path)[0])["modified"]
+
+                if parent_modified not in (None, 0):
+                    self.dst.set_modified(Paths.split(self.path)[0], parent_modified)
+
+        if modified is None:
+            modified = time.mktime(time.gmtime())
+
         newnode = {"type":        "d",
                    "path":        dst_path,
-                   "modified":    time.mktime(time.gmtime()),
+                   "modified":    modified,
                    "padded_size": 0,
                    "IVs":         ivs}
 
@@ -265,6 +305,7 @@ class RmTask(SyncTask):
 
         self.status = "pending"
 
+        src_path = Paths.join(self.src.prefix, self.path)
         dst_path = Paths.join(self.dst.prefix, self.path)
 
         try:
@@ -274,6 +315,16 @@ class RmTask(SyncTask):
 
         if self.node_type == "d":
             self.dst_flist.remove_node_children(dst_path)
+
+        src_filelist = self.parent.shared_flist1
+
+        # Preserve parent modified date
+        if self.parent.preserve_modified and self.path not in ("", "/"):
+            if self.dst.storage.supports_set_modified:
+                parent_modified = src_filelist.find_node(Paths.split(src_path)[0])["modified"]
+
+                if parent_modified not in (None, 0):
+                    self.dst.set_modified(Paths.split(self.path)[0], parent_modified)
 
         self.dst_flist.remove_node(dst_path)
         self.autocommit()

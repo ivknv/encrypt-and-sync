@@ -116,6 +116,7 @@ def main(args=None):
         env["no_scan"] = ns.no_scan
         env["no_diffs"] = ns.no_diffs
         env["no_remove"] = ns.no_remove
+        env["no_preserve_modified"] = ns.no_preserve_modified
 
     if ns.action in ("scan", "sync", "download", "rmdup"):
         if ns.n_workers is not None:
@@ -240,6 +241,9 @@ def parse_args(args):
                              help="Choose which targets to sync")
     sync_parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                              help="Number of workers to use")
+    sync_parser.add_argument("--no-preserve-modified",
+                             help="Don't try to preserve modified date for files",
+                             action="store_true")
     sync_parser.add_argument("--no-journal", action="store_true",
                              help="Disable SQLite3 journaling")
     sync_parser.add_argument("--no-auth-check", action="store_true",

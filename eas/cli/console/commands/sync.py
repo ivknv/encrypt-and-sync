@@ -25,6 +25,9 @@ class SyncCommand(Command):
                             help="Don't ask for any user input")
         parser.add_argument("--choose-targets", action="store_true",
                             help="Choose which targets to sync")
+        parser.add_argument("--no-preserve-modified",
+                            help="Don't try to preserve modified date for files",
+                            action="store_true")
         parser.add_argument("--no-scan", action="store_true", help="Disable scan")
         parser.add_argument("--no-diffs", action="store_true",
                             help="Don't show the list of differences")
@@ -48,7 +51,8 @@ class SyncCommand(Command):
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
         env["no_remove"] = ns.no_remove
-        env["no_prgoress"] = ns.no_progress
+        env["no_progress"] = ns.no_progress
+        env["no_preserve_modified"] = ns.no_preserve_modified
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

@@ -168,6 +168,7 @@ class YaDiskStorage(Storage):
     type = "remote"
     case_sensitive = True
     parallelizable = True
+    supports_set_modified = False
 
     def __init__(self, config):
         Storage.__init__(self, config)

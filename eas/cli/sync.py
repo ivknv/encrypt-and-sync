@@ -488,6 +488,7 @@ def do_sync(env, names):
     n_sync_workers = env.get("n_workers", config.sync_threads)
     n_scan_workers = env.get("n_workers", config.scan_threads)
     no_journal = env.get("no_journal", False)
+    no_preserve_modified = env.get("no_preserve_modified", False)
 
     synchronizer = Synchronizer(config,
                                 env["db_dir"],
@@ -507,6 +508,7 @@ def do_sync(env, names):
         target.no_remove = no_remove
         target.n_workers = n_sync_workers
         target.n_scan_workers = n_scan_workers
+        target.preserve_modified = not no_preserve_modified
 
         targets.append(target)
 

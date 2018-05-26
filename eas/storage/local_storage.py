@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime, timezone
 import os
 import shutil
 import stat
@@ -23,6 +24,15 @@ if is_windows():
 else:
     def _is_reparse_point(stat_result):
         return False
+
+def utc_to_local(utc_timestamp):
+    return datetime.fromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc).astimezone(tz=None).timestamp()
+
+def local_to_utc(local_timestamp):
+    try:
+        return max(time.mktime(time.gmtime(local_timestamp)), 0)
+    except (OSError, OverflowError):
+        return 0
 
 class LocalDownloadController(DownloadController):
     def __init__(self, config, in_path, out_file, **kwargs):
@@ -90,6 +100,7 @@ class LocalStorage(Storage):
     type = "local"
     case_sensitive = True
     parallelizable = False
+    supports_set_modified = True
 
     def get_meta(self, path, *args, **kwargs):
         path = Paths.to_sys(path)
@@ -102,11 +113,7 @@ class LocalStorage(Storage):
             resource_type = "file"
             size = s.st_size
 
-            try:
-                modified = time.mktime(time.gmtime(s.st_mtime))
-                modified = max(modified, 0)
-            except (OSError, OverflowError):
-                modified = 0
+            modified = local_to_utc(s.st_mtime)
         elif stat.S_ISDIR(s.st_mode):
             if _is_reparse_point(s):
                 return {"type":     None,
@@ -120,7 +127,7 @@ class LocalStorage(Storage):
 
             resource_type = "dir"
             size = 0
-            modified = 0
+            modified = local_to_utc(s.st_mtime)
         else:
             return {"type":     None,
                     "name":     filename,
@@ -142,11 +149,7 @@ class LocalStorage(Storage):
                 resource_type = "file"
                 size = entry.stat().st_size
 
-                try:
-                    modified = time.mktime(time.gmtime(entry.stat().st_mtime))
-                    modified = max(modified, 0)
-                except (OSError, OverflowError):
-                    modified = 0
+                modified = local_to_utc(entry.stat().st_mtime)
             elif entry.is_dir():
                 if _is_reparse_point(entry.stat()):
                     continue
@@ -156,7 +159,7 @@ class LocalStorage(Storage):
 
                 resource_type = "dir"
                 size = 0
-                modified = 0
+                modified = local_to_utc(entry.stat().st_mtime)
             else:
                 continue
 
@@ -196,3 +199,7 @@ class LocalStorage(Storage):
 
     def exists(self, path, *args, **kwargs):
         return os.path.exists(Paths.to_sys(path))
+
+    def set_modified(self, path, new_modified, *args, **kwargs):
+        new_modified = utc_to_local(new_modified)
+        os.utime(path, (new_modified, new_modified))

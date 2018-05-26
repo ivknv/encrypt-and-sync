@@ -32,6 +32,7 @@ class Storage(object):
     type = None
     case_sensitive = True
     parallelizable = False
+    supports_set_modified = False
 
     @classmethod
     def validate(cls):
@@ -257,6 +258,23 @@ class Storage(object):
             Check whether `path` exists.
 
             :param path: path to check
+            :param timeout: `int` or `float`, timeout for the operation
+            :param n_retries: `int`, maximum number of retries
+
+            :raises IOError: in case of I/O errors
+            :raises TemporaryStorageError: in case of temporary I/O errors
+
+            :returns: `bool`
+        """
+
+        raise NotImplementedError
+
+    def set_modified(self, path, new_modified, timeout=float("inf"), n_retries=0):
+        """
+            Set last modified date to `new_modified` for `path`.
+
+            :param path: path to update
+            :param new_modified: `int` or `float`, new last modified date (timestamp in UTC)
             :param timeout: `int` or `float`, timeout for the operation
             :param n_retries: `int`, maximum number of retries
 
