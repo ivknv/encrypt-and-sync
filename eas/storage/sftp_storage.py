@@ -43,6 +43,9 @@ def auto_retry(attempt, n_retries, retry_interval):
             if str(e).startswith("No hostkey for host "):
                 raise e
 
+            if str(e).startswith("not a valid DSA"):
+                raise e
+
             if i == n_retries:
                 raise TemporaryStorageError(str(e))
 
@@ -58,11 +61,11 @@ class SFTPConnection(pysftp.Connection):
         pysftp.Connection.__init__(self, *args, **kwargs)
 
 class SFTPUploadController(UploadController):
-    def __init__(self, config, connection, in_file, out_path, **kwargs):
+    def __init__(self, config, storage, in_file, out_path, **kwargs):
         self.speed_limiter = ControlledSpeedLimiter(self, None)
         UploadController.__init__(self, config, in_file, **kwargs)
 
-        self.connection = connection
+        self.storage = storage
         self.out_path = out_path
 
     @property
@@ -77,7 +80,10 @@ class SFTPUploadController(UploadController):
         if self.stopped:
             raise ControllerInterrupt
 
-        with self.connection.open(self.out_path, "wb") as out_file:
+        host_address, out_path = self.storage.split_path(self.out_path)
+        connection = self.storage.get_connection(host_address)
+
+        with connection.open(out_path, "wb") as out_file:
             self.speed_limiter.begin()
             self.speed_limiter.quantity = 0
 
@@ -104,13 +110,13 @@ class SFTPUploadController(UploadController):
         auto_retry(self._work, self.n_retries, 0.0)
 
 class SFTPDownloadController(DownloadController):
-    def __init__(self, config, connection, in_path, out_file, **kwargs):
+    def __init__(self, config, storage, in_path, out_file, **kwargs):
         self.speed_limiter = ControlledSpeedLimiter(self, None)
 
         DownloadController.__init__(self, config, out_file, **kwargs)
 
         self.in_path = in_path
-        self.connection = connection
+        self.storage = storage
 
     @property
     def limit(self):
@@ -123,7 +129,10 @@ class SFTPDownloadController(DownloadController):
     def begin(self, enable_retries=True):
         def attempt():
             if self.size is None:
-                self.size = self.connection.stat(self.in_path).st_size
+                host_address, in_path = self.storage.split_path(self.in_path)
+                connection = self.storage.get_connection(host_address)
+
+                self.size = connection.stat(in_path).st_size
 
         if not enable_retries:
             attempt()
@@ -140,7 +149,10 @@ class SFTPDownloadController(DownloadController):
         if self.stopped:
             raise ControllerInterrupt
 
-        with self.connection.open(self.in_path, "rb") as in_file:
+        host_address, in_path = self.storage.split_path(self.in_path)
+        connection = self.storage.get_connection(host_address)
+
+        with connection.open(in_path, "rb") as in_file:
             self.speed_limiter.begin()
             self.speed_limiter.quantity = 0
 
@@ -231,6 +243,7 @@ class SFTPStorage(Storage):
             try:
                 connection = SFTPConnection(host, port=port, username=username,
                                             private_key=key)
+                break
             except paramiko.ssh_exception.AuthenticationException as e:
                 error = e
 
@@ -364,34 +377,10 @@ class SFTPStorage(Storage):
         auto_retry(attempt, n_retries, 0.0)
 
     def upload(self, in_file, out_path, **kwargs):
-        n_retries = kwargs.get("n_retries")
-
-        if n_retries is None:
-            n_retries = self.config.n_retries
-
-        host_address, out_path = self.split_path(out_path)
-
-        def attempt():
-            return self.get_connection(host_address)
-
-        connection = auto_retry(attempt, n_retries, 0.0)
-        return SFTPUploadController(self.config, connection,
-                                    in_file, out_path, **kwargs)
+        return SFTPUploadController(self.config, self, in_file, out_path, **kwargs)
 
     def download(self, in_path, out_file, **kwargs):
-        n_retries = kwargs.get("n_retries")
-
-        if n_retries is None:
-            n_retries = self.config.n_retries
-
-        host_address, in_path = self.split_path(in_path)
-
-        def attempt():
-            return self.get_connection(host_address)
-
-        connection = auto_retry(attempt, n_retries, 0.0)
-        return SFTPDownloadController(self.config, connection,
-                                      in_path, out_file, **kwargs)
+        return SFTPDownloadController(self.config, self, in_path, out_file, **kwargs)
 
     def is_file(self, path, n_retries=None, timeout=None):
         if n_retries is None:
