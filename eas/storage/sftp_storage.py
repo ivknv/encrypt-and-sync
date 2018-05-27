@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import collections
+from datetime import datetime, timezone
 import socket
 import stat
 import threading
@@ -50,6 +51,9 @@ def auto_retry(attempt, n_retries, retry_interval):
                 raise TemporaryStorageError(str(e))
 
         time.sleep(retry_interval)
+
+def utc_to_local(utc_timestamp):
+    return datetime.fromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc).astimezone(tz=None).timestamp()
 
 def local_to_utc(local_timestamp):
     try:
@@ -189,7 +193,7 @@ class SFTPStorage(Storage):
     type = "remote"
     case_sensitive = True
     parallelizable = False
-    supports_set_modified = False
+    supports_set_modified = True
 
     @staticmethod
     def split_path(path):
@@ -426,3 +430,18 @@ class SFTPStorage(Storage):
             return connection.exists(path)
 
         return auto_retry(attempt, n_retries, 0.0)
+
+    def set_modified(self, path, new_modified, n_retries=None, timeout=None):
+        if n_retries is None:
+            n_retries = self.config.n_retries
+
+        host_address, path = self.split_path(path)
+
+        new_modified = utc_to_local(new_modified)
+
+        def attempt():
+            connection = self.get_connection(host_address)
+
+            connection.sftp_client.utime(path, (new_modified, new_modified))
+
+        auto_retry(attempt, n_retries, 0.0)
