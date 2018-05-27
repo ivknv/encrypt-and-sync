@@ -51,6 +51,12 @@ def auto_retry(attempt, n_retries, retry_interval):
 
         time.sleep(retry_interval)
 
+def local_to_utc(local_timestamp):
+    try:
+        return max(time.mktime(time.gmtime(local_timestamp)), 0)
+    except (OSError, OverflowError):
+        return 0
+
 class SFTPConnection(pysftp.Connection):
     def __init__(self, *args, **kwargs):
         # Fix for AttributeError on self.__del__()
@@ -282,7 +288,7 @@ class SFTPStorage(Storage):
             elif stat.S_ISDIR(s.st_mode):
                 resource_type = "dir"
                 size = 0
-                modified = s.st_mtime
+                modified = local_to_utc(s.st_mtime)
 
                 if stat.S_ISLNK(s.st_mode):
                     real_path = connection.readlink(path)
@@ -314,11 +320,11 @@ class SFTPStorage(Storage):
                 if stat.S_ISREG(s.st_mode):
                     resource_type = "file"
                     size = s.st_size
-                    modified = s.st_mtime
+                    modified = local_to_utc(s.st_mtime)
                 elif stat.S_ISDIR(s.st_mode):
                     resource_type = "dir"
                     size = 0
-                    modified = s.st_mtime
+                    modified = local_to_utc(s.st_mtime)
 
                     if stat.S_ISLNK(s.st_mode):
                         real_path = connection.readlink(path)
