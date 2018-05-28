@@ -414,6 +414,7 @@ class TaskReceiver(Receiver):
         Receiver.__init__(self)
 
         self.last_uploaded_percents = {}
+        self.last_downloaded_percents = {}
 
     def on_status_changed(self, event):
         task = event["emitter"]
@@ -428,6 +429,28 @@ class TaskReceiver(Receiver):
         print(progress_str + ": %s" % status)
 
         self.last_uploaded_percents.pop(task.path, None)
+        self.last_downloaded_percents.pop(task.path, None)
+
+    def on_downloaded_changed(self, event):
+        task = event["emitter"]
+        downloaded, size = task.downloaded, task.download_controller.size
+
+        try:
+            downloaded_percent = float(downloaded) / size * 100.0
+        except ZeroDivisionError:
+            downloaded_percent = 100.0
+
+        last_downloaded = self.last_downloaded_percents.get(task.path, 0.0)
+
+        # Change can be negative due to retries
+        if abs(downloaded_percent - last_downloaded) < 25.0 and downloaded_percent < 100.0:
+            return
+
+        self.last_downloaded_percents[task.path] = downloaded_percent
+
+        progress_str = get_progress_str(task)
+
+        print(progress_str + ": received %6.2f%%" % downloaded_percent)
 
     def on_uploaded_changed(self, event):
         task = event["emitter"]
@@ -448,7 +471,7 @@ class TaskReceiver(Receiver):
 
         progress_str = get_progress_str(task)
 
-        print(progress_str + ": uploaded %6.2f%%" % uploaded_percent)
+        print(progress_str + ": sent %6.2f%%" % uploaded_percent)
 
 def do_sync(env, names):
     lockfile = Lockfile(env["lockfile_path"])
