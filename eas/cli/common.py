@@ -73,7 +73,7 @@ def get_progress_str(task):
     else:
         path = task.path
 
-    path = path.lstrip("/")
+    path = path.lstrip("/") or "/"
 
     if target.expected_total_children == -1:
         return "[N/A][%s]" % (path,)
