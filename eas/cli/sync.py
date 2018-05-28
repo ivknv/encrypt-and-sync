@@ -526,14 +526,18 @@ def do_sync(env, names):
     targets = []
 
     for name1, name2 in zip(names[::2], names[1::2]):
-        target = SyncTarget(synchronizer, name1, name2, not no_scan)
-        target.skip_integrity_check = no_check
-        target.no_remove = no_remove
-        target.n_workers = n_sync_workers
-        target.n_scan_workers = n_scan_workers
-        target.preserve_modified = not no_preserve_modified
+        try:
+            target = SyncTarget(synchronizer, name1, name2, not no_scan)
+            target.skip_integrity_check = no_check
+            target.no_remove = no_remove
+            target.n_workers = n_sync_workers
+            target.n_scan_workers = n_scan_workers
+            target.preserve_modified = not no_preserve_modified
 
-        targets.append(target)
+            targets.append(target)
+        except ValueError as e:
+            show_error("Error: %s" % (e,))
+            return 1
 
     if (ask and env.get("all", False)) or choose_targets:
         targets = ask_target_choice(targets)
