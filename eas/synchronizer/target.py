@@ -9,8 +9,8 @@ from ..difflist import DiffList
 from ..folder_storage import get_folder_storage
 from ..constants import AUTOCOMMIT_INTERVAL
 from ..worker import WorkerPool, get_current_worker
-from ..common import threadsafe_iterator
-from .. import file_comparator
+from ..common import threadsafe_iterator, recognize_path
+from .. import Paths, file_comparator
 from .worker import SyncWorker
 from .tasks import UploadTask, MkdirTask, RmTask
 
@@ -23,7 +23,7 @@ class SyncTarget(StagedTask):
                 autocommit_failed, autocommit_finished
     """
 
-    def __init__(self, synchronizer, folder_name1, folder_name2,
+    def __init__(self, synchronizer, path1, path2,
                  enable_scan, skip_integrity_check=False):
         self._stopped = False
 
@@ -36,6 +36,30 @@ class SyncTarget(StagedTask):
 
         self.folder1 = None
         self.folder2 = None
+
+        self.path1, self.path_type1 = recognize_path(path1)
+        self.path2, self.path_type2 = recognize_path(path2)
+
+        self.path1 = Paths.join_properly("/", self.path1)
+        self.path2 = Paths.join_properly("/", self.path2)
+
+        self.path1_with_proto = "%s://%s" % (self.path_type1, self.path1)
+        self.path2_with_proto = "%s://%s" % (self.path_type2, self.path2)
+
+        self.folder1 = self.config.identify_folder(self.path_type1, self.path1)
+        self.folder2 = self.config.identify_folder(self.path_type2, self.path2)
+
+        if self.folder1 is None:
+            raise KeyError("%r does not belong to any known folders" % (path1,))
+
+        if self.folder2 is None:
+            raise KeyError("%r does not belong to any known folders" % (path2,))
+
+        self.subpath1 = Paths.cut_prefix(self.path1, self.folder1["path"])
+        self.subpath2 = Paths.cut_prefix(self.path2, self.folder2["path"])
+
+        self.subpath1 = Paths.join_properly("/", self.subpath1)
+        self.subpath2 = Paths.join_properly("/", self.subpath2)
         
         self.skip_integrity_check = False
         self.enable_scan = True
@@ -53,22 +77,10 @@ class SyncTarget(StagedTask):
         self.upload_limit = synchronizer.upload_limit
         self.download_limit = synchronizer.download_limit
 
-        try:
-            folder1 = self.config.folders[folder_name1]
-        except KeyError:
-            raise ValueError("Unknown folder: %r" % (folder_name1,))
-
-        try:
-            folder2 = self.config.folders[folder_name2]
-        except KeyError:
-            raise ValueError("Unknown folder: %r" % (folder_name2,))
-        
-        self.folder1 = folder1
-        self.folder2 = folder2
         self.enable_scan = enable_scan
         self.skip_integrity_check = skip_integrity_check
-        self.avoid_src_rescan = folder1["avoid_rescan"]
-        self.avoid_dst_rescan = folder2["avoid_rescan"]
+        self.avoid_src_rescan = self.folder1["avoid_rescan"]
+        self.avoid_dst_rescan = self.folder2["avoid_rescan"]
         self.preserve_modified = False
 
         self.pool = WorkerPool(None)
@@ -115,8 +127,8 @@ class SyncTarget(StagedTask):
 
     def get_differences(self):
         return file_comparator.compare_lists(self.config,
-                                             self.folder1["name"],
-                                             self.folder2["name"],
+                                             self.path1_with_proto,
+                                             self.path2_with_proto,
                                              self.synchronizer.directory)
 
     def build_diffs_table(self):
@@ -126,7 +138,8 @@ class SyncTarget(StagedTask):
         
         try:
             self.difflist.begin_transaction()
-            self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])
+            self.difflist.clear_differences(self.path1_with_proto,
+                                            self.path2_with_proto)
 
             with self.difflist:
                 for diff in diffs:
@@ -141,7 +154,8 @@ class SyncTarget(StagedTask):
 
         try:
             if self.stage != "check":
-                diff_count = self.difflist.get_difference_count(self.folder1["name"], self.folder2["name"])
+                diff_count = self.difflist.get_difference_count(self.path1_with_proto,
+                                                                self.path2_with_proto)
                 n_done = self.get_n_done()
 
                 self.expected_total_children = diff_count + n_done
@@ -180,16 +194,14 @@ class SyncTarget(StagedTask):
 
             yield task
 
-    def do_scan(self, *folder_names, force=False):
+    def do_scan(self, *paths, force=False):
         targets = []
 
-        for folder_name in folder_names:
-            assert(folder_name in (self.folder1["name"], self.folder2["name"]))
-
-            target = ScanTarget(self.scanner, folder_name)
+        for path in paths:
+            target = ScanTarget(self.scanner, path)
             target.n_workers = self.n_scan_workers
 
-            if folder_name == self.folder1["name"]:
+            if target.name == self.folder1["name"]:
                 rescan = force or not self.avoid_src_rescan
 
                 if rescan or self.shared_flist1.is_empty(self.src.prefix):
@@ -220,7 +232,7 @@ class SyncTarget(StagedTask):
         if self.stopped:
             return
 
-        self.do_scan(self.folder1["name"], self.folder2["name"])
+        self.do_scan(self.path1_with_proto, self.path2_with_proto)
 
     def finalize_scan(self):
         if not self.enable_scan:
@@ -233,12 +245,12 @@ class SyncTarget(StagedTask):
 
     def init_rmdup(self):
         if self.src.encrypted:
-            target = DuplicateRemoverTarget(self.duprem, self.src.storage.name, self.src.prefix)
+            target = DuplicateRemoverTarget(self.duprem, self.src.storage.name, self.path1)
             target.n_workers = self.n_workers
             self.duprem.add_target(target)
 
         if self.dst.encrypted:
-            target = DuplicateRemoverTarget(self.duprem, self.dst.storage.name, self.dst.prefix)
+            target = DuplicateRemoverTarget(self.duprem, self.dst.storage.name, self.path2)
             target.n_workers = self.n_workers
             self.duprem.add_target(target)
 
@@ -254,8 +266,8 @@ class SyncTarget(StagedTask):
         if self.no_remove:
             return
 
-        differences = self.difflist.select_rm_differences(self.folder1["name"],
-                                                          self.folder2["name"])
+        differences = self.difflist.select_rm_differences(self.path1_with_proto,
+                                                          self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
 
@@ -276,8 +288,8 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_dirs(self):
-        differences = self.difflist.select_dirs_differences(self.folder1["name"],
-                                                            self.folder2["name"])
+        differences = self.difflist.select_dirs_differences(self.path1_with_proto,
+                                                            self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
 
@@ -290,8 +302,8 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_files(self):
-        differences = self.difflist.select_files_differences(self.folder1["name"],
-                                                             self.folder2["name"])
+        differences = self.difflist.select_files_differences(self.path1_with_proto,
+                                                             self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
 
@@ -317,7 +329,7 @@ class SyncTarget(StagedTask):
 
         self.emit_event("integrity_check")
 
-        self.do_scan(self.folder2["name"], force=True)
+        self.do_scan(self.path2_with_proto, force=True)
 
     def finalize_check(self):
         if self.stopped:
@@ -328,7 +340,8 @@ class SyncTarget(StagedTask):
 
         self.build_diffs_table()
 
-        if self.difflist.get_difference_count(self.folder1["name"], self.folder2["name"]):
+        if self.difflist.get_difference_count(self.path1_with_proto,
+                                              self.path2_with_proto):
             self.emit_event("integrity_check_failed")
             self.status = "failed"
         else:
@@ -398,7 +411,8 @@ class SyncTarget(StagedTask):
                     self.status = "failed"
 
             if self.status == "finished":
-                self.difflist.clear_differences(self.folder1["name"], self.folder2["name"])
+                self.difflist.clear_differences(self.path1_with_proto,
+                                                self.path2_with_proto)
         finally:
             self.difflist = None
             self.shared_flist1 = None

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import os
 import threading
 
 from ..task import Task
 from ..filelist import FileList, DuplicateList
 from ..scannable import DecryptedScannable, EncryptedScannable
 from ..worker import WorkerPool, get_current_worker
+from ..common import recognize_path
 from .. import path_match
 from .. import Paths
 from .tasks import EncryptedScanTask, DecryptedScanTask
@@ -19,32 +21,33 @@ class ScanTarget(Task):
         Events: next_node, duplicates_found, scan_finished
     """
 
-    def __init__(self, scanner, name):
+    def __init__(self, scanner, path):
         self._stopped = True
 
         Task.__init__(self)
 
         self.scanner = scanner
         self.config = scanner.config
-        self.type = None
-        self.name = name
+        self.path, self.type = recognize_path(path)
+        self.path = Paths.join_properly("/", self.path)
+        self.name = None
         self.storage = None
-        self.encrypted = False
+        self.encrypted = None
+        self.filename_encoding = None
 
-        self.path = ""
-        self.filename_encoding = "base64"
+        folder = self.config.identify_folder(self.type, self.path)
 
-        self.shared_flist = FileList(name, scanner.directory)
+        if folder is None:
+            raise KeyError("%r does not belong to any known folders" % (path,))
+
+        self.folder = folder
+        self.prefix = folder["path"]
+        self.name = folder["name"]
+
+        self.shared_flist = FileList(self.name, scanner.directory)
         self.shared_duplist = None
 
-        try:
-            folder = self.config.folders[name]
-        except KeyError:
-            raise ValueError("Unknown folder: %r" % (name,))
-
-        self.type = folder["type"]
         self.encrypted = folder["encrypted"]
-        self.path = folder["path"]
         self.filename_encoding = folder["filename_encoding"]
 
         self.n_workers = 1
@@ -63,19 +66,32 @@ class ScanTarget(Task):
         self._stopped = value
 
     def begin_scan(self):
-        self.shared_flist.clear()
+        if self.stopped:
+            return
+
+        if self.encrypted:
+            IVs = self.shared_flist.find_node(self.path)["IVs"]
+
+            if IVs is None and not Paths.is_equal(self.path, self.prefix):
+                raise KeyError("Can't find %r in the database" % (self.path,))
+
+            enc_path = self.config.encrypt_path(self.path, self.prefix, IVs=IVs)[0]
+            scannable = EncryptedScannable(self.storage, self.prefix, enc_path,
+                                           filename_encoding=self.filename_encoding)
+        else:
+            scannable = DecryptedScannable(self.storage, self.path)
+
+        if Paths.is_equal(self.path, self.prefix):
+            self.shared_flist.clear()
+        else:
+            self.shared_flist.remove_node(self.path)
+            self.shared_flist.remove_node_children(self.path)
 
         if self.encrypted:
             self.shared_duplist.remove_children(self.path)
 
         if self.stopped:
             return
-
-        if self.encrypted:
-            scannable = EncryptedScannable(self.storage, self.path,
-                                           filename_encoding=self.filename_encoding)
-        else:
-            scannable = DecryptedScannable(self.storage, self.path)
 
         try:
             scannable.identify()

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import argparse
@@ -14,7 +13,7 @@ class SyncCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Sync targets",
                                          prog=self.args[0])
-        parser.add_argument("folders", nargs="*", help="List of folders to sync")
+        parser.add_argument("folders", nargs="*", help="List of folders/paths to sync")
         parser.add_argument("-a", "--all", action="store_true",
                             help="Sync all targets")
         parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",

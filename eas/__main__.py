@@ -201,8 +201,8 @@ def parse_args(args):
     global_group.add_argument("--config-dir", metavar="PATH", default=None,
                               help="Path to the configuration directory")
 
-    scan_parser = subparsers.add_parser("scan", aliases=["s"], help="Scan targets")
-    scan_parser.add_argument("folders", nargs="*", help="List of folders to scan")
+    scan_parser = subparsers.add_parser("scan", aliases=["s"], help="Scan folders/paths")
+    scan_parser.add_argument("folders", nargs="*", help="List of folders/paths to scan")
     scan_parser.add_argument("-a", "--all", action="store_true",
                              help="Scan all folders")
     scan_parser.add_argument("--ask", action="store_true", help="(deprecated)")
@@ -226,7 +226,7 @@ def parse_args(args):
     diffs_parser.set_defaults(func=show_diffs, action="diffs")
 
     sync_parser = subparsers.add_parser("sync", aliases=["S"], help="Sync targets")
-    sync_parser.add_argument("folders", nargs="*", help="List of folders to sync")
+    sync_parser.add_argument("folders", nargs="*", help="List of folders/paths to sync")
     sync_parser.add_argument("-I", "--integrity-check", action="store_true",
                              help="Enable integrity check")
     sync_parser.add_argument("--no-scan", action="store_true", help="Disable scan")

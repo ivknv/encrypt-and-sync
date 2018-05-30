@@ -67,7 +67,7 @@ def get_progress_str(task):
     failed_percent = get_failed_percent(target)
 
     if isinstance(task, SyncTask):
-        path = task.path
+        path = Paths.join(task.parent.subpath2, task.path)
     elif isinstance(task, DownloadTask):
         path = task.src_path
     else:

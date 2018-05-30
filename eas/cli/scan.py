@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import time
 
@@ -12,7 +13,8 @@ from ..filelist import FileList, DuplicateList
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
 from .authenticate_storages import authenticate_storages
-from ..common import Lockfile
+from ..common import Lockfile, validate_folder_name, recognize_path
+from .. import Paths
 
 from . import common
 from .common import show_error
@@ -21,9 +23,20 @@ PRINT_RATE_LIMIT = 1.0
 
 __all__ = ["do_scan", "ScannerReceiver"]
 
+def get_target_display_name(target):
+    if Paths.is_equal(target.path, target.prefix):
+        return "[%s]" % (target.name,)
+
+    path = Paths.cut_prefix(target.path, target.prefix)
+    path = path.lstrip("/") or "/"
+
+    return "[%s][%s]" % (target.name, path)
+
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
-        print("[%d] [%s]" % (i + 1, target.name))
+        display_name = get_target_display_name(target)
+
+        print("[%d] [%s]" % (i + 1, display_name))
 
     while True:
         try:
@@ -59,8 +72,8 @@ def print_target_totals(env, target):
 
     filelist.close()
 
-    print("[%s]: %d files" % (target.name, n_files))
-    print("[%s]: %d directories" % (target.name, n_dirs))
+    print("%s: %d files" % (get_target_display_name(target), n_files))
+    print("%s: %d directories" % (get_target_display_name(target), n_dirs))
 
     if not target.encrypted:
         return
@@ -73,7 +86,7 @@ def print_target_totals(env, target):
 
     duplist.close()
 
-    print("[%s]: %d duplicate(s)" % (target.name, n_duplicates))
+    print("%s: %d duplicate(s)" % (get_target_display_name(target), n_duplicates))
 
 class ScannerReceiver(Receiver):
     def __init__(self, env, scanner):
@@ -84,7 +97,7 @@ class ScannerReceiver(Receiver):
     def on_next_target(self, event, target):
         target.add_receiver(self.target_receiver)
 
-        print("Performing %s scan: [%s]" % (target.type, target.name))
+        print("Performing %s scan: %s" % (target.type, get_target_display_name(target)))
 
     def on_error(self, event, exc):
         common.show_exception(exc)
@@ -112,7 +125,8 @@ class TargetReceiver(Receiver):
         if target.status == "pending":
             target.pool.add_receiver(self.pool_receiver)
         else:
-            print("[%s]: %s scan %s" % (target.name, target.type, target.status))
+            print("%s: %s scan %s" % (get_target_display_name(target),
+                                      target.type, target.status))
 
         if target.status == "finished":
             print_target_totals(self.env, target)
@@ -144,7 +158,7 @@ class WorkerReceiver(Receiver):
     def on_error(self, event, exc):
         common.show_exception(exc)
 
-def do_scan(env, names):
+def do_scan(env, names_or_paths):
     lockfile = Lockfile(env["lockfile_path"])
 
     try:
@@ -162,13 +176,13 @@ def do_scan(env, names):
     ask = env.get("ask", False)
     choose_targets = env.get("choose_targets", False)
 
-    names = list(names)
+    names_or_paths = list(names_or_paths)
 
     if env.get("all", False):
-        names += sorted(config.folders.keys())
+        names_or_paths += sorted(config.folders.keys())
 
-    if len(names) == 0:
-        show_error("Error: no folders given")
+    if len(names_or_paths) == 0:
+        show_error("Error: no folders or paths given")
         return 1
 
     no_journal = env.get("no_journal", False)
@@ -178,14 +192,32 @@ def do_scan(env, names):
 
     targets = []
 
-    for name in names:
+    for name_or_path in names_or_paths:
+        if validate_folder_name(name_or_path):
+            try:
+                folder = config.folders[name_or_path]
+            except KeyError:
+                show_error("Error: unknown folder %r" % (name_or_path,))
+                return 1
+
+            path_with_proto = folder["type"] + "://" + folder["path"]
+        else:
+            path_with_proto = name_or_path
+
+            path, proto = recognize_path(path_with_proto)
+
+            if proto == "local":
+                path = Paths.from_sys(os.path.abspath(os.path.expanduser(path)))
+
+            path_with_proto = proto + "://" + path
+
         try:
-            target = ScanTarget(scanner, name)
+            target = ScanTarget(scanner, path_with_proto)
             target.n_worker = n_workers
 
             targets.append(target)
-        except ValueError:
-            show_error("Error: unknown folder %r" % (name,))
+        except KeyError as e:
+            show_error("Error: %s" % (e,))
             return 1
 
     if (ask and env.get("all", False)) or choose_targets:
@@ -196,7 +228,7 @@ def do_scan(env, names):
 
     print("Folders to scan:")
     for target in targets:
-        print("[%s]" % (target.name,))
+        print(get_target_display_name(target))
 
     scanner_receiver = ScannerReceiver(env, scanner)
 

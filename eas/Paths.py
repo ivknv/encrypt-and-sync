@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from functools import reduce
@@ -495,3 +494,28 @@ def sys_explicit(path):
         sys_sep = sys_sep.encode()
 
     return explicit(path, sys_sep)
+
+def is_equal(path1, path2, sep=None):
+    """
+        Check whether `path1` is equivalent to `path2`.
+
+        :param path1: first path
+        :param path2: second path
+        :param sep: separator to use
+    """
+
+    preferred_type = get_preferred_type([path1, path2, sep])
+
+    if sep is None:
+        sep = get_default_sep(preferred_type)
+
+    if path1 is None:
+        path1 = preferred_type()
+
+    if path2 is None:
+        path2 = preferred_type()
+
+    path1 = dir_denormalize(join_properly(sep, path1, sep=sep))
+    path2 = dir_denormalize(join_properly(sep, path2, sep=sep))
+
+    return path1 == path2

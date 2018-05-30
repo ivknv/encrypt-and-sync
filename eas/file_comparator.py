@@ -1,9 +1,9 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from . import Paths
 from . import path_match
 from .filelist import FileList
+from .common import recognize_path
 
 __all__ = ["FileComparator", "compare_lists"]
 
@@ -14,31 +14,42 @@ def try_next(it, default=None):
         return default
 
 class FileComparator(object):
-    def __init__(self, config, folder_name1, folder_name2, directory=None):
+    def __init__(self, config, src_path, dst_path, directory=None):
         self.config = config
 
-        try:
-            self.folder1 = config.folders[folder_name1]
-        except KeyError:
-            raise ValueError("Unknown folder: %r" % (folder_name1,))
+        src_path, src_path_type = recognize_path(src_path)
+        dst_path, dst_path_type = recognize_path(dst_path)
 
-        try:
-            self.folder2 = config.folders[folder_name2]
-        except KeyError:
-            raise ValueError("Unknown folder: %r" % (folder_name2,))
+        src_path = Paths.join_properly("/", src_path)
+        dst_path = Paths.join_properly("/", dst_path)
+
+        self.src_path = src_path
+        self.dst_path = dst_path
+
+        self.src_path_with_proto = src_path_type + "://" + src_path
+        self.dst_path_with_proto = dst_path_type + "://" + dst_path
+
+        folder1 = config.identify_folder(src_path_type, src_path)
+        folder2 = config.identify_folder(dst_path_type, dst_path)
+
+        if folder1 is None:
+            raise KeyError("%r does not belong to any known folders" % (self.src_path,))
+
+        if folder2 is None:
+            raise KeyError("%r does not belong to any known folders" % (self.dst_path,))
 
         self.directory = directory
 
-        flist1 = FileList(folder_name1, directory)
-        flist2 = FileList(folder_name2, directory)
+        flist1 = FileList(folder1["name"], directory)
+        flist2 = FileList(folder2["name"], directory)
         flist1.create()
         flist2.create()
 
-        self.prefix1 = self.folder1["path"]
-        self.prefix2 = self.folder2["path"]
+        self.prefix1 = folder1["path"]
+        self.prefix2 = folder2["path"]
 
-        self.nodes1 = flist1.select_all_nodes()
-        self.nodes2 = flist2.select_all_nodes()
+        self.nodes1 = flist1.find_node_children(src_path)
+        self.nodes2 = flist2.find_node_children(dst_path)
 
         self.it1 = iter(self.nodes1)
         self.it2 = iter(self.nodes2)
@@ -69,16 +80,16 @@ class FileComparator(object):
         return [{"type": "rm",
                  "node_type": self.type2,
                  "path": self.path2,
-                 "folder1": self.folder1["name"],
-                 "folder2": self.folder2["name"]}]
+                 "src_path": self.src_path_with_proto,
+                 "dst_path": self.dst_path_with_proto}]
 
     def diff_new(self):
         self.node1 = try_next(self.it1)
         return [{"type": "new",
                  "node_type": self.type1,
                  "path": self.path1,
-                 "folder1": self.folder1["name"],
-                 "folder2": self.folder2["name"]}]
+                 "src_path": self.src_path_with_proto,
+                 "dst_path": self.dst_path_with_proto}]
 
     def diff_update(self):
         self.node1 = try_next(self.it1)
@@ -87,8 +98,8 @@ class FileComparator(object):
         return [{"type": "update",
                  "node_type": self.type2,
                  "path": self.path2,
-                 "folder1": self.folder1["name"],
-                 "folder2": self.folder2["name"]}]
+                 "src_path": self.src_path_with_proto,
+                 "dst_path": self.dst_path_with_proto}]
 
     def diff_transition(self):
         self.node1 = try_next(self.it1)
@@ -101,14 +112,14 @@ class FileComparator(object):
             diffs.append({"type": "rm",
                           "node_type": self.type2,
                           "path": self.path2,
-                          "folder1": self.folder1["name"],
-                          "folder2": self.folder2["name"]})
+                          "src_path": self.src_path_with_proto,
+                          "dst_path": self.dst_path_with_proto})
 
         diffs.append({"type": "new",
                       "node_type": self.type1,
                       "path": self.path1,
-                      "folder1": self.folder1["name"],
-                      "folder2": self.folder2["name"]})
+                      "src_path": self.src_path_with_proto,
+                      "dst_path": self.dst_path_with_proto})
 
         return diffs
 
@@ -124,7 +135,7 @@ class FileComparator(object):
                 self.padded_size1 = None
             else:
                 self.type1 = self.node1["type"]
-                self.path1 = Paths.cut_prefix(self.node1["path"], self.prefix1) or "/"
+                self.path1 = Paths.cut_prefix(self.node1["path"], self.src_path) or "/"
                 self.path1 = Paths.join("/", self.path1)
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
@@ -138,7 +149,7 @@ class FileComparator(object):
                 self.padded_size2 = None
             else:
                 self.type2 = self.node2["type"]
-                self.path2 = Paths.cut_prefix(self.node2["path"], self.prefix2) or "/"
+                self.path2 = Paths.cut_prefix(self.node2["path"], self.dst_path) or "/"
                 self.path2 = Paths.join("/", self.path2)
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
@@ -179,8 +190,8 @@ class FileComparator(object):
     def is_transitioned(self):
         return self.node1 and self.node2 and self.type1 != self.type2
 
-def compare_lists(config, folder_name1, folder_name2, directory=None):
-    comparator = FileComparator(config, folder_name1, folder_name2, directory)
+def compare_lists(config, src_path, dst_path, directory=None):
+    comparator = FileComparator(config, src_path, dst_path, directory)
 
     for i in comparator:
         for j in i:

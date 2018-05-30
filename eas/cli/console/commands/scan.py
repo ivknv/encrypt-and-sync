@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import argparse
@@ -12,9 +11,9 @@ __all__ = ["ScanCommand"]
 
 class ScanCommand(Command):
     def evaluate(self, console):
-        parser = argparse.ArgumentParser(description="Scan folders",
+        parser = argparse.ArgumentParser(description="Scan folders/paths",
                                          prog=self.args[0])
-        parser.add_argument("folders", nargs="*", help="List of folders to scan")
+        parser.add_argument("folders", nargs="*", help="List of folders/paths to scan")
         parser.add_argument("-a", "--all", action="store_true",
                             help="Scan all folders")
         parser.add_argument("--ask", action="store_true",

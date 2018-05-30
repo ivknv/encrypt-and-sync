@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import functools
+import os
 import sys
 
 import portalocker
@@ -18,15 +20,34 @@ from ..filelist import DuplicateList
 from ..difflist import DiffList
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
-from ..common import Lockfile
+from ..common import Lockfile, validate_folder_name, recognize_path
+from .. import Paths
+
+def get_target_display_name(target):
+    if Paths.is_equal(target.path1, target.folder1["path"]):
+        name1 = target.folder1["name"]
+    else:
+        path = Paths.cut_prefix(target.path1, target.folder1["path"])
+        path = path.lstrip("/") or "/"
+
+        name1 = "[%s][%s]" % (target.folder1["name"], path)
+
+    if Paths.is_equal(target.path2, target.folder2["path"]):
+        name2 = target.folder2["name"]
+    else:
+        path = Paths.cut_prefix(target.path2, target.folder2["path"])
+        path = path.lstrip("/") or "/"
+
+        name2 = "[%s][%s]" % (target.folder2["name"], path)
+
+    return "[%s -> %s]" % (name1, name2)
 
 __all__ = ["do_sync", "SynchronizerReceiver"]
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
-        print("[%d] [%s -> %s]" % (i + 1,
-                                   target.folder1["name"],
-                                   target.folder2["name"]))
+        display_name = get_target_display_name(target)
+        print("[%d] %s" % (i + 1, display_name))
 
     while True:
         try:
@@ -51,9 +72,6 @@ def count_duplicates(env, folder_storage):
 def print_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
-    folder_name1 = target.folder1["name"]
-    folder_name2 = target.folder2["name"]
-
     n_duplicates = 0
 
     if target.src.encrypted:
@@ -63,25 +81,30 @@ def print_diffs(env, target):
         n_duplicates += count_duplicates(env, target.dst)
 
     if not target.no_remove:
-        n_rm = difflist.count_rm_differences(folder_name1, folder_name2)
+        n_rm = difflist.count_rm_differences(target.path1_with_proto,
+                                             target.path2_with_proto)
     else:
         n_rm = 0
-    n_dirs = difflist.count_dirs_differences(folder_name1, folder_name2)
-    n_new_files = difflist.count_new_file_differences(folder_name1, folder_name2)
-    n_update = difflist.count_update_differences(folder_name1, folder_name2)
 
-    print("[%s -> %s]: %d duplicate removals" % (folder_name1, folder_name2,
-                                                 n_duplicates))
+    n_dirs = difflist.count_dirs_differences(target.path1_with_proto,
+                                             target.path2_with_proto)
+    n_new_files = difflist.count_new_file_differences(target.path1_with_proto,
+                                                      target.path2_with_proto)
+    n_update = difflist.count_update_differences(target.path1_with_proto,
+                                                 target.path2_with_proto)
+
+    display_name = get_target_display_name(target)
+
+    print("%s: %d duplicate removals" % (display_name, n_duplicates))
 
     if target.no_remove:
-        print("[%s -> %s]: 0 removals (disabled)" % (folder_name1, folder_name2))
+        print("%s: 0 removals (disabled)" % (display_name,))
     else:
-        print("[%s -> %s]: %d removals" % (folder_name1, folder_name2, n_rm))
+        print("%s: %d removals" % (display_name, n_rm))
 
-    print("[%s -> %s]: %d new directories" % (folder_name1, folder_name2, n_dirs))
-    print("[%s -> %s]: %d new files to upload" % (folder_name1, folder_name2,
-                                                  n_new_files))
-    print("[%s -> %s]: %d files to update" % (folder_name1, folder_name2, n_update))
+    print("%s: %d new directories" % (display_name, n_dirs))
+    print("%s: %d new files to upload" % (display_name, n_new_files))
+    print("%s: %d files to update" % (display_name, n_update))
 
 def ask_continue():
     answer = None
@@ -115,21 +138,71 @@ def view_diffs(env, target):
         elif answer == "s":
             break
 
+@functools.lru_cache(maxsize=1024)
+def _get_diff_dst_subpath(config, dst_path):
+    dst_path, dst_path_type = recognize_path(dst_path)
+
+    dst_folder = config.identify_folder(dst_path_type, dst_path)
+
+    if dst_folder is None:
+        dst_subpath = "/"
+    else:
+        dst_subpath = Paths.cut_prefix(dst_path, dst_folder["path"])
+        dst_subpath = Paths.join("/", dst_subpath)
+
+    return dst_subpath
+
+def get_diff_dst_subpath(config, diff):
+    return _get_diff_dst_subpath(config, diff["dst_path"])
+
+def get_diff_dst_path(config, diff):
+    dst_path = recognize_path(diff["dst_path"])[0]
+    dst_subpath = get_diff_dst_subpath(config, diff)
+
+    dst_path = Paths.join(dst_subpath, diff["path"])
+    dst_path = dst_path.lstrip("/") or "/"
+
+    return dst_path
+
+def format_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    assert(diff["type"] in ("new", "update", "rm"))
+
+    if diff["type"] in ("new", "update"):
+        return format_new_diff(config, diff)
+    elif diff["type"] == "rm":
+        return format_rm_diff(config, diff)
+
+    assert(False)
+
+    return "%s %s %s\n" % (diff["type"], diff["node_type"], dst_path)
+
+def format_new_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    return "%s\n" % (dst_path,)
+
+def format_rm_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    return "%s %s\n" % (diff["node_type"], dst_path)
+
 def view_rm_diffs(env, target):
     difflist = DiffList(env["db_dir"])
 
     pager = Pager()
     pager.stdin.write("Removals:\n")
 
-    diff_count = difflist.count_rm_differences(target.folder1["name"], target.folder2["name"])
+    diff_count = difflist.count_rm_differences(target.path1_with_proto, target.path2_with_proto)
 
-    diffs = difflist.select_rm_differences(target.folder1["name"], target.folder2["name"])
+    diffs = difflist.select_rm_differences(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
 
     for diff in diffs:
-        pager.stdin.write("  %s %s\n" % (diff["node_type"], diff["path"]))
+        pager.stdin.write("  " + format_diff(env["config"], diff))
 
     pager.run()
 
@@ -139,15 +212,15 @@ def view_dirs_diffs(env, target):
     pager = Pager()
     pager.stdin.write("New directories:\n")
 
-    diff_count = difflist.count_dirs_differences(target.folder1["name"], target.folder2["name"])
+    diff_count = difflist.count_dirs_differences(target.path1_with_proto, target.path2_with_proto)
 
-    diffs = difflist.select_dirs_differences(target.folder1["name"], target.folder2["name"])
+    diffs = difflist.select_dirs_differences(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
 
     for diff in diffs:
-        pager.stdin.write("  %s\n" % (diff["path"],))
+        pager.stdin.write("  " + format_diff(env["config"], diff))
 
     pager.run()
 
@@ -157,15 +230,15 @@ def view_new_file_diffs(env, target):
     pager = Pager()
     pager.stdin.write("New files to upload:\n")
 
-    diff_count = difflist.count_new_file_differences(target.folder1["name"], target.folder2["name"])
+    diff_count = difflist.count_new_file_differences(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
 
-    diffs = difflist.select_new_file_differences(target.folder1["name"], target.folder2["name"])
+    diffs = difflist.select_new_file_differences(target.path1_with_proto, target.path2_with_proto)
 
     for diff in diffs:
-        pager.stdin.write("  %s\n" % (diff["path"],))
+        pager.stdin.write("  " + format_diff(env["config"], diff))
 
     pager.run()
 
@@ -175,18 +248,15 @@ def view_update_diffs(env, target):
     pager = Pager()
     pager.stdin.write("Files to update:\n")
 
-    diff_count = difflist.count_update_differences(target.folder1["name"], target.folder2["name"])
+    diff_count = difflist.count_update_differences(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
 
-    diffs = difflist.select_update_differences(target.folder1["name"], target.folder2["name"])
+    diffs = difflist.select_update_differences(target.path1_with_proto, target.path2_with_proto)
 
     for diff in diffs:
-        pager.stdin.write("  %s\n" % (diff["path"],))
-
-    for diff in diffs:
-        pager.stdin.write("  %s\n" % (diff["path"],))
+        pager.stdin.write("  " + format_diff(env["config"], diff))
 
     pager.run()
 
@@ -224,12 +294,11 @@ def print_target_totals(target):
     n_failed = target.progress["failed"]
     n_total = target.total_children
 
-    print("[%s -> %s]: %d tasks in total" % (target.folder1["name"],
-                                             target.folder2["name"], n_total))
-    print("[%s -> %s]: %d tasks successful" % (target.folder1["name"],
-                                               target.folder2["name"], n_finished))
-    print("[%s -> %s]: %d tasks failed" % (target.folder1["name"],
-                                           target.folder2["name"], n_failed))
+    display_name = get_target_display_name(target)
+
+    print("%s: %d tasks in total" % (display_name, n_total))
+    print("%s: %d tasks successful" % (display_name, n_finished))
+    print("%s: %d tasks failed" % (display_name, n_failed))
 
 class SynchronizerReceiver(Receiver):
     def __init__(self, env):
@@ -239,7 +308,9 @@ class SynchronizerReceiver(Receiver):
 
     def on_next_target(self, event, target):
         target.add_receiver(TargetReceiver(self.env, target))
-        print("Next target: [%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
+        display_name = get_target_display_name(target)
+
+        print("Next target: %s" % (display_name))
 
     def on_error(self, event, exc):
         common.show_exception(exc)
@@ -267,9 +338,10 @@ class TargetReceiver(Receiver):
         target = event["emitter"]
         status = target.status
 
+        display_name = get_target_display_name(target)
+
         if status != "pending":
-            print("[%s -> %s]: %s" % (target.folder1["name"],
-                                      target.folder2["name"], status))
+            print("%s: %s" % (display_name, status))
         else:
             target.pool.add_receiver(self.pool_receiver)
 
@@ -278,36 +350,39 @@ class TargetReceiver(Receiver):
 
     def on_integrity_check(self, event):
         target = event["emitter"]
-        print("[%s -> %s]: integrity check" % (target.folder1["name"],
-                                               target.folder2["name"]))
+        display_name = get_target_display_name(target)
+
+        print("%s: integrity check" % (display_name,))
 
     def on_integrity_check_finished(self, event):
         target = event["emitter"]
-        print("[%s -> %s]: integrity check: finished" % (target.folder1["name"],
-                                                         target.folder2["name"]))
+        display_name = get_target_display_name(target)
+
+        print("%s: integrity check: finished" % (display_name,))
 
     def on_integrity_check_failed(self, event):
         target = event["emitter"]
-        print("[%s -> %s]: integrity check: failed" % (target.folder1["name"],
-                                                       target.folder2["name"]))
+        display_name = get_target_display_name(target)
+
+        print("%s: integrity check: failed" % (display_name,))
 
     def on_diffs_started(self, event):
         target = event.emitter
+        display_name = get_target_display_name(target)
 
-        print("[%s -> %s]: building the difference table" % (target.folder1["name"],
-                                                             target.folder2["name"]))
+        print("%s: building the difference table" % (display_name,))
 
     def on_diffs_failed(self, event):
         target = event.emitter
+        display_name = get_target_display_name(target)
 
-        print("[%s -> %s]: failed to build the difference table" % (target.folder1["name"],
-                                                                    target.folder2["name"]))
+        print("%s: failed to build the difference table" % (display_name,))
 
     def on_diffs_finished(self, event):
         target = event.emitter
+        display_name = get_target_display_name(target)
 
-        print("[%s -> %s]: finished building the difference table" % (target.folder1["name"],
-                                                                      target.folder2["name"]))
+        print("%s: finished building the difference table" % (display_name,))
 
     def on_entered_stage(self, event, stage):
         if self.env.get("no_progress", False):
@@ -326,8 +401,9 @@ class TargetReceiver(Receiver):
         elif stage == "rmdup":
             target.duprem.add_receiver(self.duprem_receiver)
 
-        print("[%s -> %s]: entered stage %r" % (target.folder1["name"],
-                                                target.folder2["name"], stage))
+        display_name = get_target_display_name(target)
+
+        print("%s: entered stage %r" % (display_name, stage))
 
     def on_exited_stage(self, event, stage):
         target = event.emitter
@@ -338,6 +414,8 @@ class TargetReceiver(Receiver):
 
             return
 
+        display_name = get_target_display_name(target)
+
         if stage == "scan":
             if target.status == "pending":
                 print_diffs(self.env, target)
@@ -346,8 +424,7 @@ class TargetReceiver(Receiver):
                 no_diffs = self.env.get("no_diffs", False)
 
                 if not target.total_children:
-                    print("[%s -> %s]: nothing to do" % (target.folder1["name"],
-                                                         target.folder2["name"]))
+                    print("%s: nothing to do" % (display_name,))
                     target.status = "finished"
                     return
 
@@ -368,8 +445,7 @@ class TargetReceiver(Receiver):
         elif stage == "check" and target.skip_integrity_check:
             return
 
-        print("[%s -> %s]: exited stage %r" % (target.folder1["name"],
-                                               target.folder2["name"], stage))
+        print("%s: exited stage %r" % (display_name, stage))
 
 class WorkerReceiver(Receiver):
     def __init__(self, env):
@@ -473,7 +549,7 @@ class TaskReceiver(Receiver):
 
         print(progress_str + ": sent %6.2f%%" % uploaded_percent)
 
-def do_sync(env, names):
+def do_sync(env, names_or_paths):
     lockfile = Lockfile(env["lockfile_path"])
 
     try:
@@ -493,18 +569,18 @@ def do_sync(env, names):
     choose_targets = env.get("choose_targets", False)
     ask = env.get("ask", False)
 
-    names = list(names)
+    names_or_paths = list(names_or_paths)
 
     if env.get("all", False):
         for folder1, folder2 in config.sync_targets:
-            names.append(folder1)
-            names.append(folder2)
+            names_or_paths.append(folder1)
+            names_or_paths.append(folder2)
 
-    if len(names) == 0:
-        show_error("Error: no folders given")
+    if len(names_or_paths) == 0:
+        show_error("Error: no folders or paths given")
         return 1
 
-    if len(names) % 2 != 0:
+    if len(names_or_paths) % 2 != 0:
         show_error("Error: invalid number of arguments")
         return 1
 
@@ -525,19 +601,56 @@ def do_sync(env, names):
 
     targets = []
 
-    for name1, name2 in zip(names[::2], names[1::2]):
-        try:
-            target = SyncTarget(synchronizer, name1, name2, not no_scan)
-            target.skip_integrity_check = no_check
-            target.no_remove = no_remove
-            target.n_workers = n_sync_workers
-            target.n_scan_workers = n_scan_workers
-            target.preserve_modified = not no_preserve_modified
+    for name_or_path1, name_or_path2 in zip(names_or_paths[::2], names_or_paths[1::2]):
+        if validate_folder_name(name_or_path1):
+            try:
+                folder1 = config.folders[name_or_path1]
+            except KeyError:
+                show_error("Error: unknown folder %r" % (name_or_path1,))
+                return 1
 
-            targets.append(target)
-        except ValueError as e:
+            path1_with_proto = folder1["type"] + "://" + folder1["path"]
+        else:
+            path1_with_proto = name_or_path1
+
+            path, proto = recognize_path(path1_with_proto)
+
+            if proto == "local":
+                path = Paths.from_sys(os.path.abspath(os.path.expanduser(path)))
+
+            path1_with_proto = proto + "://" + path
+
+        if validate_folder_name(name_or_path2):
+            try:
+                folder2 = config.folders[name_or_path2]
+            except KeyError:
+                show_error("Error: unknown folder %r" % (name_or_path2,))
+                return 1
+
+            path2_with_proto = folder2["type"] + "://" + folder2["path"]
+        else:
+            path2_with_proto = name_or_path2
+
+            path, proto = recognize_path(path2_with_proto)
+
+            if proto == "local":
+                path = Paths.from_sys(os.path.abspath(os.path.expanduser(path)))
+
+            path2_with_proto = proto + "://" + path
+
+        try:
+            target = SyncTarget(synchronizer, path1_with_proto, path2_with_proto, not no_scan)
+        except KeyError as e:
             show_error("Error: %s" % (e,))
             return 1
+
+        target.skip_integrity_check = no_check
+        target.no_remove = no_remove
+        target.n_workers = n_sync_workers
+        target.n_scan_workers = n_scan_workers
+        target.preserve_modified = not no_preserve_modified
+
+        targets.append(target)
 
     if (ask and env.get("all", False)) or choose_targets:
         targets = ask_target_choice(targets)
@@ -547,7 +660,9 @@ def do_sync(env, names):
 
     print("Targets to sync:")
     for target in targets:
-        print("[%s -> %s]" % (target.folder1["name"], target.folder2["name"]))
+        display_name = get_target_display_name(target)
+
+        print("%s" % (display_name,))
 
     storage_names = {i.folder1["type"] for i in targets}
     storage_names |= {i.folder2["type"] for i in targets}

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import os
@@ -28,7 +27,7 @@ class DiffList(object):
         with self.connection:
             self.connection.execute("""CREATE TABLE IF NOT EXISTS differences
                                        (type TEXT, node_type TEXT,
-                                        path TEXT, folder1 TEXT, folder2 TEXT)""")
+                                        path TEXT, src_path TEXT, dst_path TEXT)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS differences_path_index
                                        ON differences(path ASC)""")
 
@@ -36,102 +35,102 @@ class DiffList(object):
         diff_type = diff["type"]
         node_type = diff["node_type"]
         path = diff["path"]
-        folder1 = diff["folder1"]
-        folder2 = diff["folder2"]
+        src_path = diff["src_path"]
+        dst_path = diff["dst_path"]
 
         self.connection.execute("INSERT INTO differences VALUES (?, ?, ?, ?, ?)",
-                                (diff_type, node_type, path, folder1, folder2))
+                                (diff_type, node_type, path, src_path, dst_path))
 
-    def clear_differences(self, folder1, folder2):
+    def clear_differences(self, src_path, dst_path):
         self.connection.execute("""DELETE FROM differences WHERE
-                                   folder1=? AND folder2=?""", (folder1, folder2))
+                                   src_path=? AND dst_path=?""", (src_path, dst_path))
 
     def fetch_differences(self):
         for i in self.connection.genfetch():
             yield {"type": i[0],
                    "node_type": i[1],
                    "path": i[2],
-                   "folder1": i[3],
-                   "folder2": i[4]}
+                   "src_path": i[3],
+                   "dst_path": i[4]}
 
-    def select_rm_differences(self, folder1, folder2):
+    def select_rm_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
-                                       WHERE type='rm' AND folder1=? AND folder2=?
-                                       ORDER BY path ASC""", (folder1, folder2))
+                                       WHERE type='rm' AND src_path=? AND dst_path=?
+                                       ORDER BY path ASC""", (src_path, dst_path))
             return self.fetch_differences()
 
-    def select_dirs_differences(self, folder1, folder2):
+    def select_dirs_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='new' AND node_type='d' AND
-                                             folder1=? AND folder2=?
-                                       ORDER BY path ASC""", (folder1, folder2))
+                                             src_path=? AND dst_path=?
+                                       ORDER BY path ASC""", (src_path, dst_path))
 
             return self.fetch_differences()
 
-    def count_dirs_differences(self, folder1, folder2):
+    def count_dirs_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE type='new' AND node_type='d' AND
-                                             folder1=?  AND folder2=?""",
-                                    (folder1, folder2))
+                                             src_path=?  AND dst_path=?""",
+                                    (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_files_differences(self, folder1, folder2):
+    def count_files_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE (type='new' OR type='update') AND
-                                             node_type='f' AND folder1=?  AND folder2=?""",
-                                    (folder1, folder2))
+                                             node_type='f' AND src_path=?  AND dst_path=?""",
+                                    (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_rm_differences(self, folder1, folder2):
+    def count_rm_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
-                                       WHERE type='rm' AND folder1=? AND folder2=?""",
-                                    (folder1, folder2))
+                                       WHERE type='rm' AND src_path=? AND dst_path=?""",
+                                    (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_new_file_differences(self, folder1, folder2):
+    def count_new_file_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE type='new' AND node_type='f' AND
-                                             folder1=? AND folder2=?""",
-                                    (folder1, folder2))
+                                             src_path=? AND dst_path=?""",
+                                    (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_update_differences(self, folder1, folder2):
+    def count_update_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE type='update' AND
-                                             folder1=? AND folder2=?""",
-                                    (folder1, folder2))
+                                             src_path=? AND dst_path=?""",
+                                    (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def select_files_differences(self, folder1, folder2):
+    def select_files_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE (type='new' OR type='update') AND
-                                             node_type='f' AND folder1=? AND folder2=?
-                                       ORDER BY path ASC""", (folder1, folder2))
+                                             node_type='f' AND src_path=? AND dst_path=?
+                                       ORDER BY path ASC""", (src_path, dst_path))
 
             return self.fetch_differences()
 
-    def select_new_file_differences(self, folder1, folder2):
+    def select_new_file_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='new' AND node_type='f' AND
-                                             folder1=?  AND folder2=?
-                                       ORDER BY path ASC""", (folder1, folder2))
+                                             src_path=?  AND dst_path=?
+                                       ORDER BY path ASC""", (src_path, dst_path))
 
             return self.fetch_differences()
 
-    def select_update_differences(self, folder1, folder2):
+    def select_update_differences(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
-                                       WHERE type='update' AND folder1=? AND folder2=?
-                                       ORDER BY path ASC""", (folder1, folder2))
+                                       WHERE type='update' AND src_path=? AND dst_path=?
+                                       ORDER BY path ASC""", (src_path, dst_path))
 
             return self.fetch_differences()
 
@@ -140,11 +139,11 @@ class DiffList(object):
             for i in diffs:
                 self.insert_difference(i)
 
-    def get_difference_count(self, folder1, folder2):
+    def get_difference_count(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
-                                       WHERE folder1=? AND folder2=?""",
-                                    (folder1, folder2))
+                                       WHERE src_path=? AND dst_path=?""",
+                                    (src_path, dst_path))
 
             return self.connection.fetchone()[0]
 
