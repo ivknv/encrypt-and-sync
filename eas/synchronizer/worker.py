@@ -40,6 +40,11 @@ class SyncWorker(PoolWorkerThread):
         task = self.cur_task
 
         if task is not None:
+            target = task.parent
+
+            if target is not None:
+                target.stop()
+
             task.stop()
 
     def handle_task(self, task):
