@@ -202,4 +202,4 @@ class LocalStorage(Storage):
 
     def set_modified(self, path, new_modified, *args, **kwargs):
         new_modified = utc_to_local(new_modified)
-        os.utime(path, (new_modified, new_modified))
+        os.utime(Paths.to_sys(path), (new_modified, new_modified))
