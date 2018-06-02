@@ -78,15 +78,17 @@ class DuplicateRemoverTarget(Task):
     @threadsafe_iterator
     def task_iterator(self, duplicates):
         while True:
+            try:
+                ivs, path = next(duplicates)[1:]
+            except StopIteration:
+                break
+
             task = DuplicateRemoverTask(self)
             task.storage = self.storage
             task.prefix = self.prefix
             task.filename_encoding = self.filename_encoding
-
-            try:
-                task.ivs, task.path = next(duplicates)[1:]
-            except StopIteration:
-                break
+            task.path = path
+            task.ivs = ivs
 
             yield task
 
