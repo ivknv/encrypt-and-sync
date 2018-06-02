@@ -22,7 +22,7 @@ class WorkerPool(Emitter):
         Emitter.__init__(self)
 
         self._workers = []
-        self._worker_lock = threading.Lock()
+        self._worker_lock = threading.RLock()
         self.queue = queue
 
     def clear(self):

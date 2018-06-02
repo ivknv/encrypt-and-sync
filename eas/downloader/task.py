@@ -77,8 +77,10 @@ class DownloadTask(Task):
     def upload_limit(self, value):
         self._upload_limit = value
 
-        if self.upload_controller is not None:
-            self.upload_controller.limit = value
+        upload_controller = self.upload_controller
+
+        if upload_controller is not None:
+            upload_controller.limit = value
 
     @property
     def download_limit(self):
@@ -88,17 +90,22 @@ class DownloadTask(Task):
     def download_limit(self, value):
         self._download_limit = value
 
-        if self.download_controller is not None:
-            self.download_controller.limit = value
+        download_controller = self.download_controller
+
+        if download_controller is not None:
+            download_controller.limit = value
 
     def stop(self):
         Task.stop(self)
 
-        if self.upload_controller is not None:
-            self.upload_controller.stop()
+        upload_controller = self.upload_controller
+        download_controller = self.download_controller
 
-        if self.download_controller is not None:
-            self.download_controller.stop()
+        if upload_controller is not None:
+            upload_controller.stop()
+
+        if download_controller is not None:
+            download_controller.stop()
 
     @property
     def downloaded(self):

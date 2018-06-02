@@ -145,11 +145,14 @@ class UploadTask(SyncTask):
     def stop(self):
         SyncTask.stop(self)
 
-        if self.upload_controller is not None:
-            self.upload_controller.stop()
+        upload_controller = self.upload_controller
+        download_controller = self.download_controller
 
-        if self.download_controller is not None:
-            self.download_controller.stop()
+        if upload_controller is not None:
+            upload_controller.stop()
+
+        if download_controller is not None:
+            download_controller.stop()
 
     def complete(self):
         try:
