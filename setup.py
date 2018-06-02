@@ -24,7 +24,7 @@ else:
     scripts = []
 
 setup(name="eas",
-      version="0.6.2",
+      version="0.6.3",
       description="A file synchronization utility with client-side encryption support",
       author="Ivan Konovalov",
       license="GPLv3",
