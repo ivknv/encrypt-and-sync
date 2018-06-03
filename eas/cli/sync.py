@@ -518,8 +518,11 @@ class TaskReceiver(Receiver):
 
         last_downloaded = self.last_downloaded_percents.get(task.path, 0.0)
 
+        percent_step_count = max(min(int(size / 1024.0**2), 100), 1)
+        percent_step = 100.0 / percent_step_count
+
         # Change can be negative due to retries
-        if abs(downloaded_percent - last_downloaded) < 25.0 and downloaded_percent < 100.0:
+        if abs(downloaded_percent - last_downloaded) < percent_step and downloaded_percent < 100.0:
             return
 
         self.last_downloaded_percents[task.path] = downloaded_percent
@@ -539,8 +542,11 @@ class TaskReceiver(Receiver):
 
         last_uploaded = self.last_uploaded_percents.get(task.path, 0.0)
 
+        percent_step_count = max(min(int(size / 1024.0**2), 100), 1)
+        percent_step = 100.0 / percent_step_count
+
         # Change can be negative due to retries
-        if abs(uploaded_percent - last_uploaded) < 25.0 and uploaded_percent < 100.0:
+        if abs(uploaded_percent - last_uploaded) < percent_step and uploaded_percent < 100.0:
             return
 
         self.last_uploaded_percents[task.path] = uploaded_percent

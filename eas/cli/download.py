@@ -124,16 +124,18 @@ class TaskReceiver(Receiver):
             downloaded_percent = 100.0
 
         last_percent = self.last_download_percents.get(task.src_path, 0.0)
+        percent_step_count = max(min(int(task.download_size / 1024.0**2), 100), 1)
+        percent_step = 100.0 / percent_step_count
 
         # Change can be negative due to retries
-        if abs(downloaded_percent - last_percent) < 25.0 and downloaded_percent < 100.0:
+        if abs(downloaded_percent - last_percent) < percent_step and downloaded_percent < 100.0:
             return
 
         self.last_download_percents[task.src_path] = downloaded_percent
 
         progress_str = get_progress_str(task)
 
-        print(progress_str + ": received %6.2f%%" % downloaded_percent)
+        print(progress_str + ": received %6.2f%%" % (downloaded_percent,))
 
     def on_uploaded_changed(self, event):
         task = event["emitter"]
@@ -144,16 +146,18 @@ class TaskReceiver(Receiver):
             uploaded_percent = 100.0
 
         last_percent = self.last_upload_percents.get(task.src_path, 0.0)
+        percent_step_count = max(min(int(task.upload_size / 1024.0**2), 100), 1)
+        percent_step = 100.0 / percent_step_count
 
         # Change can be negative due to retries
-        if abs(uploaded_percent - last_percent) < 25.0 and uploaded_percent < 100.0:
+        if abs(uploaded_percent - last_percent) < percent_step and uploaded_percent < 100.0:
             return
 
         self.last_upload_percents[task.src_path] = uploaded_percent
 
         progress_str = get_progress_str(task)
 
-        print(progress_str + ": sent %6.2f%%" % uploaded_percent)
+        print(progress_str + ": sent %6.2f%%" % (uploaded_percent,))
 
 def download(env, paths):
     lockfile = Lockfile(env["lockfile_path"])
