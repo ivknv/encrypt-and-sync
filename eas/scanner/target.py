@@ -65,6 +65,11 @@ class ScanTarget(Task):
     def stopped(self, value):
         self._stopped = value
 
+    def stop(self):
+        super().stop()
+
+        self.pool.stop()
+
     def begin_scan(self):
         if self.stopped:
             return

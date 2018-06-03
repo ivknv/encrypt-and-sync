@@ -55,10 +55,11 @@ class ScanWorker(PoolWaiterThread):
         if task is not None:
             target = task.parent
 
-            if target is not None:
+            if target is not None and not target.stopped:
                 target.stop()
 
-            task.stop()
+            if not task.stopped:
+                task.stop()
 
     def handle_task(self, task):
         try:

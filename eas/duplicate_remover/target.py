@@ -65,6 +65,11 @@ class DuplicateRemoverTarget(Task):
     def stopped(self, value):
         self._stopped = value
 
+    def stop(self):
+        super().stop()
+
+        self.pool.stop()
+
     def autocommit(self):
         if self.shared_duplist.time_since_last_commit() >= AUTOCOMMIT_INTERVAL:
             try:

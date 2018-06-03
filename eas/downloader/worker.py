@@ -38,10 +38,11 @@ class DownloaderWorker(PoolWorkerThread):
         if task is not None:
             target = task.parent
 
-            if target is not None:
+            if target is not None and not target.stopped:
                 target.stop()
 
-            task.stop()
+            if not task.stopped:
+                task.stop()
 
     def get_info(self):
         if self.cur_task is None:

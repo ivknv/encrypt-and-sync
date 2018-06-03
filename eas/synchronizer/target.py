@@ -115,6 +115,11 @@ class SyncTarget(StagedTask):
     def stopped(self, value):
         self._stopped = value
 
+    def stop(self):
+        super().stop()
+
+        self.pool.stop()
+
     def autocommit(self):
         try:
             if self.shared_flist2.time_since_last_commit() >= AUTOCOMMIT_INTERVAL:

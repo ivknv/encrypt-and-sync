@@ -29,6 +29,9 @@ class UploadControllerReceiver(Receiver):
         task = result[0]
         task.uploaded = uploaded
 
+        if task.stopped:
+            event.emitter.stop()
+
 class DownloadControllerReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
@@ -43,6 +46,9 @@ class DownloadControllerReceiver(Receiver):
 
         task = result[0]
         task.downloaded = downloaded
+
+        if task.stopped:
+            event.emitter.stop()
 
 class SyncTask(Task):
     """

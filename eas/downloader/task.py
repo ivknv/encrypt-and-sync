@@ -25,6 +25,9 @@ class UploadControllerReceiver(Receiver):
         task = result[0]
         task.uploaded = uploaded
 
+        if task.stopped:
+            event.emitter.stop()
+
 class DownloadControllerReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
@@ -39,6 +42,9 @@ class DownloadControllerReceiver(Receiver):
 
         task = result[0]
         task.downloaded = downloaded
+
+        if task.stopped:
+            event.emitter.stop()
 
 class DownloadTask(Task):
     """
@@ -101,11 +107,16 @@ class DownloadTask(Task):
         upload_controller = self.upload_controller
         download_controller = self.download_controller
 
+        print("A*SDY")
+
         if upload_controller is not None:
             upload_controller.stop()
 
         if download_controller is not None:
+            print("YES")
             download_controller.stop()
+        else:
+            print("WHY")
 
     @property
     def downloaded(self):

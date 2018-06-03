@@ -52,6 +52,11 @@ class DownloadTarget(Task):
     def stopped(self, value):
         self._stopped = value
 
+    def stop(self):
+        super().stop()
+
+        self.pool.stop()
+
     def node_to_task(self, node, dst_type):
         new_task = DownloadTask(self)
 
