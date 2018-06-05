@@ -23,6 +23,9 @@ else:
                                         "encrypt-and-sync=eas.__main__:main"]}
     scripts = []
 
+if os.environ.get("USE_PYCRYPTODOMEX", None):
+    requirements[requirements.index("pycryptodome")] = "pycryptodomex"
+
 setup(name="eas",
       version="0.6.3",
       description="A file synchronization utility with client-side encryption support",
