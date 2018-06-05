@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from Crypto.Cipher import AES
-from Crypto import Random
+try:
+    from Crypto.Cipher import AES
+    from Crypto import Random
+except ImportError:
+    from Cryptodome.Cipher import AES
+    from Cryptodome import Random
 
 import os
 import struct
