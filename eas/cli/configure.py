@@ -1019,6 +1019,23 @@ def dump_config(config):
         output += indent * 2 + "encrypted %s\n" % (repr(folder["encrypted"]).lower(),)
         output += indent * 2 + "filename-encoding %s\n" % (quote(folder["filename_encoding"]))
         output += indent * 2 + "avoid-rescan %s\n" % (repr(folder["avoid_rescan"]).lower(),)
+
+        for path_type, blocks in folder["allowed_paths"].items():
+            for block_type, block in blocks:
+                assert(block_type in ["i", "e"])
+
+                output += "\n"
+
+                if block_type == "e":
+                    output += indent * 2 + "exclude {\n"
+                else:
+                    output += indent * 2 + "include {\n"
+
+                for pattern in block:
+                    output += indent * 3 + "%s\n" % (quote(pattern),)
+
+                output += indent * 2 + "}\n"
+
         output += indent + "}\n"
 
     output += "}\n\n"
@@ -1036,6 +1053,10 @@ def dump_config(config):
 # You can have multiple include/exclude blocks
 # They will be interpreted in specified order
 """
+
+    if not config.allowed_paths:
+        output += "exclude {}\n"
+        output += "include {}\n"
 
     for path_type, blocks in config.allowed_paths.items():
         for block_type, block in blocks:

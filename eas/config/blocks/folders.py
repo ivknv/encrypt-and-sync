@@ -42,6 +42,8 @@ class FolderBlock(ConfigBlock):
         self.namespace["encrypted"] = EncryptedCommand
         self.namespace["avoid-rescan"] = AvoidRescanCommand
         self.namespace["filename-encoding"] = FilenameEncodingCommand
+        self.namespace["exclude"] = ExcludeBlock
+        self.namespace["include"] = IncludeBlock
 
     def begin(self, config, *args, **kwargs):
         if len(self.args) != 2:
@@ -72,7 +74,8 @@ class FolderBlock(ConfigBlock):
                        "type":              path_type,
                        "avoid_rescan":      avoid_rescan,
                        "encrypted":         False,
-                       "filename_encoding": filename_encoding}
+                       "filename_encoding": filename_encoding,
+                       "allowed_paths":     {}}
         config.folders[name] = self.folder
 
     def evaluate_body(self, config, *args, **kwargs):
@@ -123,3 +126,65 @@ class FilenameEncodingCommand(Command):
             raise EvaluationError(self, "Unknown filename encoding %r" % (arg,))
 
         folder["filename_encoding"] = arg
+
+class AddPatternCommand(Command):
+    def evaluate(self, config, table):
+        if len(self.args) != 1:
+            raise EvaluationError(self, "Expected only 1 pattern")
+
+        path, path_type = recognize_path(self.args[0])
+
+        table.setdefault(path_type, [])
+        table[path_type].append(path)
+
+class ExcludeNamespace(dict):
+    def __init__(self, parent=None):
+        dict.__init__(self)
+
+        self.parent = parent
+
+    def __getitem__(self, key):
+        return AddPatternCommand
+
+    def get(self, key, default=None):
+        return self[key]
+
+class ExcludeBlock(ConfigBlock):
+    def __init__(self, args, body, parent_namespace=None):
+        ConfigBlock.__init__(self, args, body, parent_namespace)
+
+        self.namespace = ExcludeNamespace(parent_namespace)
+
+        self.exclude_table = {}
+
+    def begin(self, config, folder):
+        if len(self.args) > 1:
+            raise EvaluationError(self, "Expected 0 arguments")
+
+    def evaluate_body(self, config, folder):
+        ConfigBlock.evaluate_body(self, config, self.exclude_table)
+
+    def end(self, config, folder):
+        for path_type, patterns in self.exclude_table.items():
+            folder["allowed_paths"].setdefault(path_type, [])
+            folder["allowed_paths"][path_type].append(["e", patterns])
+
+class IncludeBlock(ConfigBlock):
+    def __init__(self, args, body, parent_namespace=None):
+        ConfigBlock.__init__(self, args, body, parent_namespace)
+
+        self.namespace = ExcludeNamespace(parent_namespace)
+
+        self.include_table = {}
+
+    def begin(self, config, folder):
+        if len(self.args) > 2:
+            raise EvaluationError(self, "Expected 0 arguments")
+
+    def evaluate_body(self, config, folder):
+        ConfigBlock.evaluate_body(self, config, self.include_table)
+
+    def end(self, config, folder):
+        for path_type, patterns in self.include_table.items():
+            folder["allowed_paths"].setdefault(path_type, [])
+            folder["allowed_paths"][path_type].append(["i", patterns])

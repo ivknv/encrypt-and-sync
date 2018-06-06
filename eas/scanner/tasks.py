@@ -52,7 +52,9 @@ class DecryptedScanTask(ScanTask):
         target = self.parent
 
         self.status = "pending"
-        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
+
+        allowed_paths = list(self.config.allowed_paths.get(target.storage.name, []))
+        allowed_paths += target.folder["allowed_paths"].get(target.storage.name, [])
 
         files = scan_files(self.scannable, allowed_paths,
                            ignore_unreachable=self.config.ignore_unreachable)
@@ -88,7 +90,8 @@ class EncryptedScanTask(ScanTask):
 
         self.status = "pending"
 
-        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
+        allowed_paths = list(self.config.allowed_paths.get(target.storage.name, []))
+        allowed_paths += target.folder["allowed_paths"].get(target.storage.name, [])
 
         while not self.stopped:
             try:
@@ -162,7 +165,8 @@ class AsyncDecryptedScanTask(ScanTask):
         self.status = "pending"
         self.cur_path = scannable.path
 
-        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
+        allowed_paths = list(self.config.allowed_paths.get(target.storage.name, []))
+        allowed_paths += target.folder["allowed_paths"].get(target.storage.name, [])
 
         scan_result = scannable.scan(allowed_paths,
                                      ignore_unreachable=self.config.ignore_unreachable)
@@ -203,7 +207,8 @@ class AsyncEncryptedScanTask(ScanTask):
         scannable = self.scannable
         self.status = "pending"
 
-        allowed_paths = self.config.allowed_paths.get(target.storage.name, [])
+        allowed_paths = list(self.config.allowed_paths.get(target.storage.name, []))
+        allowed_paths += target.folder["allowed_paths"].get(target.storage.name, [])
 
         self.cur_path = scannable.path
 

@@ -111,7 +111,8 @@ class ScanTarget(Task):
         if scannable.type == "d":
             path = Paths.dir_normalize(path)
 
-        allowed_paths = self.config.allowed_paths.get(self.storage.name, [])
+        allowed_paths = list(self.config.allowed_paths.get(self.storage.name, []))
+        allowed_paths += self.folder["allowed_paths"].get(self.storage.name, [])
 
         if not path_match.match(path, allowed_paths):
             return

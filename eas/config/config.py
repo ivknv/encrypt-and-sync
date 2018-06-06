@@ -226,10 +226,21 @@ class Config(object):
         for folder in self.folders.values():
             if folder["type"] == "local":
                 folder["path"] = Paths.from_sys(os.path.expanduser(folder["path"]))
-            else:
-                folder["path"] = Paths.join_properly("/", folder["path"])
 
+            folder["path"] = Paths.join_properly("/", folder["path"])
             folder["path"] = Paths.dir_normalize(folder["path"])
+
+            for storage_name, blocks in folder["allowed_paths"].items():
+                for block_type, block in blocks:
+                    for i, pattern in enumerate(block):
+                        if folder["type"] == "local":
+                            pattern = Paths.from_sys(os.path.expanduser(pattern))
+
+                        pattern = Paths.join_properly(folder["path"], pattern)
+
+                        block[i] = pattern
+
+                folder["allowed_paths"][storage_name] = path_match.compile_patterns(blocks)
 
         for storage_name, blocks in self.allowed_paths.items():
             for block_type, block in blocks:
@@ -238,8 +249,8 @@ class Config(object):
 
                     if path_type == "local":
                         pattern = Paths.from_sys(os.path.expanduser(pattern))
-                    else:
-                        pattern = Paths.join_properly("/", pattern)
+
+                    pattern = Paths.join_properly("/", pattern)
 
                     block[i] = pattern
 
