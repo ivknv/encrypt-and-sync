@@ -91,8 +91,9 @@ class Config(object):
     def key(self):
         return self.encode_key(self.plain_key)
 
-    def identify_folder(self, storage_name, path):
+    def identify_folder(self, storage_name, path, use_exclude=True):
         best_match = None
+        included = True
         best_path = None
 
         for folder in self.folders.values():
@@ -105,9 +106,22 @@ class Config(object):
                 if Paths.contains(prefix, path):
                     best_match = folder
                     best_path = prefix
+
+                    if use_exclude:
+                        included = path_match.match(path, folder["allowed_paths"].get(storage_name, []))
             elif Paths.contains(prefix, best_path):
+                if use_exclude and not path_match.match(path, folder["allowed_paths"].get(storage_name, [])):
+                    continue
+
                 best_match = folder
                 best_path = prefix
+                included = True
+            elif not included and Paths.contains(prefix, path):
+                best_match = folder
+                best_path = prefix
+
+                if use_exclude:
+                    included = path_match.match(path, folder["allowed_paths"].get(storage_name, []))
 
         return best_match
 
