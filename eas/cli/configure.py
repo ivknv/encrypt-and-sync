@@ -512,7 +512,9 @@ class EditFolderPrompter(ActionPrompter):
                                        "description": "encryption"},
                                  "4": {"function": self.change_avoid_rescan,
                                        "description": "avoid rescan"},
-                                 "5": {"function": quit_prompt,
+                                 "5" : {"function": self.change_exclude,
+                                        "description": "exclude"},
+                                 "6": {"function": quit_prompt,
                                        "description": "go back"}})
 
         self.config = config
@@ -604,6 +606,10 @@ class EditFolderPrompter(ActionPrompter):
             else:
                 print("No longer avoiding rescan")
 
+    @return_on_interrupt
+    def change_exclude(self, prompter):
+        EditExcludePrompter(self.config, self.folder)()
+
 class EditTargetsPrompter(ActionPrompter):
     def __init__(self, config, message="> "):
         ActionPrompter.__init__(self, message,
@@ -663,7 +669,7 @@ class EditTargetsPrompter(ActionPrompter):
             print("%s -> %s" % (source, destination))
 
 class EditExcludePrompter(ActionPrompter):
-    def __init__(self, config, message="> "):
+    def __init__(self, config, folder=None, message="> "):
         ActionPrompter.__init__(self, message,
                                 {"1": {"function": self.add_pattern,
                                        "description": "add pattern"},
@@ -675,14 +681,19 @@ class EditExcludePrompter(ActionPrompter):
                                        "description": "go back"}})
 
         self.config = config
+        self.folder = folder
 
     @return_on_interrupt
     def add_pattern(self, prompter):
         pattern = PathPrompter("Pattern: ").prompt()
         pattern, path_type = recognize_path(pattern)
 
-        self.config.allowed_paths.setdefault(path_type, [])
-        allowed_paths = self.config.allowed_paths[path_type]
+        if self.folder is not None:
+            self.folder["allowed_paths"].setdefault(path_type, [])
+            allowed_paths = self.folder["allowed_paths"][path_type]
+        else:
+            self.config.allowed_paths.setdefault(path_type, [])
+            allowed_paths = self.config.allowed_paths[path_type]
 
         if not allowed_paths or allowed_paths[-1][0] != "e":
             allowed_paths.append(["e", []])
@@ -699,7 +710,12 @@ class EditExcludePrompter(ActionPrompter):
 
     @return_on_interrupt
     def list_patterns(self, prompter):
-        for storage_name, blocks in self.config.allowed_paths.items():
+        if self.folder is not None:
+            allowed_paths = self.folder["allowed_paths"]
+        else:
+            allowed_paths = self.config.allowed_paths
+
+        for storage_name, blocks in allowed_paths.items():
             for block_type, patterns in blocks:
                 if block_type != "e":
                     continue
