@@ -20,7 +20,7 @@ class LimitedFile(object):
         self.last_delay = 0
         self.cur_read = 0
         self.weak_controller = weakref.finalize(controller, lambda: None)
-        self.speed_limiter = ControlledSpeedLimiter(controller, limit)
+        self.speed_limiter = ControlledSpeedLimiter(controller, limit, interval=0.5)
 
     @property
     def limit(self):
