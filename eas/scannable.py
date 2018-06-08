@@ -78,7 +78,7 @@ class BaseScannable(object):
         if allowed_paths is None:
             allowed_paths = []
 
-        if not path_match.match(self.path, allowed_paths):
+        if not path_match.match(Paths.dir_normalize(self.path), allowed_paths):
             return
 
         flist = self.scan(allowed_paths, ignore_unreachable=ignore_unreachable)
