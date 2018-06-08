@@ -10,18 +10,25 @@ __all__ = ["LimitedFile"]
 class LimitedFile(object):
     def __init__(self, file, controller, limit=None):
         self.file = file
-        self.limit = limit
 
-        if self.limit is None:
-            self.limit = float("inf")
+        if limit is None:
+            limit = float("inf")
 
-        if self.limit != float("inf"):
-            self.limit = int(self.limit)
+        if limit != float("inf"):
+            limit = int(limit)
 
         self.last_delay = 0
         self.cur_read = 0
         self.weak_controller = weakref.finalize(controller, lambda: None)
-        self.speed_limiter = ControlledSpeedLimiter(controller, self.limit)
+        self.speed_limiter = ControlledSpeedLimiter(controller, limit)
+
+    @property
+    def limit(self):
+        return self.speed_limiter.limit
+
+    @limit.setter
+    def limit(self, value):
+        self.speed_limiter.limit = value
 
     def __iter__(self):
         return self
