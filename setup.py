@@ -27,7 +27,7 @@ if os.environ.get("USE_PYCRYPTODOMEX", None):
     requirements[requirements.index("pycryptodome")] = "pycryptodomex"
 
 setup(name="eas",
-      version="0.6.3",
+      version="0.6.4",
       description="A file synchronization utility with client-side encryption support",
       author="Ivan Konovalov",
       license="GPLv3",
