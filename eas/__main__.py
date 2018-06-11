@@ -117,6 +117,8 @@ def main(args=None):
         env["no_diffs"] = ns.no_diffs
         env["no_remove"] = ns.no_remove
         env["no_preserve_modified"] = ns.no_preserve_modified
+    elif ns.action == "download":
+        env["no_skip"] = ns.no_skip
 
     if ns.action in ("scan", "sync", "download", "rmdup"):
         if ns.n_workers is not None:
@@ -265,6 +267,8 @@ def parse_args(args):
                                  help="Disable the authentication check")
     download_parser.add_argument("--no-progress", action="store_true",
                                  help="Don't show intermediate progress")
+    download_parser.add_argument("--no-skip", action="store_true",
+                                 help="Don't skip already downloaded files")
     download_parser.set_defaults(action="download")
     
     rmdup_parser = subparsers.add_parser("rmdup", aliases=["remove-duplicates"],

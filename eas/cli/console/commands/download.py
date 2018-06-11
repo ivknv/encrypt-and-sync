@@ -22,6 +22,8 @@ class DownloadCommand(Command):
                             help="Number of workers to use")
         parser.add_argument("--no-ask", action="store_true",
                             help="Don't ask for any user input")
+        parser.add_argument("--no-skip", action="store_true",
+                            help="Don't skip already downloaded files")
 
         ns = parser.parse_args(self.args[1:])
         paths = []
@@ -40,6 +42,7 @@ class DownloadCommand(Command):
 
         env["no_progress"] = ns.no_progress
         env["ask"] = not ns.no_ask
+        env["no_skip"] = ns.no_skip
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

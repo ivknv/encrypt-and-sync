@@ -37,6 +37,8 @@ class DownloadTarget(Task):
         self.upload_limit = downloader.upload_limit
         self.download_limit = downloader.download_limit
 
+        self.skip_downloaded = True
+
         self.n_workers = 1
 
         self.pool = WorkerPool(None)

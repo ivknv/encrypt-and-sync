@@ -174,6 +174,7 @@ def download(env, paths):
         return ret
 
     n_workers = env.get("n_workers", config.download_threads)
+    no_skip = env.get("no_skip", False)
 
     downloader = Downloader(config, env["db_dir"])
     downloader.upload_limit = config.upload_limit
@@ -210,6 +211,7 @@ def download(env, paths):
                                 src_path_type, src_path,
                                 dst_path_type, dst_path)
         target.n_workers = n_workers
+        target.skip_downloaded = not no_skip
         target.add_receiver(target_receiver)
         targets.append(target)
 

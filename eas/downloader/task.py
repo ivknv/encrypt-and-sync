@@ -107,16 +107,11 @@ class DownloadTask(Task):
         upload_controller = self.upload_controller
         download_controller = self.download_controller
 
-        print("A*SDY")
-
         if upload_controller is not None:
             upload_controller.stop()
 
         if download_controller is not None:
-            print("YES")
             download_controller.stop()
-        else:
-            print("WHY")
 
     @property
     def downloaded(self):
@@ -179,6 +174,9 @@ class DownloadTask(Task):
         return created
 
     def check_if_download(self):
+        if not self.parent.skip_downloaded:
+            return True
+
         try:
             meta = self.dst.get_meta(self.dst_path)
         except FileNotFoundError:
