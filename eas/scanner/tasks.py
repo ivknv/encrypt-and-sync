@@ -5,7 +5,7 @@ from functools import reduce
 from ..task import Task
 from ..scannable import scan_files
 from ..worker import get_current_worker
-from .. import Paths
+from .. import pathm
 
 __all__ = ["ScanTask", "DecryptedScanTask", "EncryptedScanTask",
            "AsyncDecryptedScanTask", "AsyncDecryptedScanTask"]
@@ -111,7 +111,7 @@ class EncryptedScanTask(ScanTask):
                     return False
 
                 worker.emit_event("next_node", s)
-                path = Paths.dir_denormalize(s.path)
+                path = pathm.dir_denormalize(s.path)
                 scannables.setdefault(path, [])
                 scannables[path].append(s)
 
@@ -223,7 +223,7 @@ class AsyncEncryptedScanTask(ScanTask):
 
             worker.emit_event("next_node", s)
 
-            path = Paths.dir_denormalize(s.path)
+            path = pathm.dir_denormalize(s.path)
             scannables.setdefault(path, [])
             scannables[path].append(s)
 

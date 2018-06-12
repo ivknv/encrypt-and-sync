@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from . import Paths
+from . import pathm
 from .encryption import pad_size, MIN_ENC_SIZE
 from .common import normalize_node, DummyException
 from .storage.exceptions import TemporaryStorageError
@@ -78,7 +78,7 @@ class BaseScannable(object):
         if allowed_paths is None:
             allowed_paths = []
 
-        if not path_match.match(Paths.dir_normalize(self.path), allowed_paths):
+        if not path_match.match(pathm.dir_normalize(self.path), allowed_paths):
             return
 
         flist = self.scan(allowed_paths, ignore_unreachable=ignore_unreachable)
@@ -110,7 +110,7 @@ class BaseScannable(object):
 
 class DecryptedScannable(BaseScannable):
     def identify(self, ignore_unreachable=False):
-        self.path = Paths.join_properly("/", self.path)
+        self.path = pathm.join_properly("/", self.path)
 
         try:
             meta = self.storage.get_meta(self.path, n_retries=30)
@@ -122,7 +122,7 @@ class DecryptedScannable(BaseScannable):
             raise e
 
         if meta["type"] == "d":
-            self.path = Paths.dir_normalize(self.path)
+            self.path = pathm.dir_normalize(self.path)
         elif not meta["type"]:
             self.type = None
             return
@@ -148,13 +148,13 @@ class DecryptedScannable(BaseScannable):
                     if meta["type"] is None:
                         continue
 
-                    path = Paths.join(self.path, meta["name"])
+                    path = pathm.join(self.path, meta["name"])
 
                     if meta["type"] == "dir":
-                        path = Paths.dir_normalize(path)
+                        path = pathm.dir_normalize(path)
 
                         if meta["link"] is not None:
-                            if Paths.contains(meta["link"], path):
+                            if pathm.contains(meta["link"], path):
                                 continue
 
                     meta["size"] = pad_size(meta["size"])
@@ -200,7 +200,7 @@ class EncryptedScannable(BaseScannable):
         return node
 
     def identify(self, ignore_unreachable=False):
-        self.enc_path = Paths.join_properly("/", self.enc_path)
+        self.enc_path = pathm.join_properly("/", self.enc_path)
 
         try:
             meta = self.storage.get_meta(self.enc_path, n_retries=30)
@@ -212,8 +212,8 @@ class EncryptedScannable(BaseScannable):
             raise e
 
         if meta["type"] == "d":
-            self.enc_path = Paths.dir_normalize(self.enc_path)
-            self.path = Paths.dir_normalize(self.path)
+            self.enc_path = pathm.dir_normalize(self.enc_path)
+            self.path = pathm.dir_normalize(self.path)
         elif not meta["type"]:
             self.type = None
             return
@@ -238,13 +238,13 @@ class EncryptedScannable(BaseScannable):
                     if meta["type"] is None:
                         continue
 
-                    enc_path = Paths.join(self.enc_path, meta["name"])
+                    enc_path = pathm.join(self.enc_path, meta["name"])
 
                     if meta["type"] == "dir":
-                        enc_path = Paths.dir_normalize(enc_path)
+                        enc_path = pathm.dir_normalize(enc_path)
 
                         if meta["link"] is not None:
-                            if Paths.contains(meta["link"], enc_path):
+                            if pathm.contains(meta["link"], enc_path):
                                 continue
 
                     meta["size"] = max((meta["size"] or 0) - MIN_ENC_SIZE, 0)

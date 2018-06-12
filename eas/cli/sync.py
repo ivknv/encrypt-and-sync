@@ -21,21 +21,21 @@ from ..difflist import DiffList
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
 from ..common import Lockfile, validate_folder_name, recognize_path
-from .. import Paths
+from .. import pathm
 
 def get_target_display_name(target):
-    if Paths.is_equal(target.path1, target.folder1["path"]):
+    if pathm.is_equal(target.path1, target.folder1["path"]):
         name1 = target.folder1["name"]
     else:
-        path = Paths.cut_prefix(target.path1, target.folder1["path"])
+        path = pathm.cut_prefix(target.path1, target.folder1["path"])
         path = path.lstrip("/") or "/"
 
         name1 = "[%s][%s]" % (target.folder1["name"], path)
 
-    if Paths.is_equal(target.path2, target.folder2["path"]):
+    if pathm.is_equal(target.path2, target.folder2["path"]):
         name2 = target.folder2["name"]
     else:
-        path = Paths.cut_prefix(target.path2, target.folder2["path"])
+        path = pathm.cut_prefix(target.path2, target.folder2["path"])
         path = path.lstrip("/") or "/"
 
         name2 = "[%s][%s]" % (target.folder2["name"], path)
@@ -147,8 +147,8 @@ def _get_diff_dst_subpath(config, dst_path):
     if dst_folder is None:
         dst_subpath = "/"
     else:
-        dst_subpath = Paths.cut_prefix(dst_path, dst_folder["path"])
-        dst_subpath = Paths.join("/", dst_subpath)
+        dst_subpath = pathm.cut_prefix(dst_path, dst_folder["path"])
+        dst_subpath = pathm.join("/", dst_subpath)
 
     return dst_subpath
 
@@ -159,7 +159,7 @@ def get_diff_dst_path(config, diff):
     dst_path = recognize_path(diff["dst_path"])[0]
     dst_subpath = get_diff_dst_subpath(config, diff)
 
-    dst_path = Paths.join(dst_subpath, diff["path"])
+    dst_path = pathm.join(dst_subpath, diff["path"])
     dst_path = dst_path.lstrip("/") or "/"
 
     return dst_path
@@ -622,7 +622,7 @@ def do_sync(env, names_or_paths):
             path, proto = recognize_path(path1_with_proto)
 
             if proto == "local":
-                path = Paths.from_sys(os.path.abspath(os.path.expanduser(path)))
+                path = pathm.from_sys(os.path.abspath(os.path.expanduser(path)))
 
             path1_with_proto = proto + "://" + path
 
@@ -640,7 +640,7 @@ def do_sync(env, names_or_paths):
             path, proto = recognize_path(path2_with_proto)
 
             if proto == "local":
-                path = Paths.from_sys(os.path.abspath(os.path.expanduser(path)))
+                path = pathm.from_sys(os.path.abspath(os.path.expanduser(path)))
 
             path2_with_proto = proto + "://" + path
 

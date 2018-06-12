@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 from .base_filelist import BaseFileList
-from .. import Paths
+from .. import pathm
 from ..common import node_tuple_to_dict, format_timestamp
 from ..common import escape_glob, validate_folder_name
 
 __all__ = ["FileList"]
 
 def prepare_path(path):
-    return Paths.join_properly("/", path)
+    return pathm.join_properly("/", path)
 
 class FileList(BaseFileList):
     def __init__(self, folder_name, directory=None, *args, **kwargs):
@@ -44,7 +44,7 @@ class FileList(BaseFileList):
     def insert_node(self, node):
         node = dict(node)
         if node["type"] == "d":
-            node["path"] = Paths.dir_normalize(node["path"])
+            node["path"] = pathm.dir_normalize(node["path"])
 
         if node["type"] is None:
             raise ValueError("Node type is None")
@@ -61,10 +61,10 @@ class FileList(BaseFileList):
         path = prepare_path(path)
 
         self.connection.execute("DELETE FROM filelist WHERE path=? OR path=?",
-                                (path, Paths.dir_normalize(path)))
+                                (path, pathm.dir_normalize(path)))
 
     def remove_node_children(self, path):
-        path = prepare_path(Paths.dir_normalize(path))
+        path = prepare_path(pathm.dir_normalize(path))
         path = escape_glob(path)
 
         self.connection.execute("DELETE FROM filelist WHERE path GLOB ?", (path + "*",))
@@ -78,13 +78,13 @@ class FileList(BaseFileList):
         with self.connection:
             self.connection.execute("""SELECT * FROM filelist
                                        WHERE path=? OR path=? LIMIT 1""",
-                                    (path, Paths.dir_normalize(path)))
+                                    (path, pathm.dir_normalize(path)))
             return node_tuple_to_dict(self.connection.fetchone())
 
     def find_node_children(self, path):
         path = prepare_path(path)
         path = escape_glob(path)
-        path_n = Paths.dir_normalize(path)
+        path_n = pathm.dir_normalize(path)
 
         with self.connection:
             self.connection.execute("""SELECT * FROM filelist
@@ -101,7 +101,7 @@ class FileList(BaseFileList):
             return (node_tuple_to_dict(i) for i in self.connection.genfetch())
 
     def is_empty(self, parent_dir="/"):
-        parent_dir = prepare_path(Paths.dir_normalize(parent_dir))
+        parent_dir = prepare_path(pathm.dir_normalize(parent_dir))
         parent_dir = escape_glob(parent_dir)
 
         with self.connection:
@@ -112,7 +112,7 @@ class FileList(BaseFileList):
             return self.connection.fetchone()[0] == 0
 
     def get_file_count(self, path="/"):
-        parent_dir = prepare_path(Paths.dir_normalize(path))
+        parent_dir = prepare_path(pathm.dir_normalize(path))
         parent_dir = escape_glob(path)
 
         with self.connection:

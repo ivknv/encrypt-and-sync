@@ -9,7 +9,7 @@ from ..filelist import DuplicateList
 from ..constants import AUTOCOMMIT_INTERVAL
 from ..worker import WorkerPool
 from ..common import threadsafe_iterator
-from .. import Paths
+from .. import pathm
 from .worker import DuplicateRemoverWorker
 from .task import DuplicateRemoverTask
 
@@ -35,7 +35,7 @@ class DuplicateRemoverTarget(Task):
 
         self.shared_duplist = None
 
-        path = Paths.join_properly("/", path)
+        path = pathm.join_properly("/", path)
         self.path = path
 
         folder = self.config.identify_folder(storage_name, path)

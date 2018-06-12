@@ -8,7 +8,7 @@ import sys
 from .common import show_error, make_config
 from ..common import validate_folder_name, recognize_path
 from ..file_comparator import compare_lists
-from .. import Paths
+from .. import pathm
 from .pager import Pager
 
 __all__ = ["show_diffs"]
@@ -22,8 +22,8 @@ def _get_diff_dst_subpath(config, dst_path):
     if dst_folder is None:
         dst_subpath = "/"
     else:
-        dst_subpath = Paths.cut_prefix(dst_path, dst_folder["path"])
-        dst_subpath = Paths.join("/", dst_subpath)
+        dst_subpath = pathm.cut_prefix(dst_path, dst_folder["path"])
+        dst_subpath = pathm.join("/", dst_subpath)
 
     return dst_subpath
 
@@ -34,7 +34,7 @@ def format_diff(config, diff):
     dst_path = recognize_path(diff["dst_path"])[0]
     dst_subpath = get_diff_dst_subpath(config, diff)
 
-    dst_path = Paths.join(dst_subpath, diff["path"])
+    dst_path = pathm.join(dst_subpath, diff["path"])
     dst_path = dst_path.lstrip("/") or "/"
 
     return "%s %s %s\n" % (diff["type"], diff["node_type"], dst_path)
@@ -58,7 +58,7 @@ def show_diffs(env, src_name_or_path, dst_name_or_path):
         src_path, src_path_type = recognize_path(src_name_or_path)
 
         if src_path_type == "local":
-            src_path = Paths.from_sys(os.path.abspath(os.path.expanduser(src_path)))
+            src_path = pathm.from_sys(os.path.abspath(os.path.expanduser(src_path)))
 
         src_path = src_path_type + "://" + src_path
 
@@ -72,7 +72,7 @@ def show_diffs(env, src_name_or_path, dst_name_or_path):
         dst_path, dst_path_type = recognize_path(dst_name_or_path)
 
         if dst_path_type == "local":
-            dst_path = Paths.from_sys(os.path.abspath(os.path.expanduser(dst_path)))
+            dst_path = pathm.from_sys(os.path.abspath(os.path.expanduser(dst_path)))
 
         dst_path = dst_path_type + "://" + dst_path
 

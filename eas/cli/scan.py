@@ -14,7 +14,7 @@ from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
 from .authenticate_storages import authenticate_storages
 from ..common import Lockfile, validate_folder_name, recognize_path
-from .. import Paths
+from .. import pathm
 
 from . import common
 from .common import show_error
@@ -24,10 +24,10 @@ PRINT_RATE_LIMIT = 1.0
 __all__ = ["do_scan", "ScannerReceiver"]
 
 def get_target_display_name(target):
-    if Paths.is_equal(target.path, target.prefix):
+    if pathm.is_equal(target.path, target.prefix):
         return "[%s]" % (target.name,)
 
-    path = Paths.cut_prefix(target.path, target.prefix)
+    path = pathm.cut_prefix(target.path, target.prefix)
     path = path.lstrip("/") or "/"
 
     return "[%s][%s]" % (target.name, path)
@@ -207,7 +207,7 @@ def do_scan(env, names_or_paths):
             path, proto = recognize_path(path_with_proto)
 
             if proto == "local":
-                path = Paths.from_sys(os.path.abspath(os.path.expanduser(path)))
+                path = pathm.from_sys(os.path.abspath(os.path.expanduser(path)))
 
             path_with_proto = proto + "://" + path
 

@@ -6,7 +6,7 @@ import shutil
 import stat
 import time
 
-from .. import Paths
+from .. import pathm
 from ..common import is_windows, get_file_size
 
 from .storage import Storage
@@ -103,7 +103,7 @@ class LocalStorage(Storage):
     supports_set_modified = True
 
     def get_meta(self, path, *args, **kwargs):
-        path = Paths.to_sys(path)
+        path = pathm.to_sys(path)
         filename = os.path.split(path)[1]
 
         s = os.lstat(path)
@@ -123,7 +123,7 @@ class LocalStorage(Storage):
                         "link":     real_path}
 
             if stat.S_ISLNK(s.st_mode):
-                real_path = Paths.from_sys(os.path.realpath(path))
+                real_path = pathm.from_sys(os.path.realpath(path))
 
             resource_type = "dir"
             size = 0
@@ -142,7 +142,7 @@ class LocalStorage(Storage):
                 "link":     real_path}
 
     def listdir(self, path, *args, **kwargs):
-        for entry in os.scandir(Paths.to_sys(path)):
+        for entry in os.scandir(pathm.to_sys(path)):
             real_path = None
             
             if entry.is_file():
@@ -155,7 +155,7 @@ class LocalStorage(Storage):
                     continue
 
                 if entry.is_symlink():
-                    real_path = Paths.from_sys(os.path.realpath(entry.path))
+                    real_path = pathm.from_sys(os.path.realpath(entry.path))
 
                 resource_type = "dir"
                 size = 0
@@ -170,10 +170,10 @@ class LocalStorage(Storage):
                    "link":     real_path}
 
     def mkdir(self, path, *args, **kwargs):
-        os.mkdir(Paths.to_sys(path))
+        os.mkdir(pathm.to_sys(path))
 
     def remove(self, path, *args, **kwargs):
-        path = Paths.to_sys(path)
+        path = pathm.to_sys(path)
 
         try:
             shutil.rmtree(path)
@@ -182,24 +182,24 @@ class LocalStorage(Storage):
             os.remove(path)
 
     def upload(self, in_file, out_path, *args, **kwargs):
-        out_path = Paths.to_sys(out_path)
+        out_path = pathm.to_sys(out_path)
 
         return LocalUploadController(self.config, in_file, out_path)
 
     def download(self, in_path, out_file, *args, **kwargs):
-        in_path = Paths.to_sys(in_path)
+        in_path = pathm.to_sys(in_path)
 
         return LocalDownloadController(self.config, in_path, out_file)
 
     def is_file(self, path, *args, **kwargs):
-        return os.path.isfile(Paths.to_sys(path))
+        return os.path.isfile(pathm.to_sys(path))
 
     def is_dir(self, path, *args, **kwargs):
-        return os.path.isdir(Paths.to_sys(path))
+        return os.path.isdir(pathm.to_sys(path))
 
     def exists(self, path, *args, **kwargs):
-        return os.path.exists(Paths.to_sys(path))
+        return os.path.exists(pathm.to_sys(path))
 
     def set_modified(self, path, new_modified, *args, **kwargs):
         new_modified = utc_to_local(new_modified)
-        os.utime(Paths.to_sys(path), (new_modified, new_modified))
+        os.utime(pathm.to_sys(path), (new_modified, new_modified))

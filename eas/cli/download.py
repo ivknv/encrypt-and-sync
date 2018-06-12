@@ -6,7 +6,7 @@ import sys
 
 import portalocker
 
-from .. import Paths
+from .. import pathm
 from ..downloader import Downloader, DownloadTarget
 from ..events import Receiver
 from ..common import Lockfile
@@ -188,24 +188,24 @@ def download(env, paths):
     targets = []
 
     if len(paths) == 1:
-        dst_path = Paths.from_sys(os.getcwd())
+        dst_path = pathm.from_sys(os.getcwd())
     else:
         dst_path = paths.pop()
 
     dst_path, dst_path_type = common.recognize_path(dst_path)
 
     if dst_path_type == "local":
-        dst_path = Paths.from_sys(os.path.abspath(Paths.to_sys(dst_path)))
+        dst_path = pathm.from_sys(os.path.abspath(pathm.to_sys(dst_path)))
     else:
-        dst_path = Paths.join_properly("/", dst_path)
+        dst_path = pathm.join_properly("/", dst_path)
 
     for src_path in paths:
         src_path, src_path_type = common.recognize_path(src_path)
 
         if src_path_type == "local":
-            src_path = Paths.from_sys(os.path.abspath(Paths.to_sys(src_path)))
+            src_path = pathm.from_sys(os.path.abspath(pathm.to_sys(src_path)))
         else:
-            src_path = Paths.join_properly("/", src_path)
+            src_path = pathm.join_properly("/", src_path)
 
         target = DownloadTarget(downloader,
                                 src_path_type, src_path,

@@ -5,7 +5,7 @@ import argparse
 import os
 
 from ....encscript import Command
-from .... import Paths
+from .... import pathm
 
 from ...common import show_error, recognize_path
 
@@ -28,10 +28,10 @@ class CdCommand(Command):
         path, path_type = recognize_path(ns.directory, console.cur_storage.name)
 
         if path_type == console.cur_storage.name:
-            new_path = Paths.join_properly(console.cwd, path)
+            new_path = pathm.join_properly(console.cwd, path)
             storage = console.cur_storage
         else:
-            new_path = Paths.join_properly("/", path)            
+            new_path = pathm.join_properly("/", path)            
             storage = console.get_storage(path_type)
 
         try:
@@ -56,6 +56,6 @@ class CdCommand(Command):
 
                 os.chdir(folder_storage.encrypt_path(console.cwd)[0])
             else:
-                os.chdir(Paths.to_sys(console.cwd))
+                os.chdir(pathm.to_sys(console.cwd))
 
         return 0

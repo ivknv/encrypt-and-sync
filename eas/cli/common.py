@@ -16,7 +16,7 @@ from ..synchronizer import SyncTask
 from ..duplicate_remover import DuplicateRemoverTask
 from ..encryption import DecryptionError
 from ..common import recognize_path, Lockfile
-from .. import Paths
+from .. import pathm
 
 __all__ = ["positive_int", "get_finished_percent", "get_failed_percent",
            "get_progress_str", "make_size_readable", "local_path", "remote_path",
@@ -67,7 +67,7 @@ def get_progress_str(task):
     failed_percent = get_failed_percent(target)
 
     if isinstance(task, SyncTask):
-        path = Paths.join(task.parent.subpath2, task.path)
+        path = pathm.join(task.parent.subpath2, task.path)
     elif isinstance(task, DownloadTask):
         path = task.src_path
     else:
@@ -136,7 +136,7 @@ def non_remote_path(arg):
     raise argparse.ArgumentTypeError("%r is a remote path" % arg)
 
 def prepare_remote_path(path, cwd="/"):
-    return Paths.join(cwd, path)
+    return pathm.join(cwd, path)
 
 def authenticate(env, enc_data_path):
     if not os.path.exists(enc_data_path):

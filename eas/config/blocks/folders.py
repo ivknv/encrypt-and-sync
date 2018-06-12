@@ -8,7 +8,7 @@ from ...encscript.namespace import Namespace
 from ...encscript import Command
 from ...common import recognize_path, validate_folder_name
 from ...storage import Storage
-from ... import Paths
+from ... import pathm
 
 from ..config_block import ConfigBlock
 

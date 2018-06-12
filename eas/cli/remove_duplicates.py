@@ -8,7 +8,7 @@ import portalocker
 from ..duplicate_remover import DuplicateRemover, DuplicateRemoverTarget
 from ..filelist import DuplicateList
 from ..events import Receiver
-from .. import Paths
+from .. import pathm
 from ..common import Lockfile
 
 from .authenticate_storages import authenticate_storages
@@ -191,7 +191,7 @@ def remove_duplicates(env, paths):
     if config is None:
         return ret
 
-    # Paths were supplied by user
+    # pathm were supplied by user
     user_paths = True
 
     choose_targets = env.get("choose_targets", False)
@@ -201,7 +201,7 @@ def remove_duplicates(env, paths):
         choose_targets = choose_targets or ask
         paths = []
 
-        # Paths are from the configuration
+        # pathm are from the configuration
         user_paths = False
 
         for folder in config.folders.values():
@@ -218,9 +218,9 @@ def remove_duplicates(env, paths):
         path, path_type = common.recognize_path(path)
 
         if path_type == "local":
-            path = Paths.from_sys(os.path.abspath(Paths.to_sys(path)))
+            path = pathm.from_sys(os.path.abspath(pathm.to_sys(path)))
         else:
-            path = Paths.join_properly("/", path)
+            path = pathm.join_properly("/", path)
 
         try:
             target = DuplicateRemoverTarget(duprem, path_type, path)

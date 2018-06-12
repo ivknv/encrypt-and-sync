@@ -16,7 +16,7 @@ from .download_controller import DownloadController
 from .upload_controller import UploadController
 from .controlled_speed_limiter import ControlledSpeedLimiter
 
-from .. import Paths
+from .. import pathm
 from ..common import LRUCache
 
 __all__ = ["SFTPStorage"]
@@ -198,7 +198,7 @@ class SFTPStorage(Storage):
     @staticmethod
     def split_path(path):
         host_address, separator, path = path.lstrip("/").partition("/")
-        path = Paths.join_properly("/", path) or "/"
+        path = pathm.join_properly("/", path) or "/"
 
         return host_address, path
 
@@ -376,9 +376,9 @@ class SFTPStorage(Storage):
             def recur(path):
                 for s in connection.listdir_attr(path):
                     if not stat.S_ISDIR(s.st_mode) or stat.S_ISLNK(s.st_mode):
-                        connection.remove(Paths.join(path, s.filename))
+                        connection.remove(pathm.join(path, s.filename))
                     else:
-                        recur(Paths.join(path, s.filename))
+                        recur(pathm.join(path, s.filename))
 
                 connection.rmdir(path)
 

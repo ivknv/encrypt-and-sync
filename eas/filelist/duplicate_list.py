@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .. import Paths
+from .. import pathm
 from ..common import escape_glob
 
 from .base_filelist import BaseFileList
@@ -9,7 +9,7 @@ from .base_filelist import BaseFileList
 __all__ = ["DuplicateList"]
 
 def prepare_path(path):
-    return Paths.join_properly("/", path)
+    return pathm.join_properly("/", path)
 
 class DuplicateList(BaseFileList):
     def __init__(self, storage_name, directory=None, filename=None, *args, **kwargs):
@@ -34,10 +34,10 @@ class DuplicateList(BaseFileList):
         path = prepare_path(path)
 
         self.connection.execute("DELETE FROM duplicates WHERE (path=? OR path=?) AND IVs=?",
-                          (path, Paths.dir_normalize(path), IVs))
+                          (path, pathm.dir_normalize(path), IVs))
 
     def remove_children(self, path):
-        path = prepare_path(Paths.dir_normalize(path))
+        path = prepare_path(pathm.dir_normalize(path))
         path = escape_glob(path)
 
         self.connection.execute("DELETE FROM duplicates WHERE path GLOB ?", (path + "*",))
@@ -51,11 +51,11 @@ class DuplicateList(BaseFileList):
         with self.connection:
             self.connection.execute("""SELECT * FROM duplicates
                                        WHERE IVs=? AND (path=? OR path=?) LIMIT 1""",
-                                    (IVs, path, Paths.dir_normalize(path)))
+                                    (IVs, path, pathm.dir_normalize(path)))
             return self.connection.fetchone()
 
     def find_children(self, path):
-        path = prepare_path(Paths.dir_normalize(path))
+        path = prepare_path(pathm.dir_normalize(path))
         path = escape_glob(path)
 
         with self.connection:
@@ -76,7 +76,7 @@ class DuplicateList(BaseFileList):
             return self.connection.fetchone()[0]
 
     def get_children_count(self, path):
-        path = prepare_path(Paths.dir_normalize(path))
+        path = prepare_path(pathm.dir_normalize(path))
         path = escape_glob(path)
 
         with self.connection:
@@ -86,7 +86,7 @@ class DuplicateList(BaseFileList):
             return self.connection.fetchone()[0]
 
     def is_empty(self, path="/"):
-        path = prepare_path(Paths.dir_normalize(path))
+        path = prepare_path(pathm.dir_normalize(path))
         path = escape_glob(path)
 
         with self.connection:

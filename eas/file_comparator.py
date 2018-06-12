@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from . import Paths
+from . import pathm
 from . import path_match
 from .filelist import FileList
 from .common import recognize_path
@@ -20,8 +20,8 @@ class FileComparator(object):
         src_path, src_path_type = recognize_path(src_path)
         dst_path, dst_path_type = recognize_path(dst_path)
 
-        src_path = Paths.join_properly("/", src_path)
-        dst_path = Paths.join_properly("/", dst_path)
+        src_path = pathm.join_properly("/", src_path)
+        dst_path = pathm.join_properly("/", dst_path)
 
         self.src_path = src_path
         self.dst_path = dst_path
@@ -105,7 +105,7 @@ class FileComparator(object):
         self.node1 = try_next(self.it1)
         self.node2 = try_next(self.it2)
         diffs = []
-        if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
+        if self.last_rm is None or not pathm.contains(self.last_rm, self.path2):
             if self.type2 == "d":
                 self.last_rm = self.path2
 
@@ -135,8 +135,8 @@ class FileComparator(object):
                 self.padded_size1 = None
             else:
                 self.type1 = self.node1["type"]
-                self.path1 = Paths.cut_prefix(self.node1["path"], self.src_path) or "/"
-                self.path1 = Paths.join("/", self.path1)
+                self.path1 = pathm.cut_prefix(self.node1["path"], self.src_path) or "/"
+                self.path1 = pathm.join("/", self.path1)
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
 
@@ -149,13 +149,13 @@ class FileComparator(object):
                 self.padded_size2 = None
             else:
                 self.type2 = self.node2["type"]
-                self.path2 = Paths.cut_prefix(self.node2["path"], self.dst_path) or "/"
-                self.path2 = Paths.join("/", self.path2)
+                self.path2 = pathm.cut_prefix(self.node2["path"], self.dst_path) or "/"
+                self.path2 = pathm.join("/", self.path2)
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
 
             if self.is_removed():
-                if self.last_rm is None or not Paths.contains(self.last_rm, self.path2):
+                if self.last_rm is None or not pathm.contains(self.last_rm, self.path2):
                     return self.diff_rm()
                 else:
                     self.node2 = try_next(self.it2)

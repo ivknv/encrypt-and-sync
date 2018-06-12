@@ -9,7 +9,7 @@ from ..scannable import EncryptedScannable, DecryptedScannable, scan_files
 from ..encrypted_storage import EncryptedStorage
 from ..worker import WorkerPool
 from ..common import threadsafe_iterator
-from .. import Paths
+from .. import pathm
 from .worker import DownloaderWorker
 from .task import DownloadTask
 
@@ -73,11 +73,11 @@ class DownloadTarget(Task):
         assert(self.type in ("f", "d"))
 
         if self.type == "f" and dst_type == "d":
-            filename = Paths.split(new_task.src_path)[1]
-            new_task.dst_path = Paths.join(new_task.dst_path, filename)
+            filename = pathm.split(new_task.src_path)[1]
+            new_task.dst_path = pathm.join(new_task.dst_path, filename)
         elif dst_type == "d" or self.type == "d":
-            suffix = Paths.cut_prefix(node["path"], self.src_path)
-            new_task.dst_path = Paths.join(new_task.dst_path, suffix)
+            suffix = pathm.cut_prefix(node["path"], self.src_path)
+            new_task.dst_path = pathm.join(new_task.dst_path, suffix)
 
         if new_task.type == "f" and self.src.is_encrypted(new_task.src_path):
             new_task.download_size = node["padded_size"] + MIN_ENC_SIZE

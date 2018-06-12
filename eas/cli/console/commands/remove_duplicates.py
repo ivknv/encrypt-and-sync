@@ -2,7 +2,7 @@
 
 import argparse
 
-from .... import Paths
+from .... import pathm
 from ....encscript import Command
 from ...common import positive_int, recognize_path
 from ...remove_duplicates import remove_duplicates
@@ -14,7 +14,7 @@ class RemoveDuplicatesCommand(Command):
     def evaluate(self, console):
         parser = argparse.ArgumentParser(description="Remove duplicates",
                                          prog=self.args[0])
-        parser.add_argument("paths", nargs="*", help="Paths to remove duplicates from")
+        parser.add_argument("paths", nargs="*", help="pathm to remove duplicates from")
         parser.add_argument("-a", "--all", action="store_true",
                             help="Remove duplicates from all folders")
         parser.add_argument("--ask", action="store_true", help="(deprecated)")
@@ -36,7 +36,7 @@ class RemoveDuplicatesCommand(Command):
             path, path_type = recognize_path(path, console.cur_storage.name)
 
             if path_type == console.cur_storage.name:
-                path = path_type + "://" + Paths.join_properly(console.cwd, path)
+                path = path_type + "://" + pathm.join_properly(console.cwd, path)
             else:
                 path = path_type + "://" + path
 

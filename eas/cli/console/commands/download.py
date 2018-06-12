@@ -3,7 +3,7 @@
 
 import argparse
 
-from .... import Paths
+from .... import pathm
 from ...download import download
 from ...common import positive_int, recognize_path
 from ...environment import Environment
@@ -32,7 +32,7 @@ class DownloadCommand(Command):
             path, path_type = recognize_path(path, console.cur_storage.name)
 
             if path_type == console.cur_storage.name:
-                path = path_type + "://" + Paths.join_properly(console.cwd, path)
+                path = path_type + "://" + pathm.join_properly(console.cwd, path)
             else:
                 path = path_type + "://" + path
 

@@ -9,7 +9,7 @@ from ..scannable import DecryptedScannable, EncryptedScannable
 from ..worker import WorkerPool, get_current_worker
 from ..common import recognize_path
 from .. import path_match
-from .. import Paths
+from .. import pathm
 from .tasks import EncryptedScanTask, DecryptedScanTask
 from .tasks import AsyncEncryptedScanTask, AsyncDecryptedScanTask
 from .worker import ScanWorker
@@ -29,7 +29,7 @@ class ScanTarget(Task):
         self.scanner = scanner
         self.config = scanner.config
         self.path, self.type = recognize_path(path)
-        self.path = Paths.join_properly("/", self.path)
+        self.path = pathm.join_properly("/", self.path)
         self.name = None
         self.storage = None
         self.encrypted = None
@@ -77,7 +77,7 @@ class ScanTarget(Task):
         if self.encrypted:
             IVs = self.shared_flist.find_node(self.path)["IVs"]
 
-            if IVs is None and not Paths.is_equal(self.path, self.prefix):
+            if IVs is None and not pathm.is_equal(self.path, self.prefix):
                 raise KeyError("Can't find %r in the database" % (self.path,))
 
             enc_path = self.config.encrypt_path(self.path, self.prefix, IVs=IVs)[0]
@@ -86,7 +86,7 @@ class ScanTarget(Task):
         else:
             scannable = DecryptedScannable(self.storage, self.path)
 
-        if Paths.is_equal(self.path, self.prefix):
+        if pathm.is_equal(self.path, self.prefix):
             self.shared_flist.clear()
         else:
             self.shared_flist.remove_node(self.path)
@@ -109,7 +109,7 @@ class ScanTarget(Task):
         path = self.path
 
         if scannable.type == "d":
-            path = Paths.dir_normalize(path)
+            path = pathm.dir_normalize(path)
 
         allowed_paths = list(self.config.allowed_paths.get(self.storage.name, []))
         allowed_paths += self.folder["allowed_paths"].get(self.storage.name, [])

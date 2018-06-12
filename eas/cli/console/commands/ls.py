@@ -3,7 +3,7 @@
 
 import argparse
 
-from .... import Paths
+from .... import pathm
 from ....encscript import Command
 from ...common import show_error, recognize_path
 
@@ -14,7 +14,7 @@ class LsCommand(Command):
         parser = argparse.ArgumentParser(description="List directory contents",
                                          prog=self.args[0])
         parser.add_argument("paths", default=[console.cwd], nargs="*",
-                            help="Paths to list contents for")
+                            help="pathm to list contents for")
 
         ns = parser.parse_args(self.args[1:])
 
@@ -24,10 +24,10 @@ class LsCommand(Command):
             path, path_type = recognize_path(path, console.cur_storage.name)
 
             if path_type == console.cur_storage.name:
-                path = Paths.join_properly(console.cwd, path)
+                path = pathm.join_properly(console.cwd, path)
                 storage = console.cur_storage
             else:
-                path = Paths.join_properly("/", path)
+                path = pathm.join_properly("/", path)
                 storage = console.get_storage(path_type)
 
             try:
@@ -35,7 +35,7 @@ class LsCommand(Command):
                             for i in sorted(storage.listdir(path),
                                             key=lambda x: x["name"])]
             except NotADirectoryError:
-                contents = [Paths.dir_denormalize(Paths.split(path)[1])]
+                contents = [pathm.dir_denormalize(pathm.split(path)[1])]
             except IOError as e:
                 show_error("I/O error: %s" % (e,))
                 return 1

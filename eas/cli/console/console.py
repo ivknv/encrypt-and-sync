@@ -19,7 +19,7 @@ except ImportError:
 from ...encscript import Parser, Tokenizer, ast2program
 from ...encscript.exceptions import EncScriptError
 from ...encrypted_storage import EncryptedStorage
-from ... import Paths
+from ... import pathm
 from .. import common
 from ..common import show_error
 from ..environment import Environment
@@ -31,7 +31,7 @@ __all__ = ["Console", "run_console"]
 class Console(object):
     def __init__(self, config, env):
         self.storages = {}
-        self.cwd = Paths.from_sys(os.getcwd())
+        self.cwd = pathm.from_sys(os.getcwd())
         self.pwd = self.cwd
         self.env = env
         self.exit_code = 0
@@ -50,7 +50,7 @@ class Console(object):
 
         if new_path is None:
             if name == "local":
-                new_path = Paths.from_sys(os.getcwd())
+                new_path = pathm.from_sys(os.getcwd())
             else:
                 new_path = "/"
 

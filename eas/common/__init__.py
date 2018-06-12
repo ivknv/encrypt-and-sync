@@ -5,7 +5,7 @@ import os
 import sys
 import threading
 
-from .. import Paths
+from .. import pathm
 
 from .lazy_dict import *
 from .lockfile import *
@@ -53,7 +53,7 @@ def node_tuple_to_dict(t):
 
 def normalize_node(node):
     if node["type"] == "d":
-        node["path"] = Paths.dir_normalize(node["path"])
+        node["path"] = pathm.dir_normalize(node["path"])
 
 def escape_glob(s):
     return "".join("[" + i + "]" if i in "*?[]" else i for i in s)

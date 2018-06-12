@@ -273,7 +273,7 @@ def parse_args(args):
     
     rmdup_parser = subparsers.add_parser("rmdup", aliases=["remove-duplicates"],
                                          help="Remove duplicates")
-    rmdup_parser.add_argument("paths", nargs="*", help="Paths to remove duplicates from")
+    rmdup_parser.add_argument("paths", nargs="*", help="pathm to remove duplicates from")
     rmdup_parser.add_argument("-a", "--all", action="store_true",
                               help="Remove duplicates from all folders")
     rmdup_parser.add_argument("--ask", action="store_true", help="(deprecated)")

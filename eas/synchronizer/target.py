@@ -10,7 +10,7 @@ from ..folder_storage import get_folder_storage
 from ..constants import AUTOCOMMIT_INTERVAL
 from ..worker import WorkerPool, get_current_worker
 from ..common import threadsafe_iterator, recognize_path
-from .. import Paths, file_comparator
+from .. import pathm, file_comparator
 from .worker import SyncWorker
 from .tasks import UploadTask, MkdirTask, RmTask
 
@@ -40,8 +40,8 @@ class SyncTarget(StagedTask):
         self.path1, self.path_type1 = recognize_path(path1)
         self.path2, self.path_type2 = recognize_path(path2)
 
-        self.path1 = Paths.join_properly("/", self.path1)
-        self.path2 = Paths.join_properly("/", self.path2)
+        self.path1 = pathm.join_properly("/", self.path1)
+        self.path2 = pathm.join_properly("/", self.path2)
 
         self.path1_with_proto = "%s://%s" % (self.path_type1, self.path1)
         self.path2_with_proto = "%s://%s" % (self.path_type2, self.path2)
@@ -55,11 +55,11 @@ class SyncTarget(StagedTask):
         if self.folder2 is None:
             raise KeyError("%r does not belong to any known folders" % (path2,))
 
-        self.subpath1 = Paths.cut_prefix(self.path1, self.folder1["path"])
-        self.subpath2 = Paths.cut_prefix(self.path2, self.folder2["path"])
+        self.subpath1 = pathm.cut_prefix(self.path1, self.folder1["path"])
+        self.subpath2 = pathm.cut_prefix(self.path2, self.folder2["path"])
 
-        self.subpath1 = Paths.join_properly("/", self.subpath1)
-        self.subpath2 = Paths.join_properly("/", self.subpath2)
+        self.subpath1 = pathm.join_properly("/", self.subpath1)
+        self.subpath2 = pathm.join_properly("/", self.subpath2)
         
         self.skip_integrity_check = False
         self.enable_scan = True

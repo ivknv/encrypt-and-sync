@@ -2,7 +2,7 @@
 
 from ..filelist import FileList
 from .. import encryption
-from .. import Paths
+from .. import pathm
 
 __all__ = ["FolderStorage"]
 
@@ -27,7 +27,7 @@ class FolderStorage(object):
         self.folder = config.folders[folder_name]
         self.encrypted = self.folder["encrypted"]
         self.storage = config.storages[self.folder["type"]]
-        self.prefix = Paths.dir_normalize(self.folder["path"])
+        self.prefix = pathm.dir_normalize(self.folder["path"])
         self.filename_encoding = self.folder["filename_encoding"]
 
         if filelist is None:
@@ -43,7 +43,7 @@ class FolderStorage(object):
         if node["IVs"] is not None:
             return node["IVs"]
 
-        parent = Paths.dir_normalize(Paths.split(full_path)[0])
+        parent = pathm.dir_normalize(pathm.split(full_path)[0])
 
         if parent == self.prefix:
             return b""
@@ -65,7 +65,7 @@ class FolderStorage(object):
             :returns: a `tuple` of encrypted path (`str`) and IVs (`bytes`)
         """
 
-        full_path = Paths.join_properly("/", full_path)
+        full_path = pathm.join_properly("/", full_path)
 
         if ivs is None:
             ivs = self.get_ivs(full_path)
@@ -97,7 +97,7 @@ class FolderStorage(object):
         raise NotImplementedError
 
     def get_meta(self, path, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path, ivs = self.encrypt_path(path, ivs)
@@ -105,7 +105,7 @@ class FolderStorage(object):
         meta = self.storage.get_meta(path, *args, **kwargs)
 
         if self.encrypted:
-            if Paths.dir_normalize(path) != self.prefix:
+            if pathm.dir_normalize(path) != self.prefix:
                 meta["name"] = self.config.decrypt_path(
                     meta["name"],
                     filename_encoding=self.filename_encoding)[0]
@@ -113,7 +113,7 @@ class FolderStorage(object):
         return meta
 
     def listdir(self, path, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path, ivs = self.encrypt_path(path, ivs)
@@ -130,7 +130,7 @@ class FolderStorage(object):
             yield from result
 
     def mkdir(self, path, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path, ivs = self.encrypt_path(path, ivs)
@@ -140,7 +140,7 @@ class FolderStorage(object):
         return ivs or b""
 
     def upload(self, in_file, out_path, *args, ivs=None, **kwargs):
-        out_path = Paths.join(self.prefix, out_path)
+        out_path = pathm.join(self.prefix, out_path)
 
         if self.encrypted:
             out_path, ivs = self.encrypt_path(out_path, ivs)
@@ -148,7 +148,7 @@ class FolderStorage(object):
         return self.storage.upload(in_file, out_path, *args, **kwargs), ivs or b""
 
     def exists(self, path, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path, ivs = self.encrypt_path(path, ivs)
@@ -156,7 +156,7 @@ class FolderStorage(object):
         return self.storage.exists(path, *args, **kwargs)
 
     def remove(self, path, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path, ivs = self.encrypt_path(path, ivs)
@@ -164,7 +164,7 @@ class FolderStorage(object):
         return self.storage.remove(path, *args, **kwargs)
 
     def set_modified(self, path, new_modified, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path, ivs = self.encrypt_path(path, ivs)

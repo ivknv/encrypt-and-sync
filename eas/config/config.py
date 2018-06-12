@@ -12,7 +12,7 @@ from functools import lru_cache
 from ..encscript import Parser, Tokenizer, ast2program
 from ..encscript.exceptions import EncScriptError, ASTConversionError, EvaluationError
 from .. import encryption
-from .. import Paths
+from .. import pathm
 from .. import path_match
 from ..common import get_file_size, recognize_path
 
@@ -103,20 +103,20 @@ class Config(object):
             prefix = folder["path"]
 
             if best_path is None:
-                if Paths.contains(prefix, path):
+                if pathm.contains(prefix, path):
                     best_match = folder
                     best_path = prefix
 
                     if use_exclude:
                         included = path_match.match(path, folder["allowed_paths"].get(storage_name, []))
-            elif Paths.contains(prefix, best_path):
+            elif pathm.contains(prefix, best_path):
                 if use_exclude and not path_match.match(path, folder["allowed_paths"].get(storage_name, [])):
                     continue
 
                 best_match = folder
                 best_path = prefix
                 included = True
-            elif not included and Paths.contains(prefix, path):
+            elif not included and pathm.contains(prefix, path):
                 best_match = folder
                 best_path = prefix
 
@@ -239,18 +239,18 @@ class Config(object):
     def process(self):
         for folder in self.folders.values():
             if folder["type"] == "local":
-                folder["path"] = Paths.from_sys(os.path.expanduser(folder["path"]))
+                folder["path"] = pathm.from_sys(os.path.expanduser(folder["path"]))
 
-            folder["path"] = Paths.join_properly("/", folder["path"])
-            folder["path"] = Paths.dir_normalize(folder["path"])
+            folder["path"] = pathm.join_properly("/", folder["path"])
+            folder["path"] = pathm.dir_normalize(folder["path"])
 
             for storage_name, blocks in folder["allowed_paths"].items():
                 for block_type, block in blocks:
                     for i, pattern in enumerate(block):
                         if folder["type"] == "local":
-                            pattern = Paths.from_sys(os.path.expanduser(pattern))
+                            pattern = pathm.from_sys(os.path.expanduser(pattern))
 
-                        pattern = Paths.join_properly(folder["path"], pattern)
+                        pattern = pathm.join_properly(folder["path"], pattern)
 
                         block[i] = pattern
 
@@ -262,9 +262,9 @@ class Config(object):
                     pattern, path_type = recognize_path(pattern)
 
                     if path_type == "local":
-                        pattern = Paths.from_sys(os.path.expanduser(pattern))
+                        pattern = pathm.from_sys(os.path.expanduser(pattern))
 
-                    pattern = Paths.join_properly("/", pattern)
+                    pattern = pathm.join_properly("/", pattern)
 
                     block[i] = pattern
 

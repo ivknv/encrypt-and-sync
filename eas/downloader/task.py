@@ -6,7 +6,7 @@ from ..task import Task
 from ..events import Receiver
 from ..common import get_file_size
 from ..storage.exceptions import ControllerInterrupt
-from .. import Paths
+from .. import pathm
 
 __all__ = ["DownloadTask"]
 
@@ -152,7 +152,7 @@ class DownloadTask(Task):
         self._stopped = value
 
     def recursive_mkdir(self, path):
-        path = Paths.join_properly("/", path)
+        path = pathm.join_properly("/", path)
 
         p = "/"
 
@@ -162,7 +162,7 @@ class DownloadTask(Task):
             if not i:
                 continue
 
-            p = Paths.join(p, i)
+            p = pathm.join(p, i)
 
             try:
                 self.dst.mkdir(p)
@@ -192,8 +192,8 @@ class DownloadTask(Task):
 
     def download_file(self):
         if self.dst.is_dir(self.dst_path):
-            name = Paths.split(self.src_path)[1]
-            self.dst_path = Paths.join(self.dst_path, name)
+            name = pathm.split(self.src_path)[1]
+            self.dst_path = pathm.join(self.dst_path, name)
 
         if self.stopped:
             return
@@ -205,7 +205,7 @@ class DownloadTask(Task):
         if self.stopped:
             return
 
-        self.recursive_mkdir(Paths.split(self.dst_path)[0])
+        self.recursive_mkdir(pathm.split(self.dst_path)[0])
 
         if self.stopped:
             return

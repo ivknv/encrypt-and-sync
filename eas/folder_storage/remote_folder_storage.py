@@ -2,14 +2,14 @@
 
 import tempfile
 
-from .. import Paths
+from .. import pathm
 from .folder_storage import FolderStorage
 
 __all__ = ["RemoteFolderStorage"]
 
 class RemoteFolderStorage(FolderStorage):
     def get_file(self, path, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path = self.encrypt_path(path, ivs)[0]
@@ -40,7 +40,7 @@ class RemoteFolderStorage(FolderStorage):
             yield tmp_file
 
     def get_encrypted_file(self, path, *args, ivs=None, **kwargs):
-        path = Paths.join(self.prefix, path)
+        path = pathm.join(self.prefix, path)
 
         if self.encrypted:
             path = self.encrypt_path(path, ivs)[0]

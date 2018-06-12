@@ -14,7 +14,7 @@ import math
 
 from .exceptions import *
 from .filename_encodings import *
-from .. import Paths
+from .. import pathm
 
 __all__ = ["MIN_ENC_SIZE", "pad_size", "encrypt_file", "decrypt_file",
            "encrypt_file_inplace", "decrypt_file_inplace",
@@ -578,13 +578,13 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep=None, filename_encoding="b
 
     encode = get_encode_function(filename_encoding)
 
-    preferred_type = Paths.get_preferred_type([path, prefix, sep])
+    preferred_type = pathm.get_preferred_type([path, prefix, sep])
 
     if path is None:
         path = preferred_type()
 
     if sep is None:
-        sep = Paths.get_default_sep(preferred_type)
+        sep = pathm.get_default_sep(preferred_type)
 
     if not path:
         return path, b""
@@ -592,7 +592,7 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep=None, filename_encoding="b
     prefix = prefix or sep
 
     orig_path = path
-    path = Paths.cut_prefix(path, prefix, sep)
+    path = pathm.cut_prefix(path, prefix, sep)
 
     func = lambda x, iv: encrypt_filename(x, key, iv, encode) if x else (preferred_type(), b"")
     out_ivs = b""
@@ -609,13 +609,13 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep=None, filename_encoding="b
             path_names.append(enc_name)
             out_ivs += iv
 
-    if Paths.contains(prefix, orig_path, sep):
-        result = Paths.join(prefix, sep.join(path_names), sep=sep)
+    if pathm.contains(prefix, orig_path, sep):
+        result = pathm.join(prefix, sep.join(path_names), sep=sep)
 
         if orig_path.endswith(sep):
-            result = Paths.dir_normalize(result)
+            result = pathm.dir_normalize(result)
         else:
-            result = Paths.dir_denormalize(result)
+            result = pathm.dir_denormalize(result)
 
         return result, out_ivs
 
@@ -636,23 +636,23 @@ def decrypt_path(path, key, prefix=None, sep=None, filename_encoding="base64"):
 
     decode = get_decode_function(filename_encoding)
 
-    preferred_type = Paths.get_preferred_type([path, prefix, sep])
+    preferred_type = pathm.get_preferred_type([path, prefix, sep])
 
     if sep is None:
-        sep = Paths.get_default_sep(preferred_type)
+        sep = pathm.get_default_sep(preferred_type)
 
     if path is None:
         path = preferred_type()
 
     if prefix is not None:
-        dec_path, ivs = decrypt_path(Paths.cut_prefix(path, prefix, sep), key, None, sep, decode)
+        dec_path, ivs = decrypt_path(pathm.cut_prefix(path, prefix, sep), key, None, sep, decode)
 
-        if Paths.contains(prefix, path, sep):
-            result = Paths.join(prefix, dec_path, sep=sep)
+        if pathm.contains(prefix, path, sep):
+            result = pathm.join(prefix, dec_path, sep=sep)
             if path.endswith(sep):
-                result = Paths.dir_normalize(result)
+                result = pathm.dir_normalize(result)
             else:
-                result = Paths.dir_denormalize(result)
+                result = pathm.dir_denormalize(result)
 
             return result, ivs
 
