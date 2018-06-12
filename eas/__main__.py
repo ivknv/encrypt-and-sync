@@ -40,14 +40,14 @@ def any_not_none(keys, container):
 
 def setup_logging(env):
     import logging
-    from . import downloader, synchronizer, scanner, duplicate_remover, CDB
+    from . import downloader, synchronizer, scanner, duplicate_remover, cdb
 
     loggers = ((downloader.logging.logger, "downloader.log"),
                (synchronizer.logging.logger, "synchronizer.log"),
                (synchronizer.logging.fail_logger, "synchronizer-fails.log"),
                (scanner.logging.logger, "scanner.log"),
                (duplicate_remover.logging.logger, "duplicate-remover.log"),
-               (CDB.logging.logger, "cdb.log"))
+               (cdb.logging.logger, "cdb.log"))
 
     for logger, filename in loggers:
         formatter = logging.Formatter("%(asctime)s - %(name)s-Thread-%(thread)d: %(message)s")

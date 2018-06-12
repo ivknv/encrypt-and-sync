@@ -2,7 +2,7 @@
 
 import os
 
-from . import CDB
+from . import cdb
 
 __all__ = ["DiffList"]
 
@@ -15,7 +15,7 @@ class DiffList(object):
 
         kwargs.setdefault("isolation_level", None)
 
-        self.connection = CDB.connect(path, *args, **kwargs)
+        self.connection = cdb.connect(path, *args, **kwargs)
 
     def __enter__(self):
         self.connection.__enter__()

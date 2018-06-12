@@ -3,7 +3,7 @@
 
 import os
 
-from .. import CDB
+from .. import cdb
 
 __all__ = ["BaseFileList"]
 
@@ -18,7 +18,7 @@ class BaseFileList(object):
         else:
             path = os.path.join(directory, filename)
 
-        self.connection = CDB.connect(path, *args, **kwargs)
+        self.connection = cdb.connect(path, *args, **kwargs)
 
     def __enter__(self):
         self.connection.__enter__()
