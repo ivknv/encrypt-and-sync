@@ -254,14 +254,17 @@ class UploadTask(SyncTask):
                 modified = src_node["modified"]
 
                 if modified is not None:
-                    self.dst.set_modified(dst_path, modified)
+                    self.dst.set_modified(dst_path, modified, ivs=ivs)
 
                 # Preserve parent modified date
                 if dst_path not in ("", "/"):
-                    parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
+                    src_parent_node = src_filelist.find(pathm.split(full_src_path)[0])
+
+                    parent_modified = src_parent_node["modified"]
+                    parent_ivs = src_parent_node["IVs"]
 
                     if parent_modified not in (None, 0):
-                        self.dst.set_modified(pathm.split(dst_path)[0], parent_modified)
+                        self.dst.set_modified(pathm.split(dst_path)[0], parent_modified, ivs=parent_ivs)
 
             if modified is None:
                 modified = time.mktime(time.gmtime())
@@ -322,14 +325,17 @@ class MkdirTask(SyncTask):
             modified = src_node["modified"]
 
             if modified is not None:
-                self.dst.set_modified(dst_path, modified)
+                self.dst.set_modified(dst_path, modified, ivs=ivs)
 
             # Preserve parent modified date
             if dst_path not in ("", "/"):
-                parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
+                src_parent_node = src_filelist.find(pathm.split(full_src_path)[0])
+
+                parent_modified = src_parent_node["modified"]
+                parent_ivs = src_parent_node["IVs"]
 
                 if parent_modified not in (None, 0):
-                    self.dst.set_modified(pathm.split(dst_path)[0], parent_modified)
+                    self.dst.set_modified(pathm.split(dst_path)[0], parent_modified, ivs=parent_ivs)
 
         if modified is None:
             modified = time.mktime(time.gmtime())
@@ -381,10 +387,13 @@ class RmTask(SyncTask):
         # Preserve parent modified date
         if self.parent.preserve_modified and dst_path not in ("", "/"):
             if self.dst.storage.supports_set_modified:
-                parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
+                src_parent_node = src_filelist.find(pathm.split(full_src_path)[0])
+
+                parent_modified = src_parent_node["modified"]
+                parent_ivs = src_parent_node["IVs"]
 
                 if parent_modified not in (None, 0):
-                    self.dst.set_modified(pathm.split(dst_path)[0], parent_modified)
+                    self.dst.set_modified(pathm.split(dst_path)[0], parent_modified, ivs=parent_ivs)
 
         self.autocommit()
 
