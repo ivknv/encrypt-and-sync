@@ -379,6 +379,7 @@ class RmTask(SyncTask):
             self.dst_flist.remove_recursively(full_dst_path)
 
         src_filelist = self.parent.shared_flist1
+        dst_filelist = self.parent.shared_flist2
 
         # Preserve parent modified date
         if self.parent.preserve_modified and dst_path not in ("", "/"):
