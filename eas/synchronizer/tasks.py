@@ -318,7 +318,7 @@ class MkdirTask(SyncTask):
 
         if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
             if src_node is None:
-                src_filelist.find(full_src_path)
+                src_node = src_filelist.find(full_src_path)
 
             modified = src_node["modified"]
 
