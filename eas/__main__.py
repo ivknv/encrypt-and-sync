@@ -117,6 +117,7 @@ def main(args=None):
         env["no_diffs"] = ns.no_diffs
         env["no_remove"] = ns.no_remove
         env["no_preserve_modified"] = ns.no_preserve_modified
+        env["no_preserve_mode"] = ns.no_preserve_mode
     elif ns.action == "download":
         env["no_skip"] = ns.no_skip
 
@@ -243,9 +244,10 @@ def parse_args(args):
                              help="Choose which targets to sync")
     sync_parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                              help="Number of workers to use")
-    sync_parser.add_argument("--no-preserve-modified",
-                             help="Don't try to preserve modified date for files",
-                             action="store_true")
+    sync_parser.add_argument("--no-preserve-modified", action="store_true",
+                             help="Don't try to preserve modified date for files")
+    sync_parser.add_argument("--no-preserve-mode", action="store_true",
+                             help="Don't try to preserve file mode (permissions, owner, group, etc.)")
     sync_parser.add_argument("--no-journal", action="store_true",
                              help="Disable SQLite3 journaling")
     sync_parser.add_argument("--no-auth-check", action="store_true",

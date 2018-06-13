@@ -241,7 +241,7 @@ class UploadTask(SyncTask):
 
             src_filelist = self.parent.shared_flist1
 
-            if self.dst.storage.supports_chmod:
+            if self.dst.storage.supports_chmod and self.parent.preserve_mode:
                 src_node = src_filelist.find(full_src_path)
                 mode = src_node["mode"]
 
@@ -310,7 +310,7 @@ class MkdirTask(SyncTask):
         modified = None
         mode = None
 
-        if self.dst.storage.supports_chmod:
+        if self.dst.storage.supports_chmod and self.parent.preserve_mode:
             src_node = src_filelist.find(full_src_path)
             mode = src_node["mode"]
 

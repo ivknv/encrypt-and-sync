@@ -27,6 +27,8 @@ class SyncCommand(Command):
         parser.add_argument("--no-preserve-modified",
                             help="Don't try to preserve modified date for files",
                             action="store_true")
+        parser.add_argument("--no-preserve-mode", action="store_true",
+                            help="Don't try to preserve file mode (permissions, owner, group, etc.)")
         parser.add_argument("--no-scan", action="store_true", help="Disable scan")
         parser.add_argument("--no-diffs", action="store_true",
                             help="Don't show the list of differences")
@@ -52,6 +54,7 @@ class SyncCommand(Command):
         env["no_remove"] = ns.no_remove
         env["no_progress"] = ns.no_progress
         env["no_preserve_modified"] = ns.no_preserve_modified
+        env["no_preserve_mode"] = ns.no_preserve_mode
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers
