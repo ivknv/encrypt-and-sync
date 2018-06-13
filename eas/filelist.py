@@ -52,6 +52,7 @@ class Filelist(object):
                                        (type TEXT,
                                         modified DATETIME,
                                         padded_size INTEGER,
+                                        mode INTEGER,
                                         path TEXT UNIQUE ON CONFLICT REPLACE,
                                         IVs TEXT)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS path_index
@@ -82,11 +83,13 @@ class Filelist(object):
         if node["type"] is None:
             raise ValueError("Node type is None")
 
-        self.connection.execute("""INSERT INTO filelist VALUES
-                                   (?, ?, ?, ?, ?)""",
+        self.connection.execute("""INSERT INTO filelist(type, modified, padded_size,
+                                                        mode, path, IVs)
+                                   VALUES(?, ?, ?, ?, ?, ?)""",
                                 (node["type"],
                                  format_timestamp(node["modified"]),
                                  node["padded_size"],
+                                 node["mode"],
                                  prepare_path(node["path"]),
                                  node["IVs"]))
 
@@ -133,8 +136,8 @@ class Filelist(object):
         path = prepare_path(path)
 
         with self.connection:
-            self.connection.execute("""SELECT * FROM filelist
-                                       WHERE path=? OR path=? LIMIT 1""",
+            self.connection.execute("""SELECT type, modified, padded_size, mode, path, IVs
+                                       FROM filelist WHERE path=? OR path=? LIMIT 1""",
                                     (path, pathm.dir_normalize(path)))
             return node_tuple_to_dict(self.connection.fetchone())
 
@@ -152,8 +155,8 @@ class Filelist(object):
         pattern = escape_glob(path_n) + "*"
 
         with self.connection:
-            self.connection.execute("""SELECT * FROM filelist
-                                       WHERE path GLOB ? OR path=? OR path=?
+            self.connection.execute("""SELECT type, modified, padded_size, mode, path, IVs
+                                       FROM filelist WHERE path GLOB ? OR path=? OR path=?
                                        ORDER BY path ASC""",
                                     (pattern, path, path_n))
 

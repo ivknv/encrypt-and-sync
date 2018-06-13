@@ -16,12 +16,13 @@ except ImportError:
     UnauthorizedError = DummyException
 
 class BaseScannable(object):
-    def __init__(self, storage, path=None, type=None, modified=0, size=0):
+    def __init__(self, storage, path=None, type=None, modified=0, size=0, mode=None):
         self.storage = storage
         self.path = path
         self.type = type
         self.modified = modified
         self.size = size
+        self.mode = mode
 
     def identify(self, ignore_unreachable=False):
         raise NotImplementedError
@@ -34,6 +35,7 @@ class BaseScannable(object):
                 "path": self.path,
                 "modified": self.modified,
                 "padded_size": self.size,
+                "mode": self.mode,
                 "IVs": b""}
 
         normalize_node(node)
@@ -130,6 +132,7 @@ class DecryptedScannable(BaseScannable):
         self.type = meta["type"][0]
         self.modified = meta["modified"]
         self.size = meta["size"]
+        self.mode = meta["mode"]
 
         if self.type == "f":
             self.size = pad_size(self.size)
@@ -161,7 +164,7 @@ class DecryptedScannable(BaseScannable):
 
                     if path_match.match(path, allowed_paths):
                         s = DecryptedScannable(self.storage, path, meta["type"][0],
-                                               meta["modified"], meta["size"])
+                                               meta["modified"], meta["size"], meta["mode"])
                         scannables.append(s)
                 break
             except (TemporaryStorageError, UnauthorizedError) as e:
@@ -178,7 +181,7 @@ class DecryptedScannable(BaseScannable):
 
 class EncryptedScannable(BaseScannable):
     def __init__(self, storage, prefix, enc_path=None, type=None, modified=0, size=0,
-                 filename_encoding="base64"):
+                 mode=None, filename_encoding="base64"):
 
         if enc_path is None:
             enc_path = prefix
@@ -221,6 +224,7 @@ class EncryptedScannable(BaseScannable):
         self.type = meta["type"][0]
         self.modified = meta["modified"]
         self.size = meta["size"]
+        self.mode = meta["mode"]
 
         self.size = max((self.size or 0) - MIN_ENC_SIZE, 0)
 
@@ -251,7 +255,7 @@ class EncryptedScannable(BaseScannable):
 
                     scannable = EncryptedScannable(self.storage, self.prefix, enc_path,
                                                    meta["type"][0], meta["modified"], meta["size"],
-                                                   filename_encoding=self.filename_encoding)
+                                                   meta["mode"], filename_encoding=self.filename_encoding)
 
                     if path_match.match(scannable.path, allowed_paths):
                         scannables.append(scannable)

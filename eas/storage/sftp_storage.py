@@ -297,10 +297,13 @@ class SFTPStorage(Storage):
                 if stat.S_ISLNK(s.st_mode):
                     real_path = connection.readlink(path)
 
+            mode = s.st_mode
+
             return {"type":     resource_type,
                     "name":     filename,
                     "modified": modified,
                     "size":     size,
+                    "mode":     mode,
                     "link":     real_path}
 
         return auto_retry(attempt, n_retries, 0.0)
@@ -333,10 +336,13 @@ class SFTPStorage(Storage):
                     if stat.S_ISLNK(s.st_mode):
                         real_path = connection.readlink(path)
 
+                mode = s.st_mode
+
                 yield {"type":     resource_type,
                        "name":     s.filename,
                        "modified": modified,
                        "size":     size,
+                       "mode":     mode,
                        "link":     real_path}
 
         return auto_retry(attempt, n_retries, 0.0)

@@ -100,7 +100,9 @@ class LocalStorage(Storage):
     type = "local"
     case_sensitive = True
     parallelizable = False
+
     supports_set_modified = True
+    supports_chmod = True
 
     def get_meta(self, path, *args, **kwargs):
         path = pathm.to_sys(path)
@@ -120,6 +122,7 @@ class LocalStorage(Storage):
                         "name":     filename,
                         "modified": 0,
                         "size":     0,
+                        "mode":     None,
                         "link":     real_path}
 
             if stat.S_ISLNK(s.st_mode):
@@ -133,12 +136,16 @@ class LocalStorage(Storage):
                     "name":     filename,
                     "modified": 0,
                     "size":     0,
+                    "mode":     None,
                     "link":     real_path}
+
+        mode = s.st_mode
 
         return {"type":     resource_type,
                 "name":     filename,
                 "modified": modified,
                 "size":     size,
+                "mode":     mode,
                 "link":     real_path}
 
     def listdir(self, path, *args, **kwargs):
@@ -163,10 +170,13 @@ class LocalStorage(Storage):
             else:
                 continue
 
+            mode = entry.stat().st_mode
+
             yield {"type":     resource_type,
                    "name":     entry.name,
                    "modified": modified,
                    "size":     size,
+                   "mode":     mode,
                    "link":     real_path}
 
     def mkdir(self, path, *args, **kwargs):
@@ -203,3 +213,9 @@ class LocalStorage(Storage):
     def set_modified(self, path, new_modified, *args, **kwargs):
         new_modified = utc_to_local(new_modified)
         os.utime(pathm.to_sys(path), (new_modified, new_modified))
+
+    def chmod(self, path, mode, *args, **kwargs):
+        if mode is None:
+            return
+
+        os.chmod(path, mode)

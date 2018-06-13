@@ -32,6 +32,7 @@ def _yadisk_meta_to_dict(meta):
             "name":     meta.name,
             "modified": modified,
             "size":     meta.size if meta.type != "dir" else 0,
+            "mode":     None,
             "link":     None}
 
 class YaDiskDownloadController(DownloadController):

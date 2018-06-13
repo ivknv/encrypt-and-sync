@@ -42,12 +42,14 @@ def node_tuple_to_dict(t):
         return {"type": t[0],
                 "modified": parse_timestamp(t[1]),
                 "padded_size": t[2],
-                "path": t[3],
-                "IVs": t[4] if len(t) >= 5 else b""}
+                "mode": t[3],
+                "path": t[4],
+                "IVs": t[5] if len(t) >= 6 else b""}
 
     return {"type": None,
             "modified": None,
             "padded_size": None,
+            "mode": None,
             "path": None,
             "IVs": None}
 

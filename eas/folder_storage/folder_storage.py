@@ -170,3 +170,14 @@ class FolderStorage(object):
             path, ivs = self.encrypt_path(path, ivs)
 
         return self.storage.set_modified(path, new_modified, *args, **kwargs)
+
+    def chmod(self, path, mode, *args, ivs=None, **kwargs):
+        if mode is None:
+            return
+
+        path = pathm.join(self.prefix, path)
+
+        if self.encrypted:
+            path, ivs = self.encrypt_path(path, ivs)
+
+        return self.storage.chmod(path, mode, *args, **kwargs)

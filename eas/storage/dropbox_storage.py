@@ -26,12 +26,14 @@ def _dropbox_meta_to_dict(meta):
                 "type":     "file",
                 "modified": meta.server_modified.timestamp(),
                 "size":     meta.size,
+                "mode":     None,
                 "link":     None}
     elif isinstance(meta, dropbox.files.FolderMetadata):
         return {"name":     meta.name,
                 "type":     "dir",
                 "modified": 0,
                 "size":     0,
+                "mode":     None,
                 "link":     None}
     else:
         if isinstance(meta, dropbox.files.Metadata):
@@ -43,6 +45,7 @@ def _dropbox_meta_to_dict(meta):
                 "type":     None,
                 "modified": 0,
                 "size":     0,
+                "mode":     None,
                 "link":     None}
 
 def auto_retry(attempt, n_retries, retry_interval):
