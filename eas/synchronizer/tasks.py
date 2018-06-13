@@ -241,7 +241,7 @@ class UploadTask(SyncTask):
                 src_node = src_filelist.find(full_src_path)
                 mode = src_node["mode"]
 
-                self.dst.chmod(dst_path, mode)
+                self.dst.chmod(dst_path, mode, ivs=ivs)
 
             if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
                 if src_node is None:
@@ -309,7 +309,7 @@ class MkdirTask(SyncTask):
             src_node = src_filelist.find(full_src_path)
             mode = src_node["mode"]
 
-            self.dst.chmod(dst_path, mode)
+            self.dst.chmod(dst_path, mode, ivs=ivs)
 
         if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
             if src_node is None:
