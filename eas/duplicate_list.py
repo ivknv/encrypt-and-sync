@@ -9,7 +9,7 @@ from .common import escape_glob
 __all__ = ["DuplicateList"]
 
 def prepare_path(path):
-    return pathm.join_properly("/", path)
+    return pathm.dir_denormalize(pathm.join_properly("/", path))
 
 class DuplicateList(object):
     def __init__(self, storage_name, directory=None, filename=None, *args, **kwargs):
@@ -70,6 +70,9 @@ class DuplicateList(object):
         """
 
         path = prepare_path(path)
+
+        if node_type == "d":
+            path = pathm.dir_normalize(path)
 
         self.connection.execute("INSERT INTO duplicates VALUES (?, ?, ?)",
                                 (node_type, ivs, path))
@@ -153,7 +156,7 @@ class DuplicateList(object):
             :return: `int`
         """
 
-        path = prepare_path(pathm.dir_normalize(path))
+        path = pathm.dir_normalize(prepare_path(path))
         path = escape_glob(path)
 
         with self.connection:
@@ -171,7 +174,7 @@ class DuplicateList(object):
             :returns: `bool`
         """
 
-        path = prepare_path(pathm.dir_normalize(path))
+        path = pathm.dir_normalize(prepare_path(path))
         path = escape_glob(path)
 
         with self.connection:

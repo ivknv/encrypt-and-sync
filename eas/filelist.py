@@ -10,7 +10,7 @@ from .common import escape_glob, validate_folder_name
 __all__ = ["Filelist"]
 
 def prepare_path(path):
-    return pathm.join_properly("/", path)
+    return pathm.dir_denormalize(pathm.join_properly("/", path))
 
 class Filelist(object):
     def __init__(self, folder_name, directory=None, *args, **kwargs):
@@ -171,7 +171,7 @@ class Filelist(object):
             :returns: `bool`
         """
 
-        path = prepare_path(pathm.dir_normalize(path))
+        path = pathm.dir_normalize(prepare_path(path))
         path = escape_glob(path)
 
         with self.connection:
@@ -191,7 +191,7 @@ class Filelist(object):
             :return: `int`
         """
 
-        parent_dir = prepare_path(pathm.dir_normalize(path))
+        parent_dir = pathm.dir_normalize(prepare_path(path))
         parent_dir = escape_glob(path)
 
         with self.connection:
