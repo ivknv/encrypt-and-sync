@@ -13,6 +13,9 @@ class Connection(s3m.Connection):
     def __init__(self, *args, **kwargs):
         s3m.Connection.__init__(self, *args, **kwargs)
 
+        if self.single_cursor_mode:
+            self.cursor().arraysize = 1000
+
         self.last_commit = time.time()
 
     def begin_transaction(self, transaction_type=""):
@@ -49,6 +52,7 @@ def connect(path, *args, **kwargs):
     kwargs.setdefault("isolation_level", None)
     kwargs.setdefault("factory", Connection)
     kwargs.setdefault("check_same_thread", False)
+    kwargs.setdefault("single_cursor_mode", True)
 
     logger.debug("s3m.connect(%r, ...)" % (path,))
 

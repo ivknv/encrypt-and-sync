@@ -6,7 +6,7 @@ import sys
 
 from setuptools import setup, find_packages
 
-requirements = ["s3m>=1.0.5", "pycryptodome", "portalocker"]
+requirements = ["s3m>=1.1.0", "pycryptodome", "portalocker"]
 
 if sys.platform.startswith("win"):
     requirements.append("pypiwin32")
