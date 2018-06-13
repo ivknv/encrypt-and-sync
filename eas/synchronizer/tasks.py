@@ -219,6 +219,10 @@ class UploadTask(SyncTask):
                 if read_timeout is not None and read_timeout < new_read_timeout:
                     upload_timeout = (connect_timeout, new_read_timeout)
 
+                # Workaround for https://bugs.python.org/issue33838
+                if upload_timeout == (None, None):
+                    upload_timeout = None
+
             controller, ivs = self.dst.upload(temp_file, dst_path,
                                               timeout=upload_timeout,
                                               limit=self.upload_limit)

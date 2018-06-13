@@ -28,7 +28,11 @@ class ConnectTimeoutCommand(Command):
         else:
             read_timeout = config.timeout[1]
 
-        config.timeout = (connect_timeout, read_timeout)
+        if connect_timeout is None and read_timeout is None:
+            # This is important: it provides a way to avoid this issue: https://bugs.python.org/issue33838
+            config.timeout = None
+        else:
+            config.timeout = (connect_timeout, read_timeout)
 
         return 0
 
@@ -54,7 +58,11 @@ class ReadTimeoutCommand(Command):
         else:
             connect_timeout = config.timeout[0]
 
-        config.timeout = (connect_timeout, read_timeout)
+        if connect_timeout is None and read_timeout is None:
+            # This is important: it provides a way to avoid this issue: https://bugs.python.org/issue33838
+            config.timeout = None
+        else:
+            config.timeout = (connect_timeout, read_timeout)
 
         return 0
 
@@ -80,7 +88,11 @@ class UploadConnectTimeoutCommand(Command):
         else:
             read_timeout = config.upload_timeout[1]
 
-        config.upload_timeout = (connect_timeout, read_timeout)
+        if connect_timeout is None and read_timeout is None:
+            # This is important: it provides a way to avoid this issue: https://bugs.python.org/issue33838
+            config.upload_timeout = None
+        else:
+            config.upload_timeout = (connect_timeout, read_timeout)
 
         return 0
 
@@ -106,6 +118,10 @@ class UploadReadTimeoutCommand(Command):
         else:
             connect_timeout = config.upload_timeout[0]
 
-        config.upload_timeout = (connect_timeout, read_timeout)
+        if connect_timeout is None and read_timeout is None:
+            # This is important: it provides a way to avoid this issue: https://bugs.python.org/issue33838
+            config.upload_timeout = None
+        else:
+            config.upload_timeout = (connect_timeout, read_timeout)
 
         return 0
