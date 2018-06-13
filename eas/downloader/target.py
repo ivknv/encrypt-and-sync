@@ -4,7 +4,7 @@ import threading
 
 from ..task import Task
 from ..encryption import MIN_ENC_SIZE
-from ..filelist import FileList
+from ..filelist import Filelist
 from ..scannable import EncryptedScannable, DecryptedScannable, scan_files
 from ..encrypted_storage import EncryptedStorage
 from ..worker import WorkerPool
@@ -115,16 +115,16 @@ class DownloadTarget(Task):
             nodes = (j for i in ([scannable.to_node()], nodes) for j in i)
         else:
             folder_name = folder["name"]
-            flist = FileList(folder_name, self.downloader.directory)
+            flist = Filelist(folder_name, self.downloader.directory)
             flist.create()
 
-            root_node = flist.find_node(self.src_path)
+            root_node = flist.find(self.src_path)
 
             if root_node["type"] is not None:
                 self.type = root_node["type"]
                 self.expected_total_children = flist.get_file_count(self.src_path)
 
-                nodes = flist.find_node_children(self.src_path)
+                nodes = flist.find_recursively(self.src_path)
             else:
                 self.expected_total_children = -1
 

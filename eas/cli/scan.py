@@ -9,7 +9,8 @@ import portalocker
 
 from ..scanner import Scanner, ScanTarget
 from ..events import Receiver
-from ..filelist import FileList, DuplicateList
+from ..filelist import Filelist
+from ..duplicate_list import DuplicateList
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
 from .authenticate_storages import authenticate_storages
@@ -61,8 +62,8 @@ def get_path_with_schema(target):
 def print_target_totals(env, target):
     n_files = n_dirs = 0
 
-    filelist = FileList(target.name, env["db_dir"])
-    children = filelist.find_node_children(target.path)
+    filelist = Filelist(target.name, env["db_dir"])
+    children = filelist.find_recursively(target.path)
 
     for i in children:
         if i["type"] == "f":
@@ -81,7 +82,7 @@ def print_target_totals(env, target):
     duplist = DuplicateList(target.type, env["db_dir"])
     duplist.create()
 
-    children = duplist.find_children(target.path)
+    children = duplist.find_recursively(target.path)
     n_duplicates = sum(1 for i in children)
 
     duplist.close()

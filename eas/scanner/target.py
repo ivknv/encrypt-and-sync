@@ -4,7 +4,8 @@ import os
 import threading
 
 from ..task import Task
-from ..filelist import FileList, DuplicateList
+from ..filelist import Filelist
+from ..duplicate_list import DuplicateList
 from ..scannable import DecryptedScannable, EncryptedScannable
 from ..worker import WorkerPool, get_current_worker
 from ..common import recognize_path
@@ -44,7 +45,7 @@ class ScanTarget(Task):
         self.prefix = folder["path"]
         self.name = folder["name"]
 
-        self.shared_flist = FileList(self.name, scanner.directory)
+        self.shared_flist = Filelist(self.name, scanner.directory)
         self.shared_duplist = None
 
         self.encrypted = folder["encrypted"]
@@ -75,7 +76,7 @@ class ScanTarget(Task):
             return
 
         if self.encrypted:
-            IVs = self.shared_flist.find_node(self.path)["IVs"]
+            IVs = self.shared_flist.find(self.path)["IVs"]
 
             if IVs is None and not pathm.is_equal(self.path, self.prefix):
                 raise KeyError("Can't find %r in the database" % (self.path,))
@@ -89,11 +90,10 @@ class ScanTarget(Task):
         if pathm.is_equal(self.path, self.prefix):
             self.shared_flist.clear()
         else:
-            self.shared_flist.remove_node(self.path)
-            self.shared_flist.remove_node_children(self.path)
+            self.shared_flist.remove_recursively(self.path)
 
         if self.encrypted:
-            self.shared_duplist.remove_children(self.path)
+            self.shared_duplist.remove_recursively(self.path)
 
         if self.stopped:
             return
@@ -118,7 +118,7 @@ class ScanTarget(Task):
             return
 
         if scannable.type is not None:
-            self.shared_flist.insert_node(scannable.to_node())
+            self.shared_flist.insert(scannable.to_node())
 
             if self.storage.parallelizable:
                 if self.encrypted:

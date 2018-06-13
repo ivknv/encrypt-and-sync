@@ -31,7 +31,7 @@ class DiffList(object):
             self.connection.execute("""CREATE INDEX IF NOT EXISTS differences_path_index
                                        ON differences(path ASC)""")
 
-    def insert_difference(self, diff):
+    def insert(self, diff):
         diff_type = diff["type"]
         node_type = diff["node_type"]
         path = diff["path"]
@@ -41,7 +41,7 @@ class DiffList(object):
         self.connection.execute("INSERT INTO differences VALUES (?, ?, ?, ?, ?)",
                                 (diff_type, node_type, path, src_path, dst_path))
 
-    def clear_differences(self, src_path, dst_path):
+    def remove(self, src_path, dst_path):
         self.connection.execute("""DELETE FROM differences WHERE
                                    src_path=? AND dst_path=?""", (src_path, dst_path))
 
@@ -53,14 +53,14 @@ class DiffList(object):
                    "src_path": i[3],
                    "dst_path": i[4]}
 
-    def select_rm_differences(self, src_path, dst_path):
+    def find_rm(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='rm' AND src_path=? AND dst_path=?
                                        ORDER BY path ASC""", (src_path, dst_path))
             return self.fetch_differences()
 
-    def select_dirs_differences(self, src_path, dst_path):
+    def find_dirs(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='new' AND node_type='d' AND
@@ -69,30 +69,30 @@ class DiffList(object):
 
             return self.fetch_differences()
 
-    def count_dirs_differences(self, src_path, dst_path):
+    def count_dirs(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE type='new' AND node_type='d' AND
-                                             src_path=?  AND dst_path=?""",
+                                             src_path=? AND dst_path=?""",
                                     (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_files_differences(self, src_path, dst_path):
+    def count_files(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE (type='new' OR type='update') AND
-                                             node_type='f' AND src_path=?  AND dst_path=?""",
+                                              node_type='f' AND src_path=? AND dst_path=?""",
                                     (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_rm_differences(self, src_path, dst_path):
+    def count_rm(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE type='rm' AND src_path=? AND dst_path=?""",
                                     (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_new_file_differences(self, src_path, dst_path):
+    def count_new_file(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE type='new' AND node_type='f' AND
@@ -100,7 +100,7 @@ class DiffList(object):
                                     (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def count_update_differences(self, src_path, dst_path):
+    def count_update(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT COUNT(*) FROM differences
                                        WHERE type='update' AND
@@ -108,7 +108,7 @@ class DiffList(object):
                                     (src_path, dst_path))
             return self.connection.fetchone()[0]
 
-    def select_files_differences(self, src_path, dst_path):
+    def find_files(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE (type='new' OR type='update') AND
@@ -117,7 +117,7 @@ class DiffList(object):
 
             return self.fetch_differences()
 
-    def select_new_file_differences(self, src_path, dst_path):
+    def find_new_file(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='new' AND node_type='f' AND
@@ -126,18 +126,13 @@ class DiffList(object):
 
             return self.fetch_differences()
 
-    def select_update_differences(self, src_path, dst_path):
+    def find_update(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='update' AND src_path=? AND dst_path=?
                                        ORDER BY path ASC""", (src_path, dst_path))
 
             return self.fetch_differences()
-
-    def insert_differences(self, diffs):
-        with self.connection:
-            for i in diffs:
-                self.insert_difference(i)
 
     def get_difference_count(self, src_path, dst_path):
         with self.connection:

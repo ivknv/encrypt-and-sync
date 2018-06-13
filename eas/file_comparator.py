@@ -2,7 +2,7 @@
 
 from . import pathm
 from . import path_match
-from .filelist import FileList
+from .filelist import Filelist
 from .common import recognize_path
 
 __all__ = ["FileComparator", "compare_lists"]
@@ -40,16 +40,16 @@ class FileComparator(object):
 
         self.directory = directory
 
-        flist1 = FileList(folder1["name"], directory)
-        flist2 = FileList(folder2["name"], directory)
+        flist1 = Filelist(folder1["name"], directory)
+        flist2 = Filelist(folder2["name"], directory)
         flist1.create()
         flist2.create()
 
         self.prefix1 = folder1["path"]
         self.prefix2 = folder2["path"]
 
-        self.nodes1 = flist1.find_node_children(src_path)
-        self.nodes2 = flist2.find_node_children(dst_path)
+        self.nodes1 = flist1.find_recursively(src_path)
+        self.nodes2 = flist2.find_recursively(dst_path)
 
         self.it1 = iter(self.nodes1)
         self.it2 = iter(self.nodes2)

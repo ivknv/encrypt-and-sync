@@ -6,7 +6,7 @@ import sys
 import portalocker
 
 from ..duplicate_remover import DuplicateRemover, DuplicateRemoverTarget
-from ..filelist import DuplicateList
+from ..duplicate_list import DuplicateList
 from ..events import Receiver
 from .. import pathm
 from ..common import Lockfile
@@ -61,12 +61,12 @@ def count_duplicates(env, target):
     duplist = DuplicateList(target.storage_name, env["db_dir"])
     duplist.create()
 
-    return duplist.get_children_count(target.path)
+    return duplist.get_file_count(target.path)
 
 def view_duplicates(env, target):
     duplist = DuplicateList(target.storage_name, env["db_dir"])
     duplist.create()
-    duplicates = duplist.find_children(target.path)
+    duplicates = duplist.find_recursively(target.path)
 
     for duplicate in duplicates:
         print("  %s %s" % (duplicate[0], duplicate[2]))

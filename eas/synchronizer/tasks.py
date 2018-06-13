@@ -236,14 +236,14 @@ class UploadTask(SyncTask):
             src_filelist = self.parent.shared_flist1
 
             if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
-                modified = src_filelist.find_node(full_src_path)["modified"]
+                modified = src_filelist.find(full_src_path)["modified"]
 
                 if modified is not None:
                     self.dst.set_modified(dst_path, modified)
 
                 # Preserve parent modified date
                 if dst_path not in ("", "/"):
-                    parent_modified = src_filelist.find_node(pathm.split(full_src_path)[0])["modified"]
+                    parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
 
                     if parent_modified not in (None, 0):
                         self.dst.set_modified(pathm.split(dst_path)[0], parent_modified)
@@ -257,7 +257,7 @@ class UploadTask(SyncTask):
                        "modified":    modified,
                        "IVs":         ivs}
 
-            self.dst_flist.insert_node(newnode)
+            self.dst_flist.insert(newnode)
             self.autocommit()
 
             self.status = "finished"
@@ -292,14 +292,14 @@ class MkdirTask(SyncTask):
         modified = None
 
         if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
-            modified = src_filelist.find_node(full_src_path)["modified"]
+            modified = src_filelist.find(full_src_path)["modified"]
 
             if modified is not None:
                 self.dst.set_modified(dst_path, modified)
 
             # Preserve parent modified date
             if dst_path not in ("", "/"):
-                parent_modified = src_filelist.find_node(pathm.split(full_src_path)[0])["modified"]
+                parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
 
                 if parent_modified not in (None, 0):
                     self.dst.set_modified(pathm.split(dst_path)[0], parent_modified)
@@ -313,7 +313,7 @@ class MkdirTask(SyncTask):
                    "padded_size": 0,
                    "IVs":         ivs}
 
-        self.dst_flist.insert_node(newnode)
+        self.dst_flist.insert(newnode)
         self.autocommit()
 
         self.status = "finished"
@@ -324,6 +324,8 @@ class RmTask(SyncTask):
     def complete(self):
         if self.stopped:
             return True
+
+        assert(self.node_type in ("f", "d"))
 
         self.status = "pending"
 
@@ -341,20 +343,21 @@ class RmTask(SyncTask):
         except FileNotFoundError:
             pass
 
-        if self.node_type == "d":
-            self.dst_flist.remove_node_children(full_dst_path)
+        if self.node_type == "f":
+            self.dst_flist.remove(full_dst_path)
+        else:
+            self.dst_flist.remove_recursively(full_dst_path)
 
         src_filelist = self.parent.shared_flist1
 
         # Preserve parent modified date
         if self.parent.preserve_modified and dst_path not in ("", "/"):
             if self.dst.storage.supports_set_modified:
-                parent_modified = src_filelist.find_node(pathm.split(full_src_path)[0])["modified"]
+                parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
 
                 if parent_modified not in (None, 0):
                     self.dst.set_modified(pathm.split(dst_path)[0], parent_modified)
 
-        self.dst_flist.remove_node(full_dst_path)
         self.autocommit()
 
         self.status = "finished"

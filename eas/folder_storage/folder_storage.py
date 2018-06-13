@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..filelist import FileList
+from ..filelist import Filelist
 from .. import encryption
 from .. import pathm
 
@@ -31,14 +31,14 @@ class FolderStorage(object):
         self.filename_encoding = self.folder["filename_encoding"]
 
         if filelist is None:
-            self.filelist = FileList(folder_name, directory)
+            self.filelist = Filelist(folder_name, directory)
         else:
             self.filelist = filelist
 
         self.filelist.create()
 
     def get_ivs(self, full_path):
-        node = self.filelist.find_node(full_path)
+        node = self.filelist.find(full_path)
 
         if node["IVs"] is not None:
             return node["IVs"]
@@ -48,7 +48,7 @@ class FolderStorage(object):
         if parent == self.prefix:
             return b""
 
-        node = self.filelist.find_node(parent)
+        node = self.filelist.find(parent)
 
         if node["IVs"] is not None:
             return node["IVs"] + encryption.gen_IV()

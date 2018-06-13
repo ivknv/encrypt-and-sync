@@ -5,7 +5,7 @@ import shutil
 import threading
 
 from ..task import Task
-from ..filelist import DuplicateList
+from ..duplicate_list import DuplicateList
 from ..constants import AUTOCOMMIT_INTERVAL
 from ..worker import WorkerPool
 from ..common import threadsafe_iterator
@@ -128,8 +128,8 @@ class DuplicateRemoverTarget(Task):
             if self.stopped:
                 return True
 
-            self.expected_total_children = copy_duplist.get_children_count(self.path)
-            duplicates = copy_duplist.find_children(self.path)
+            self.expected_total_children = copy_duplist.get_file_count(self.path)
+            duplicates = copy_duplist.find_recursively(self.path)
 
             if self.status == "pending" and self.total_children == 0:
                 self.status = "finished"

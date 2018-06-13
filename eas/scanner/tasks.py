@@ -69,7 +69,7 @@ class DecryptedScanTask(ScanTask):
 
             if n["type"] is not None:
                 try:
-                    self.flist.insert_node(n)
+                    self.flist.insert(n)
                 except UnicodeError as e:
                     if not self.config.ignore_unreachable:
                         raise e
@@ -132,7 +132,7 @@ class EncryptedScanTask(ScanTask):
                 self.cur_path = original.path
 
                 try:
-                    self.flist.insert_node(original.to_node())
+                    self.flist.insert(original.to_node())
                 except UnicodeError as e:
                     if not self.config.ignore_unreachable:
                         raise e
@@ -177,7 +177,7 @@ class AsyncDecryptedScanTask(ScanTask):
             self.cur_path = s.path
 
             try:
-                self.flist.insert_node(s.to_node())
+                self.flist.insert(s.to_node())
             except UnicodeError as e:
                 if not self.config.ignore_unreachable:
                     raise e
@@ -244,7 +244,7 @@ class AsyncEncryptedScanTask(ScanTask):
             self.cur_path = original.path
 
             try:
-                self.flist.insert_node(original.to_node())
+                self.flist.insert(original.to_node())
             except UnicodeError as e:
                 if not self.config.ignore_unreachable:
                     raise e

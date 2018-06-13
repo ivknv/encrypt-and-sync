@@ -143,13 +143,12 @@ class SyncTarget(StagedTask):
         
         try:
             self.difflist.begin_transaction()
-            self.difflist.clear_differences(self.path1_with_proto,
-                                            self.path2_with_proto)
+            self.difflist.remove(self.path1_with_proto, self.path2_with_proto)
 
             with self.difflist:
                 for diff in diffs:
                     if not (self.no_remove and diff["type"] == "rm"):
-                        self.difflist.insert_difference(diff)
+                        self.difflist.insert(diff)
 
             self.difflist.commit()
         except Exception as e:
@@ -271,7 +270,7 @@ class SyncTarget(StagedTask):
         if self.no_remove:
             return
 
-        differences = self.difflist.select_rm_differences(self.path1_with_proto,
+        differences = self.difflist.find_rm(self.path1_with_proto,
                                                           self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
@@ -293,7 +292,7 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_dirs(self):
-        differences = self.difflist.select_dirs_differences(self.path1_with_proto,
+        differences = self.difflist.find_dirs(self.path1_with_proto,
                                                             self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
@@ -307,7 +306,7 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_files(self):
-        differences = self.difflist.select_files_differences(self.path1_with_proto,
+        differences = self.difflist.find_files(self.path1_with_proto,
                                                              self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
@@ -416,8 +415,7 @@ class SyncTarget(StagedTask):
                     self.status = "failed"
 
             if self.status == "finished":
-                self.difflist.clear_differences(self.path1_with_proto,
-                                                self.path2_with_proto)
+                self.difflist.remove(self.path1_with_proto, self.path2_with_proto)
         finally:
             self.difflist = None
             self.shared_flist1 = None

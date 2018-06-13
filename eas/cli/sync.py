@@ -16,12 +16,14 @@ from .pager import Pager
 
 from ..synchronizer import Synchronizer, SyncTarget
 from ..events import Receiver
-from ..filelist import DuplicateList
+from ..duplicate_list import DuplicateList
 from ..difflist import DiffList
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
 from ..common import Lockfile, validate_folder_name, recognize_path
 from .. import pathm
+
+__all__ = ["do_sync", "SynchronizerReceiver"]
 
 def get_target_display_name(target):
     if pathm.is_equal(target.path1, target.folder1["path"]):
@@ -41,8 +43,6 @@ def get_target_display_name(target):
         name2 = "[%s][%s]" % (target.folder2["name"], path)
 
     return "[%s -> %s]" % (name1, name2)
-
-__all__ = ["do_sync", "SynchronizerReceiver"]
 
 def ask_target_choice(targets):
     for i, target in enumerate(targets):
@@ -67,7 +67,7 @@ def count_duplicates(env, folder_storage):
     duplist = DuplicateList(folder_storage.storage.name, env["db_dir"])
     duplist.create()
 
-    return duplist.get_children_count(folder_storage.prefix)
+    return duplist.get_file_count(folder_storage.prefix)
 
 def print_diffs(env, target):
     difflist = DiffList(env["db_dir"])
@@ -81,16 +81,16 @@ def print_diffs(env, target):
         n_duplicates += count_duplicates(env, target.dst)
 
     if not target.no_remove:
-        n_rm = difflist.count_rm_differences(target.path1_with_proto,
+        n_rm = difflist.count_rm(target.path1_with_proto,
                                              target.path2_with_proto)
     else:
         n_rm = 0
 
-    n_dirs = difflist.count_dirs_differences(target.path1_with_proto,
+    n_dirs = difflist.count_dirs(target.path1_with_proto,
                                              target.path2_with_proto)
-    n_new_files = difflist.count_new_file_differences(target.path1_with_proto,
+    n_new_files = difflist.count_new_file(target.path1_with_proto,
                                                       target.path2_with_proto)
-    n_update = difflist.count_update_differences(target.path1_with_proto,
+    n_update = difflist.count_update(target.path1_with_proto,
                                                  target.path2_with_proto)
 
     display_name = get_target_display_name(target)
@@ -194,9 +194,9 @@ def view_rm_diffs(env, target):
     pager = Pager()
     pager.stdin.write("Removals:\n")
 
-    diff_count = difflist.count_rm_differences(target.path1_with_proto, target.path2_with_proto)
+    diff_count = difflist.count_rm(target.path1_with_proto, target.path2_with_proto)
 
-    diffs = difflist.select_rm_differences(target.path1_with_proto, target.path2_with_proto)
+    diffs = difflist.find_rm(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
@@ -212,9 +212,9 @@ def view_dirs_diffs(env, target):
     pager = Pager()
     pager.stdin.write("New directories:\n")
 
-    diff_count = difflist.count_dirs_differences(target.path1_with_proto, target.path2_with_proto)
+    diff_count = difflist.count_dirs(target.path1_with_proto, target.path2_with_proto)
 
-    diffs = difflist.select_dirs_differences(target.path1_with_proto, target.path2_with_proto)
+    diffs = difflist.find_dirs(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
@@ -230,12 +230,12 @@ def view_new_file_diffs(env, target):
     pager = Pager()
     pager.stdin.write("New files to upload:\n")
 
-    diff_count = difflist.count_new_file_differences(target.path1_with_proto, target.path2_with_proto)
+    diff_count = difflist.count_new_file(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
 
-    diffs = difflist.select_new_file_differences(target.path1_with_proto, target.path2_with_proto)
+    diffs = difflist.find_new_file(target.path1_with_proto, target.path2_with_proto)
 
     for diff in diffs:
         pager.stdin.write("  " + format_diff(env["config"], diff))
@@ -248,12 +248,12 @@ def view_update_diffs(env, target):
     pager = Pager()
     pager.stdin.write("Files to update:\n")
 
-    diff_count = difflist.count_update_differences(target.path1_with_proto, target.path2_with_proto)
+    diff_count = difflist.count_update(target.path1_with_proto, target.path2_with_proto)
 
     if diff_count < 50:
         pager.command = None
 
-    diffs = difflist.select_update_differences(target.path1_with_proto, target.path2_with_proto)
+    diffs = difflist.find_update(target.path1_with_proto, target.path2_with_proto)
 
     for diff in diffs:
         pager.stdin.write("  " + format_diff(env["config"], diff))
@@ -269,20 +269,20 @@ def view_duplicates(env, target):
 
     pager = Pager()
 
-    count = duplist1.get_children_count(target.src.prefix)
-    count += duplist2.get_children_count(target.dst.prefix)
+    count = duplist1.get_file_count(target.src.prefix)
+    count += duplist2.get_file_count(target.dst.prefix)
 
     if count < 50:
         pager.command = None
 
     if target.src.encrypted:
-        duplicates = duplist1.find_children(target.src.prefix)
+        duplicates = duplist1.find_recursively(target.src.prefix)
 
         for duplicate in duplicates:
             pager.stdin.write("  %s %s\n" % (duplicate[0], duplicate[2]))
 
     if target.dst.encrypted:
-        duplicates = duplist2.find_children(target.dst.prefix)
+        duplicates = duplist2.find_recursively(target.dst.prefix)
 
         for duplicate in duplicates:
             pager.stdin.write("  %s %s\n" % (duplicate[0], duplicate[2]))

@@ -47,6 +47,12 @@ class Connection(s3m.Connection):
                 yield i
             r = self.fetchmany(*args, **kwargs)
 
+    def disable_journal(self):
+        return self.execute("PRAGMA journal_mode = OFF")
+
+    def enable_journal(self):
+        return self.execute("PRAGMA journal_mode = DELETE")
+
 def connect(path, *args, **kwargs):
     kwargs = dict(kwargs)
     kwargs.setdefault("isolation_level", None)
