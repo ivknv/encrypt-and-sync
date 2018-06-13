@@ -22,17 +22,26 @@ __all__ = ["YaDiskStorage"]
 DOWNLOAD_CHUNK_SIZE = 16384
 
 def _yadisk_meta_to_dict(meta):
-    try:
-        modified = time.mktime(meta.modified.utctimetuple())
-        modified = max(modified, 0)
-    except (OSError, OverflowError):
-        modified = 0
+    properties = meta.custom_properties or {}
+
+    mode = properties.get("eas_file_mode")
+    modified = properties.get("eas_modified")
+
+    if not isinstance(modified, (int, float)):
+        try:
+            modified = time.mktime(meta.modified.utctimetuple())
+            modified = max(modified, 0)
+        except (OSError, OverflowError):
+            modified = 0
+
+    if not isinstance(mode, int):
+        mode = None
 
     return {"type":     meta.type,
             "name":     meta.name,
             "modified": modified,
             "size":     meta.size if meta.type != "dir" else 0,
-            "mode":     (meta.custom_properties or {}).get("eas_file_mode"),
+            "mode":     mode,
             "link":     None}
 
 class YaDiskDownloadController(DownloadController):
@@ -170,7 +179,7 @@ class YaDiskStorage(Storage):
     case_sensitive = True
     parallelizable = True
 
-    supports_set_modified = False
+    supports_set_modified = True
     supports_chmod = True
 
     def __init__(self, config):
@@ -290,6 +299,21 @@ class YaDiskStorage(Storage):
 
         try:
             return self.yadisk.exists(path, timeout=timeout, n_retries=n_retries)
+        except (RetriableYaDiskError, RequestException) as e:
+            raise TemporaryStorageError(str(e))
+
+    def set_modified(self, path, modified, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.config.timeout
+
+        if n_retries is None:
+            n_retries = self.config.n_retries
+
+        try:
+            return self.yadisk.patch(path, {"eas_modified": modified},
+                                     timeout=timeout, n_retries=n_retries)
+        except PathNotFoundError as e:
+            raise FileNotFoundError(str(e))
         except (RetriableYaDiskError, RequestException) as e:
             raise TemporaryStorageError(str(e))
 
