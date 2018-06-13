@@ -231,12 +231,23 @@ class UploadTask(SyncTask):
 
             controller.work()
 
+            src_node = None
             modified = None
+            mode = None
 
             src_filelist = self.parent.shared_flist1
 
+            if self.dst.storage.supports_chmod:
+                src_node = src_filelist.find(full_src_path)
+                mode = src_node["mode"]
+
+                self.dst.chmod(dst_path, mode)
+
             if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
-                modified = src_filelist.find(full_src_path)["modified"]
+                if src_node is None:
+                    src_node = src_filelist.find(full_src_path)
+
+                modified = src_node["modified"]
 
                 if modified is not None:
                     self.dst.set_modified(dst_path, modified)
@@ -255,6 +266,7 @@ class UploadTask(SyncTask):
                        "path":        full_dst_path,
                        "padded_size": padded_size,
                        "modified":    modified,
+                       "mode":        mode,
                        "IVs":         ivs}
 
             self.dst_flist.insert(newnode)
@@ -289,10 +301,21 @@ class MkdirTask(SyncTask):
 
         src_filelist = self.parent.shared_flist1
 
+        src_node = None
         modified = None
+        mode = None
+
+        if self.dst.storage.supports_chmod:
+            src_node = src_filelist.find(full_src_path)
+            mode = src_node["mode"]
+
+            self.dst.chmod(dst_path, mode)
 
         if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
-            modified = src_filelist.find(full_src_path)["modified"]
+            if src_node is None:
+                src_filelist.find(full_src_path)
+
+            modified = src_node["modified"]
 
             if modified is not None:
                 self.dst.set_modified(dst_path, modified)
@@ -310,6 +333,7 @@ class MkdirTask(SyncTask):
         newnode = {"type":        "d",
                    "path":        full_dst_path,
                    "modified":    modified,
+                   "mode":        mode,
                    "padded_size": 0,
                    "IVs":         ivs}
 
