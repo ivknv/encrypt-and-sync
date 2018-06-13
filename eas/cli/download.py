@@ -13,7 +13,7 @@ from ..common import Lockfile
 
 from . import common
 from .authenticate_storages import authenticate_storages
-from .common import show_error, get_progress_str, make_size_readable
+from .common import get_progress_str, make_size_readable
 from .generic_signal_manager import GenericSignalManager
 
 def print_target_totals(target):

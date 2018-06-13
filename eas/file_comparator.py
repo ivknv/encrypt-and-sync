@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from . import pathm
-from . import path_match
 from .filelist import Filelist
 from .common import recognize_path
 

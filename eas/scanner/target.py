@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
-import threading
-
 from ..task import Task
 from ..filelist import Filelist
 from ..duplicate_list import DuplicateList

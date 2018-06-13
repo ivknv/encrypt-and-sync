@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import threading
 
 from ..task import Task
 from ..duplicate_list import DuplicateList

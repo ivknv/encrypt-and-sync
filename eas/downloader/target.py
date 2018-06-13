@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import threading
-
 from ..task import Task
 from ..encryption import MIN_ENC_SIZE
 from ..filelist import Filelist

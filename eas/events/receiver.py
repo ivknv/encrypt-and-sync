@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import threading
 import traceback
-import weakref
 
 from .event import Event
 

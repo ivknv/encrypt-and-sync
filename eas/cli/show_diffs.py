@@ -3,7 +3,6 @@
 
 import functools
 import os
-import sys
 
 from .common import show_error, make_config
 from ..common import validate_folder_name, recognize_path

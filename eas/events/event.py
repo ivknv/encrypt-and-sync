@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import threading
+__all__ = ["Event"]
 
 class Event(dict):
     def __init__(self, emitter, receiver, name, args, kwargs):
