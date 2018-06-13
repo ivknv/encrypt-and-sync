@@ -258,10 +258,8 @@ class UploadTask(SyncTask):
 
                 # Preserve parent modified date
                 if dst_path not in ("", "/"):
-                    src_parent_node = src_filelist.find(pathm.split(full_src_path)[0])
-
-                    parent_modified = src_parent_node["modified"]
-                    parent_ivs = src_parent_node["IVs"]
+                    parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
+                    parent_ivs = ivs[0:-16]
 
                     if parent_modified not in (None, 0):
                         self.dst.set_modified(pathm.split(dst_path)[0], parent_modified, ivs=parent_ivs)
@@ -329,10 +327,8 @@ class MkdirTask(SyncTask):
 
             # Preserve parent modified date
             if dst_path not in ("", "/"):
-                src_parent_node = src_filelist.find(pathm.split(full_src_path)[0])
-
-                parent_modified = src_parent_node["modified"]
-                parent_ivs = src_parent_node["IVs"]
+                parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
+                parent_ivs = ivs[0:-16]
 
                 if parent_modified not in (None, 0):
                     self.dst.set_modified(pathm.split(dst_path)[0], parent_modified, ivs=parent_ivs)
@@ -387,10 +383,8 @@ class RmTask(SyncTask):
         # Preserve parent modified date
         if self.parent.preserve_modified and dst_path not in ("", "/"):
             if self.dst.storage.supports_set_modified:
-                src_parent_node = src_filelist.find(pathm.split(full_src_path)[0])
-
-                parent_modified = src_parent_node["modified"]
-                parent_ivs = src_parent_node["IVs"]
+                parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
+                parent_ivs = dst_filelist.find(pathm.split(full_dst_path)[0])["IVs"]
 
                 if parent_modified not in (None, 0):
                     self.dst.set_modified(pathm.split(dst_path)[0], parent_modified, ivs=parent_ivs)
