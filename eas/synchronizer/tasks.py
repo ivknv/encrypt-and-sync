@@ -241,13 +241,13 @@ class UploadTask(SyncTask):
 
             src_filelist = self.parent.shared_flist1
 
-            if self.dst.storage.supports_chmod and self.parent.preserve_mode:
+            if self.dst.storage.supports_chmod and self.parent.sync_mode:
                 src_node = src_filelist.find(full_src_path)
                 mode = src_node["mode"]
 
                 self.dst.chmod(dst_path, mode, ivs=ivs)
 
-            if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
+            if self.parent.sync_modified and self.dst.storage.supports_set_modified:
                 if src_node is None:
                     src_node = src_filelist.find(full_src_path)
 
@@ -310,13 +310,13 @@ class MkdirTask(SyncTask):
         modified = None
         mode = None
 
-        if self.dst.storage.supports_chmod and self.parent.preserve_mode:
+        if self.dst.storage.supports_chmod and self.parent.sync_mode:
             src_node = src_filelist.find(full_src_path)
             mode = src_node["mode"]
 
             self.dst.chmod(dst_path, mode, ivs=ivs)
 
-        if self.parent.preserve_modified and self.dst.storage.supports_set_modified:
+        if self.parent.sync_modified and self.dst.storage.supports_set_modified:
             if src_node is None:
                 src_node = src_filelist.find(full_src_path)
 
@@ -382,7 +382,7 @@ class RmTask(SyncTask):
         dst_filelist = self.parent.shared_flist2
 
         # Preserve parent modified date
-        if self.parent.preserve_modified and dst_path not in ("", "/"):
+        if self.parent.sync_modified and dst_path not in ("", "/"):
             if self.dst.storage.supports_set_modified:
                 parent_modified = src_filelist.find(pathm.split(full_src_path)[0])["modified"]
                 parent_ivs = dst_filelist.find(pathm.split(full_dst_path)[0])["IVs"]

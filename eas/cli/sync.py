@@ -593,8 +593,8 @@ def do_sync(env, names_or_paths):
     n_sync_workers = env.get("n_workers", config.sync_threads)
     n_scan_workers = env.get("n_workers", config.scan_threads)
     no_journal = env.get("no_journal", False)
-    no_preserve_modified = env.get("no_preserve_modified", False)
-    no_preserve_mode = env.get("no_preserve_mode", False)
+    no_sync_modified = env.get("no_sync_modified", False)
+    no_sync_mode = env.get("no_sync_mode", False)
 
     synchronizer = Synchronizer(config,
                                 env["db_dir"],
@@ -655,8 +655,8 @@ def do_sync(env, names_or_paths):
         target.no_remove = no_remove
         target.n_workers = n_sync_workers
         target.n_scan_workers = n_scan_workers
-        target.preserve_modified = not no_preserve_modified
-        target.preserve_mode = not no_preserve_mode
+        target.sync_modified = not no_sync_modified
+        target.sync_mode = not no_sync_mode
 
         targets.append(target)
 
