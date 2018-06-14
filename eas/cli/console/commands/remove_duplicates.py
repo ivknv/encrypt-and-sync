@@ -22,6 +22,8 @@ class RemoveDuplicatesCommand(Command):
                             help="Don't ask for any user input")
         parser.add_argument("--choose-targets", action="store_true",
                             help="Choose which folders to remove duplicates for")
+        parser.add_argument("--no-preserve-modified", action="store_true",
+                            help="Don't try to preserve modified date of directories")
         parser.add_argument("--no-journal", action="store_true",
                             help="Disable SQLite3 journaling")
         parser.add_argument("--no-progress", action="store_true",
@@ -49,6 +51,7 @@ class RemoveDuplicatesCommand(Command):
         env["choose_targets"] = ns.choose_targets
         env["no_journal"] = ns.no_journal
         env["no_progress"] = ns.no_progress
+        env["no_preserve_modified"] = ns.no_preserve_modified
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

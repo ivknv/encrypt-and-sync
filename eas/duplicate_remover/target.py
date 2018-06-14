@@ -49,6 +49,8 @@ class DuplicateRemoverTarget(Task):
         self.filename_encoding = folder["filename_encoding"]
         self.prefix = folder["path"]
 
+        self.preserve_modified = False
+
         self.n_workers = 1
 
         self.pool = WorkerPool(None)

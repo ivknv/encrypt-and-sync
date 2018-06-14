@@ -252,11 +252,13 @@ class SyncTarget(StagedTask):
         if self.src.encrypted:
             target = DuplicateRemoverTarget(self.duprem, self.src.storage.name, self.path1)
             target.n_workers = self.n_workers
+            target.preserve_modified = self.sync_modified
             self.duprem.add_target(target)
 
         if self.dst.encrypted:
             target = DuplicateRemoverTarget(self.duprem, self.dst.storage.name, self.path2)
             target.n_workers = self.n_workers
+            target.preserve_modified = self.sync_modified
             self.duprem.add_target(target)
 
         if self.stopped:

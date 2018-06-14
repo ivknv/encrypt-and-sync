@@ -120,6 +120,8 @@ def main(args=None):
         env["no_sync_mode"] = ns.no_sync_mode
     elif ns.action == "download":
         env["no_skip"] = ns.no_skip
+    elif ns.action == "rmdup":
+        env["no_preserve_modified"] = ns.no_preserve_modified
 
     if ns.action in ("scan", "sync", "download", "rmdup"):
         if ns.n_workers is not None:
@@ -285,6 +287,8 @@ def parse_args(args):
                               help="Choose which folders to remove duplicates for")
     rmdup_parser.add_argument("--n-workers", "-w", type=positive_int, metavar="N",
                               help="Number of workers to use")
+    rmdup_parser.add_argument("--no-preserve-modified", action="store_true",
+                              help="Don't try to preserve modified date of directories")
     rmdup_parser.add_argument("--no-journal", action="store_true",
                               help="Disable SQLite3 journaling")
     rmdup_parser.add_argument("--no-auth-check", action="store_true",

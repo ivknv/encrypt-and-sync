@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from ..task import Task
+from ..filelist import Filelist
+from .. import pathm
 
 __all__ = ["DuplicateRemoverTask"]
 
@@ -44,12 +46,35 @@ class DuplicateRemoverTask(Task):
                                             IVs=self.ivs,
                                             filename_encoding=encoding)[0]
 
+        if self.parent.preserve_modified and self.storage.supports_set_modified:
+            if not pathm.is_equal(self.path, self.prefix):
+                folder = self.config.identify_folder(self.storage.name, self.path)
+
+                if folder is not None:
+                    filelist = Filelist(folder["name"], self.parent.duprem.directory)
+                    parent_modified = filelist.find(pathm.split(self.path)[0])["modified"]
+                else:
+                    parent_modified = None
+
+                if not parent_modified:
+                    try:
+                        parent_modified = self.storage.get_meta(pathm.split(encpath)[0])["modified"]
+                    except FileNotFoundError:
+                        parent_modified = None
+
         try:
             self.storage.remove(encpath)
+            removed = True
         except FileNotFoundError:
-            pass
+            removed = False 
 
         self.duplist.remove(self.ivs, self.path)
+
         self.autocommit()
+
+        # Preserve parent modified date
+        if self.parent.preserve_modified and self.path not in ("", "/") and removed:
+            if self.storage.supports_set_modified and parent_modified:
+                self.storage.set_modified(pathm.split(encpath)[0], parent_modified)
 
         self.status = "finished"

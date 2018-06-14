@@ -210,6 +210,7 @@ def remove_duplicates(env, paths):
 
     n_workers = env.get("n_workers", config.sync_threads)
     no_journal = env.get("no_journal", False)
+    no_preserve_modified = env.get("no_preserve_modified", False)
 
     duprem = DuplicateRemover(config, env["db_dir"], enable_journal=not no_journal)
     targets = []
@@ -225,6 +226,7 @@ def remove_duplicates(env, paths):
         try:
             target = DuplicateRemoverTarget(duprem, path_type, path)
             target.n_workers = n_workers
+            target.preserve_modified = not no_preserve_modified
             targets.append(target)
         except ValueError as e:
             if user_paths:
