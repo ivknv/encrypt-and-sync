@@ -16,6 +16,7 @@ from .authenticate_storages import authenticate_storages
 from . import common
 from .generic_signal_manager import GenericSignalManager
 from .parse_choice import interpret_choice
+from .pager import Pager
 
 __all__ = ["remove_duplicates", "DuplicateRemoverReceiver"]
 
@@ -66,10 +67,20 @@ def count_duplicates(env, target):
 def view_duplicates(env, target):
     duplist = DuplicateList(target.storage_name, env["db_dir"])
     duplist.create()
+
+    duplicate_count = duplist.get_file_count(target.path)
     duplicates = duplist.find_recursively(target.path)
 
+    pager = Pager()
+    pager.stdin.write("Duplicates:\n")
+
+    if duplicate_count < 50:
+        pager.command = None
+
     for duplicate in duplicates:
-        print("  %s %s" % (duplicate[0], duplicate[2]))
+        pager.stdin.write("  %s %s\n" % (duplicate[0], duplicate[2]))
+
+    pager.run()
 
 def print_target_totals(target):
     n_finished = target.progress["finished"] + target.progress["skipped"]
