@@ -117,3 +117,18 @@ class PathmTestCase(unittest.TestCase):
         self.assertEqual(pathm.to_sys("/C/a/b/c"), r"C:\a\b\c")
         self.assertEqual(pathm.to_sys("/D/a/b/c"), r"D:\a\b\c")
         self.assertEqual(pathm.to_sys("/Z/c/d/e/"), "Z:\\c\\d\\e\\")
+
+    def test_is_equal(self):
+        self.assertTrue(pathm.is_equal("", ""))
+        self.assertTrue(pathm.is_equal("/", ""))
+        self.assertTrue(pathm.is_equal("", "/"))
+        self.assertTrue(pathm.is_equal("///", "/"))
+        self.assertTrue(pathm.is_equal("/a/b/d/e", "/a/b/d/e/"))
+        self.assertTrue(pathm.is_equal("/a/b/d/e/", "/a/b/d/e/"))
+        self.assertTrue(pathm.is_equal("/a/b/d/e/./.", "/a/b/d/e/"))
+        self.assertTrue(pathm.is_equal("/a/b/d/e/././../", "/a/b/d"))
+        self.assertTrue(pathm.is_equal("./a", "a"))
+
+        self.assertFalse(pathm.is_equal("/", "/a/b/d"))
+        self.assertFalse(pathm.is_equal("/a/b/c", "/c/b/a"))
+        self.assertFalse(pathm.is_equal("/a/b/c/..", "/c/b/a"))
