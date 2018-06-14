@@ -12,7 +12,7 @@ from ..worker import WorkerPool, get_current_worker
 from ..common import threadsafe_iterator, recognize_path
 from .. import pathm, file_comparator
 from .worker import SyncWorker
-from .tasks import UploadTask, MkdirTask, RmTask
+from .tasks import UploadTask, MkdirTask, RmTask, ModifiedTask
 
 __all__ = ["SyncTarget"]
 
@@ -93,12 +93,13 @@ class SyncTarget(StagedTask):
                                synchronizer.directory,
                                synchronizer.enable_journal)
 
-        self.set_stage("scan",  self.init_scan,  self.finalize_scan)
-        self.set_stage("rmdup", self.init_rmdup, self.finalize_rmdup)
-        self.set_stage("rm",    self.init_rm,    self.finalize_rm)
-        self.set_stage("dirs",  self.init_dirs,  self.finalize_dirs)
-        self.set_stage("files", self.init_files, self.finalize_files)
-        self.set_stage("check", self.init_check, self.finalize_check)
+        self.set_stage("scan",     self.init_scan,     self.finalize_scan)
+        self.set_stage("rmdup",    self.init_rmdup,    self.finalize_rmdup)
+        self.set_stage("rm",       self.init_rm,       self.finalize_rm)
+        self.set_stage("dirs",     self.init_dirs,     self.finalize_dirs)
+        self.set_stage("files",    self.init_files,    self.finalize_files)
+        self.set_stage("modified", self.init_modified, self.finalize_modified)
+        self.set_stage("check",    self.init_check,    self.finalize_check)
 
         self.add_receiver(TargetFailLogReceiver())
 
@@ -131,16 +132,17 @@ class SyncTarget(StagedTask):
             self.emit_event("autocommit_failed", self.shared_flist2)
             raise e
 
-    def get_differences(self):
+    def get_differences(self, checks):
         return file_comparator.compare_lists(self.config,
                                              self.path1_with_proto,
                                              self.path2_with_proto,
-                                             self.synchronizer.directory)
+                                             self.synchronizer.directory,
+                                             checks)
 
-    def build_diffs_table(self):
+    def build_diffs_table(self, checks=("rm", "new", "update", "modified")):
         self.emit_event("diffs_started")
 
-        diffs = self.get_differences()
+        diffs = self.get_differences(checks)
         
         try:
             self.difflist.begin_transaction()
@@ -178,7 +180,7 @@ class SyncTarget(StagedTask):
             except StopIteration:
                 break
 
-            assert(diff["type"] in ("new", "update", "rm"))
+            assert(diff["type"] in ("new", "update", "rm", "modified"))
             assert(diff["node_type"] in ("f", "d"))
 
             if diff["type"] == "new":
@@ -190,6 +192,8 @@ class SyncTarget(StagedTask):
                 task = UploadTask(self)
             elif diff["type"] == "rm":
                 task = RmTask(self)
+            elif diff["type"] == "modified":
+                task = ModifiedTask(self)
 
             task.type = diff["type"]
             task.node_type = diff["node_type"]
@@ -296,7 +300,7 @@ class SyncTarget(StagedTask):
 
     def init_dirs(self):
         differences = self.difflist.find_dirs(self.path1_with_proto,
-                                                            self.path2_with_proto)
+                                              self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
 
@@ -310,7 +314,7 @@ class SyncTarget(StagedTask):
 
     def init_files(self):
         differences = self.difflist.find_files(self.path1_with_proto,
-                                                             self.path2_with_proto)
+                                               self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
 
@@ -325,6 +329,30 @@ class SyncTarget(StagedTask):
         self.pool.join()
 
     def finalize_files(self):
+        self.shared_flist2.commit()
+
+    def init_modified(self):
+        if not self.sync_modified:
+            return
+
+        self.build_diffs_table(("modified",))
+
+        differences = self.difflist.find_modified(self.path1_with_proto,
+                                                  self.path2_with_proto)
+
+        self.shared_flist2.begin_transaction()
+
+        if self.dst.storage.parallelizable:
+            n_workers = self.n_workers
+        else:
+            n_workers = 1
+
+        self.pool.clear()
+        self.pool.queue = self.task_iterator(differences)
+        self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
+        self.pool.join()
+
+    def finalize_modified(self):
         self.shared_flist2.commit()
 
     def init_check(self):
@@ -385,7 +413,7 @@ class SyncTarget(StagedTask):
             self.shared_flist2.create()
             self.difflist.create()
 
-            stages = ("scan", "rmdup", "rm", "dirs", "files", "check")
+            stages = ("scan", "rmdup", "rm", "dirs", "files", "modified", "check")
 
             if self.stage is not None:
                 # Skip completed stages

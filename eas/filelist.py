@@ -202,14 +202,32 @@ class Filelist(object):
 
     def update_size(self, path, new_size):
         """
-            Update node size.
+            Update node's size.
 
             :param path: path of the node
             :param new_size: new size
         """
 
+        path = prepare_path(path)
+
         self.connection.execute("UPDATE filelist SET padded_size=? WHERE path=?",
                                 (new_size, path))
+
+    def update_modified(self, path, modified):
+        """
+            Update node's modified date.
+
+            :param path: path of the node
+            :param modified: new modified date
+        """
+
+        path = prepare_path(path)
+        path_n = pathm.dir_normalize(path)
+
+        modified = format_timestamp(modified)
+
+        self.connection.execute("UPDATE filelist SET modified=? WHERE path=? or path=?",
+                                (modified, path, path_n))
 
     def begin_transaction(self, *args, **kwargs):
         """Start a transaction."""

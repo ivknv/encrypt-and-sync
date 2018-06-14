@@ -108,6 +108,14 @@ class DiffList(object):
                                     (src_path, dst_path))
             return self.connection.fetchone()[0]
 
+    def count_modified(self, src_path, dst_path):
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM differences
+                                       WHERE type='modified' AND
+                                             src_path=? AND dst_path=?""",
+                                    (src_path, dst_path))
+            return self.connection.fetchone()[0]
+
     def find_files(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
@@ -130,6 +138,14 @@ class DiffList(object):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='update' AND src_path=? AND dst_path=?
+                                       ORDER BY path ASC""", (src_path, dst_path))
+
+            return self.fetch_differences()
+
+    def find_modified(self, src_path, dst_path):
+        with self.connection:
+            self.connection.execute("""SELECT * FROM differences
+                                       WHERE type='modified' AND src_path=? AND dst_path=?
                                        ORDER BY path ASC""", (src_path, dst_path))
 
             return self.fetch_differences()
