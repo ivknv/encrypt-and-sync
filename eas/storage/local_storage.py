@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import os
 import shutil
 import stat
+import sys
 import time
 
 from .. import pathm
@@ -102,7 +103,7 @@ class LocalStorage(Storage):
     parallelizable = False
 
     supports_set_modified = True
-    supports_chmod = True
+    supports_chmod = not is_windows() and hasattr(os, "chmod")
 
     def get_meta(self, path, *args, **kwargs):
         path = pathm.to_sys(path)
@@ -214,8 +215,9 @@ class LocalStorage(Storage):
         new_modified = utc_to_local(new_modified)
         os.utime(pathm.to_sys(path), (new_modified, new_modified))
 
-    def chmod(self, path, mode, *args, **kwargs):
-        if mode is None:
-            return
+    if supports_chmod:
+        def chmod(self, path, mode, *args, **kwargs):
+            if mode is None:
+                return
 
-        os.chmod(path, mode)
+            os.chmod(path, mode)
