@@ -235,7 +235,7 @@ class FileComparator(object):
         if "modified" not in self.checks:
             return False
 
-        return self.node1 and self.node2 and (self.path1 != self.path2 and
+        return self.node1 and self.node2 and (self.path1 == self.path2 and
                                               self.modified1 != self.modified2)
 
     def is_mode_different(self):
