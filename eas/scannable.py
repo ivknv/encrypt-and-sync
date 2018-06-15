@@ -189,7 +189,7 @@ class EncryptedScannable(BaseScannable):
         path, IVs = storage.config.decrypt_path(enc_path, prefix,
                                                 filename_encoding=filename_encoding)
         
-        BaseScannable.__init__(self, storage, path, type, modified, size)
+        BaseScannable.__init__(self, storage, path, type, modified, size, mode)
 
         self.prefix = prefix
         self.enc_path = enc_path
