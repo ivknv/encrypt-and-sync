@@ -14,7 +14,7 @@ def try_next(it, default=None):
 
 class FileComparator(object):
     def __init__(self, config, src_path, dst_path, directory=None,
-                 checks=("rm", "new", "update", "modified")):
+                 checks=("rm", "new", "update", "modified", "chmod")):
         self.config = config
 
         src_path, src_path_type = recognize_path(src_path)
@@ -61,11 +61,13 @@ class FileComparator(object):
         self.path1 = None
         self.modified1 = None
         self.padded_size1 = None
+        self.mode1 = None
 
         self.type2 = None
         self.path2 = None
         self.modified2 = None
         self.padded_size2 = None
+        self.mode2 = None
 
         self.last_rm = None
 
@@ -75,7 +77,6 @@ class FileComparator(object):
         return self
 
     def diff_rm(self):
-        self.node2 = try_next(self.it2)
         if self.type2 == "d":
             self.last_rm = self.path2
 
@@ -86,7 +87,6 @@ class FileComparator(object):
                "dst_path": self.dst_path_with_proto}
 
     def diff_new(self):
-        self.node1 = try_next(self.it1)
         yield {"type": "new",
                "node_type": self.type1,
                "path": self.path1,
@@ -94,9 +94,6 @@ class FileComparator(object):
                "dst_path": self.dst_path_with_proto}
 
     def diff_update(self):
-        self.node1 = try_next(self.it1)
-        self.node2 = try_next(self.it2)
-
         yield {"type": "update",
                "node_type": self.type2,
                "path": self.path2,
@@ -104,9 +101,6 @@ class FileComparator(object):
                "dst_path": self.dst_path_with_proto}
 
     def diff_transition(self):
-        self.node1 = try_next(self.it1)
-        self.node2 = try_next(self.it2)
-
         if self.last_rm is None or not pathm.contains(self.last_rm, self.path2):
             if self.type2 == "d":
                 self.last_rm = self.path2
@@ -124,10 +118,14 @@ class FileComparator(object):
                "dst_path": self.dst_path_with_proto}
 
     def diff_modified(self):
-        self.node1 = try_next(self.it1)
-        self.node2 = try_next(self.it2)
-
         yield {"type": "modified",
+               "node_type": self.type2,
+               "path": self.path2,
+               "src_path": self.src_path_with_proto,
+               "dst_path": self.dst_path_with_proto}
+
+    def diff_chmod(self):
+        yield {"type": "chmod",
                "node_type": self.type2,
                "path": self.path2,
                "src_path": self.src_path_with_proto,
@@ -143,12 +141,14 @@ class FileComparator(object):
                 self.path1 = None
                 self.modified1 = None
                 self.padded_size1 = None
+                self.mode1 = None
             else:
                 self.type1 = self.node1["type"]
                 self.path1 = pathm.cut_prefix(self.node1["path"], self.src_path) or "/"
                 self.path1 = pathm.join("/", self.path1)
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
+                self.mode1 = self.node1["mode"]
 
                 assert(self.type1 is not None)
 
@@ -157,26 +157,49 @@ class FileComparator(object):
                 self.path2 = None
                 self.modified2 = None
                 self.padded_size2 = None
+                self.mode2 = None
             else:
                 self.type2 = self.node2["type"]
                 self.path2 = pathm.cut_prefix(self.node2["path"], self.dst_path) or "/"
                 self.path2 = pathm.join("/", self.path2)
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
+                self.mode2 = self.node2["mode"]
 
             if self.is_removed():
+                self.node2 = try_next(self.it2)
+
                 if self.last_rm is None or not pathm.contains(self.last_rm, self.path2):
                     return list(self.diff_rm())
-                else:
-                    self.node2 = try_next(self.it2)
             elif self.is_new():
+                self.node1 = try_next(self.it1)
+
                 return list(self.diff_new())
             elif self.is_transitioned():
+                self.node1 = try_next(self.it1)
+                self.node2 = try_next(self.it2)
+
                 return list(self.diff_transition())
             elif self.is_newer():
+                self.node1 = try_next(self.it1)
+                self.node2 = try_next(self.it2)
+
                 return list(self.diff_update())
             elif self.is_modified_different():
-                return list(self.diff_modified())
+                self.node1 = try_next(self.it1)
+                self.node2 = try_next(self.it2)
+
+                diffs = list(self.diff_modified())
+
+                if self.is_mode_different():
+                    diffs += list(self.diff_chmod())
+
+                return diffs
+            elif self.is_mode_different():
+                self.node1 = try_next(self.it1)
+                self.node2 = try_next(self.it2)
+
+                return list(self.diff_chmod())
             else:
                 self.node1 = try_next(self.it1)
                 self.node2 = try_next(self.it2)
@@ -185,27 +208,21 @@ class FileComparator(object):
         if "new" not in self.checks:
             return False
 
-        condition = self.node1 is not None and self.node2 is not None
-        condition = condition and self.type1 == "f"
-        condition = condition and (self.modified1 > self.modified2 or
-                                   self.padded_size1 != self.padded_size2)
-
-        return condition
+        return (self.node1 and self.node2) and (self.type1 == "f" and
+                                                (self.modified1 > self.modified2 or
+                                                 self.padded_size1 != self.padded_size2))
 
     def is_new(self):
         if "update" not in self.checks:
             return False
 
-        condition = self.node1 is not None
-        condition = condition and (self.node2 is None or self.path1 < self.path2)
-
-        return condition
+        return self.node1 and (not self.node2 or self.path1 < self.path2)
 
     def is_removed(self):
         if "rm" not in self.checks:
             return False
 
-        return self.node2 and (self.node1 is None or
+        return self.node2 and (not self.node1 or
                                (self.node1 and self.path1 > self.path2))
 
     def is_transitioned(self):
@@ -218,11 +235,18 @@ class FileComparator(object):
         if "modified" not in self.checks:
             return False
 
-        condition = self.node1 and self.node2 and self.modified1 != self.modified2
-        condition = condition and self.path1 == self.path2
-        return condition
+        return self.node1 and self.node2 and (self.path1 != self.path2 and
+                                              self.modified1 != self.modified2)
 
-def compare_lists(config, src_path, dst_path, directory=None, checks=("rm", "new", "update", "modified")):
+    def is_mode_different(self):
+        if "chmod" not in self.checks:
+            return False
+
+        return self.node1 and self.node2 and (self.path1 == self.path2 and
+                                              self.mode1 != self.mode2)
+
+def compare_lists(config, src_path, dst_path, directory=None,
+                  checks=("rm", "new", "update", "modified", "chmod")):
     comparator = FileComparator(config, src_path, dst_path, directory, checks)
 
     for i in comparator:

@@ -94,6 +94,8 @@ def print_diffs(env, target):
                                      target.path2_with_proto)
     n_modified = difflist.count_modified(target.path1_with_proto,
                                          target.path2_with_proto)
+    n_chmod = difflist.count_chmod(target.path1_with_proto,
+                                   target.path2_with_proto)
 
     display_name = get_target_display_name(target)
 
@@ -108,6 +110,7 @@ def print_diffs(env, target):
     print("%s: %d new files to upload" % (display_name, n_new_files))
     print("%s: %d files to update" % (display_name, n_update))
     print("%s: %d files to set modified date for" % (display_name, n_modified))
+    print("%s: %d files to set mode for" % (display_name, n_chmod))
 
 def ask_continue():
     answer = None
@@ -129,9 +132,10 @@ def ask_continue():
 def view_diffs(env, target):
     funcs = {"r":  view_rm_diffs,       "d":  view_dirs_diffs,
              "f":  view_new_file_diffs, "u":  view_update_diffs,
-             "du": view_duplicates,     "m":  view_modified_diffs}
+             "du": view_duplicates,     "m":  view_modified_diffs,
+             "c":  view_chmod_diffs}
 
-    s = "What differences?\n[(r)m / (d)irs /new (f)iles / (u)pdates / (m) modified / (du)plicates / (s)top]: "
+    s = "What differences?\n[(r)m / (d)irs /new (f)iles / (u)pdates / (m)odified / (c)hmod / (du)plicates / (s)top]: "
 
     while True:
         answer = input(s).lower()
@@ -170,7 +174,7 @@ def get_diff_dst_path(config, diff):
 def format_diff(config, diff):
     dst_path = get_diff_dst_path(config, diff)
 
-    assert(diff["type"] in ("new", "update", "rm", "modified"))
+    assert(diff["type"] in ("new", "update", "rm", "modified", "chmod"))
 
     if diff["type"] in ("new", "update"):
         return format_new_diff(config, diff)
@@ -178,6 +182,8 @@ def format_diff(config, diff):
         return format_rm_diff(config, diff)
     elif diff["type"] == "modified":
         return format_modified_diff(config, diff)
+    elif diff["type"] == "chmod":
+        return format_chmod_diff(config, diff)
 
 def format_new_diff(config, diff):
     dst_path = get_diff_dst_path(config, diff)
@@ -190,6 +196,11 @@ def format_rm_diff(config, diff):
     return "%s %s\n" % (diff["node_type"], dst_path)
 
 def format_modified_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    return "%s %s\n" % (diff["node_type"], dst_path)
+
+def format_chmod_diff(config, diff):
     dst_path = get_diff_dst_path(config, diff)
 
     return "%s %s\n" % (diff["node_type"], dst_path)
@@ -278,6 +289,24 @@ def view_modified_diffs(env, target):
         pager.command = None
 
     diffs = difflist.find_modified(target.path1_with_proto, target.path2_with_proto)
+
+    for diff in diffs:
+        pager.stdin.write("  " + format_diff(env["config"], diff))
+
+    pager.run()
+
+def view_chmod_diffs(env, target):
+    difflist = DiffList(env["db_dir"])
+
+    pager = Pager()
+    pager.stdin.write("Files to set mode for:\n")
+
+    diff_count = difflist.count_chmod(target.path1_with_proto, target.path2_with_proto)
+
+    if diff_count < 50:
+        pager.command = None
+
+    diffs = difflist.find_chmod(target.path1_with_proto, target.path2_with_proto)
 
     for diff in diffs:
         pager.stdin.write("  " + format_diff(env["config"], diff))
@@ -413,6 +442,11 @@ class TargetReceiver(Receiver):
             n = difflist.count_modified(target.path1_with_proto, target.path2_with_proto)
 
             print("%s: %d files need modification date to be set" % (display_name, n))
+        elif target.stage["name"] == "chmod" and target.sync_mode:
+            difflist = DiffList(self.env["db_dir"])
+            n = difflist.count_chmod(target.path1_with_proto, target.path2_with_proto)
+
+            print("%s: %d files need mode to be set" % (display_name, n))
 
     def on_entered_stage(self, event, stage):
         if self.env.get("no_progress", False):
@@ -509,6 +543,8 @@ class WorkerReceiver(Receiver):
                 msg += "removing directory duplicate"
         elif task.type == "modified":
             msg += "setting modified date"
+        elif task.type == "chmod":
+            msg += "setting file mode"
 
         print(msg)
 

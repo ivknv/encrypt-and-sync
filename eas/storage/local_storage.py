@@ -104,6 +104,7 @@ class LocalStorage(Storage):
 
     supports_set_modified = True
     supports_chmod = not is_windows() and hasattr(os, "chmod")
+    persistent_mode = True
 
     def get_meta(self, path, *args, **kwargs):
         path = pathm.to_sys(path)

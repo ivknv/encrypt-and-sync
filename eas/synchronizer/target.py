@@ -12,7 +12,7 @@ from ..worker import WorkerPool, get_current_worker
 from ..common import threadsafe_iterator, recognize_path
 from .. import pathm, file_comparator
 from .worker import SyncWorker
-from .tasks import UploadTask, MkdirTask, RmTask, ModifiedTask
+from .tasks import UploadTask, MkdirTask, RmTask, ModifiedTask, ChmodTask
 
 __all__ = ["SyncTarget"]
 
@@ -98,6 +98,7 @@ class SyncTarget(StagedTask):
         self.set_stage("rm",       self.init_rm,       self.finalize_rm)
         self.set_stage("dirs",     self.init_dirs,     self.finalize_dirs)
         self.set_stage("files",    self.init_files,    self.finalize_files)
+        self.set_stage("chmod",    self.init_chmod,    self.finalize_chmod)
         self.set_stage("modified", self.init_modified, self.finalize_modified)
         self.set_stage("check",    self.init_check,    self.finalize_check)
 
@@ -139,8 +140,17 @@ class SyncTarget(StagedTask):
                                              self.synchronizer.directory,
                                              checks)
 
-    def build_diffs_table(self, checks=("rm", "new", "update", "modified")):
+    def build_diffs_table(self, checks=None):
         self.emit_event("diffs_started")
+
+        if checks is None:
+            checks = ("rm", "new", "update")
+
+            if self.dst.storage.supports_set_modified and self.sync_modified:
+                checks = checks + ("modified",)
+
+            if self.dst.storage.supports_chmod and self.sync_mode:
+                checks = checks + ("chmod",)
 
         diffs = self.get_differences(checks)
         
@@ -180,7 +190,7 @@ class SyncTarget(StagedTask):
             except StopIteration:
                 break
 
-            assert(diff["type"] in ("new", "update", "rm", "modified"))
+            assert(diff["type"] in ("new", "update", "rm", "modified", "chmod"))
             assert(diff["node_type"] in ("f", "d"))
 
             if diff["type"] == "new":
@@ -194,6 +204,8 @@ class SyncTarget(StagedTask):
                 task = RmTask(self)
             elif diff["type"] == "modified":
                 task = ModifiedTask(self)
+            elif diff["type"] == "chmod":
+                task = ChmodTask(self)
 
             task.type = diff["type"]
             task.node_type = diff["node_type"]
@@ -331,6 +343,30 @@ class SyncTarget(StagedTask):
     def finalize_files(self):
         self.shared_flist2.commit()
 
+    def init_chmod(self):
+        if not self.sync_mode:
+            return
+
+        self.build_diffs_table(("chmod",))
+
+        differences = self.difflist.find_chmod(self.path1_with_proto,
+                                               self.path2_with_proto)
+
+        self.shared_flist2.begin_transaction()
+
+        if self.dst.storage.parallelizable:
+            n_workers = self.n_workers
+        else:
+            n_workers = 1
+
+        self.pool.clear()
+        self.pool.queue = self.task_iterator(differences)
+        self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
+        self.pool.join()
+
+    def finalize_chmod(self):
+        self.shared_flist2.commit()
+
     def init_modified(self):
         if not self.sync_modified:
             return
@@ -413,7 +449,7 @@ class SyncTarget(StagedTask):
             self.shared_flist2.create()
             self.difflist.create()
 
-            stages = ("scan", "rmdup", "rm", "dirs", "files", "modified", "check")
+            stages = ("scan", "rmdup", "rm", "dirs", "files", "chmod", "modified", "check")
 
             if self.stage is not None:
                 # Skip completed stages

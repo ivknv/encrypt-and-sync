@@ -229,6 +229,20 @@ class Filelist(object):
         self.connection.execute("UPDATE filelist SET modified=? WHERE path=? or path=?",
                                 (modified, path, path_n))
 
+    def update_mode(self, path, mode):
+        """
+            Update node's mode.
+
+            :param path: path of the node
+            :param mode: `int`, new file mode
+        """
+
+        path = prepare_path(path)
+        path_n = pathm.dir_normalize(path)
+
+        self.connection.execute("UPDATE filelist SET mode=? WHERE path=? or path=?",
+                                (mode, path, path_n))
+
     def begin_transaction(self, *args, **kwargs):
         """Start a transaction."""
 

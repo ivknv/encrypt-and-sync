@@ -25,6 +25,7 @@ class Storage(object):
                               (or at least if it's useful or not)
         :cvar supports_set_modified: `bool`, determines whether the storage supports `set_modified()` method
         :cvar supports_chmod: `bool`, determines whether the storage supports `chmod()` method
+        :cvar persistent_mode: `bool`, determines whether the storage maintains file mode after overwrite
         :ivar config: `Config` instance
     """
 
@@ -37,6 +38,7 @@ class Storage(object):
 
     supports_set_modified = False
     supports_chmod = False
+    persistent_mode = False
 
     @classmethod
     def validate(cls):

@@ -12,7 +12,7 @@ from ..common import get_file_size
 from ..storage.exceptions import ControllerInterrupt
 from .. import pathm
 
-__all__ = ["SyncTask", "UploadTask", "MkdirTask", "RmTask", "ModifiedTask"]
+__all__ = ["SyncTask", "UploadTask", "MkdirTask", "RmTask", "ModifiedTask", "ChmodTask"]
 
 class UploadControllerReceiver(Receiver):
     def __init__(self, task):
@@ -236,11 +236,10 @@ class UploadTask(SyncTask):
 
             controller.work()
 
-            if self.dst.storage.supports_chmod and self.parent.sync_mode:
-                src_node = self.src_flist.find(full_src_path)
-                mode = src_node["mode"]
+            mode = None
 
-                self.dst.chmod(dst_path, mode, ivs=ivs)
+            if self.dst.storage.persistent_mode:
+                mode = self.dst_flist.find(full_dst_path)["mode"]
 
             modified = time.mktime(time.gmtime())
 
@@ -282,18 +281,12 @@ class MkdirTask(SyncTask):
 
         ivs = self.dst.mkdir(dst_path)
 
-        if self.dst.storage.supports_chmod and self.parent.sync_mode:
-            src_node = self.src_flist.find(full_src_path)
-            mode = src_node["mode"]
-
-            self.dst.chmod(dst_path, mode, ivs=ivs)
-
         modified = time.mktime(time.gmtime())
 
         newnode = {"type":        "d",
                    "path":        full_dst_path,
                    "modified":    modified,
-                   "mode":        mode,
+                   "mode":        None,
                    "padded_size": 0,
                    "IVs":         ivs}
 
@@ -366,6 +359,35 @@ class ModifiedTask(SyncTask):
 
         self.dst.set_modified(dst_path, modified)
         self.dst_flist.update_modified(full_dst_path, modified)
+
+        self.status = "finished"
+
+        return True
+
+class ChmodTask(SyncTask):
+    def complete(self):
+        if self.stopped:
+            return True
+
+        self.status = "pending"
+
+        src_subpath = self.parent.subpath1
+        dst_subpath = self.parent.subpath2
+
+        src_path = pathm.join(src_subpath, self.path)
+        dst_path = pathm.join(dst_subpath, self.path)
+
+        full_src_path = pathm.join(self.src.prefix, src_path)
+        full_dst_path = pathm.join(self.dst.prefix, dst_path)
+
+        mode = self.src_flist.find(full_src_path)["mode"]
+
+        if mode is None:
+            self.status = "skipped"
+            return True
+
+        self.dst.chmod(dst_path, mode)
+        self.dst_flist.update_mode(full_dst_path, mode)
 
         self.status = "finished"
 
