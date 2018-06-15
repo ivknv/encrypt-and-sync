@@ -291,6 +291,7 @@ class MkdirTask(SyncTask):
                    "IVs":         ivs}
 
         self.dst_flist.insert(newnode)
+        self.dst_flist.update_modified(pathm.split(full_dst_path)[0], modified)
         self.autocommit()
 
         self.status = "finished"
@@ -317,17 +318,18 @@ class RmTask(SyncTask):
 
         try:
             self.dst.remove(dst_path)
+            removed = True
         except FileNotFoundError:
-            pass
+            removed = False
 
         if self.node_type == "f":
             self.dst_flist.remove(full_dst_path)
         else:
             self.dst_flist.remove_recursively(full_dst_path)
 
-        modified = time.mktime(time.gmtime())
-
-        self.dst_flist.update_modified(pathm.split(full_dst_path)[0], modified)
+        if removed:
+            modified = time.mktime(time.gmtime())
+            self.dst_flist.update_modified(pathm.split(full_dst_path)[0], modified)
 
         self.autocommit()
 
