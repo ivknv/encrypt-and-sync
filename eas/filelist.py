@@ -77,6 +77,8 @@ class Filelist(object):
         """
 
         node = dict(node)
+        node["path"] = prepare_path(node["path"])
+
         if node["type"] == "d":
             node["path"] = pathm.dir_normalize(node["path"])
 
@@ -90,7 +92,7 @@ class Filelist(object):
                                  format_timestamp(node["modified"]),
                                  node["padded_size"],
                                  node["mode"],
-                                 prepare_path(node["path"]),
+                                 node["path"],
                                  node["IVs"]))
 
     def remove(self, path):
