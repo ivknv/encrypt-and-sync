@@ -344,7 +344,7 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_chmod(self):
-        if not self.sync_mode:
+        if not self.sync_mode or not self.dst.storage.supports_chmod:
             return
 
         self.build_diffs_table(("chmod",))
@@ -368,7 +368,7 @@ class SyncTarget(StagedTask):
         self.shared_flist2.commit()
 
     def init_modified(self):
-        if not self.sync_modified:
+        if not self.sync_modified or not self.dst.storage.supports_set_modified:
             return
 
         self.build_diffs_table(("modified",))
