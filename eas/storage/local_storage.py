@@ -217,11 +217,11 @@ class LocalStorage(Storage):
         return os.path.isdir(pathm.to_sys(path))
 
     def exists(self, path, *args, **kwargs):
-        return os.path.exists(pathm.to_sys(path))
+        return os.path.lexists(pathm.to_sys(path))
 
     def set_modified(self, path, new_modified, *args, **kwargs):
         new_modified = utc_to_local(new_modified)
-        os.utime(pathm.to_sys(path), (new_modified, new_modified))
+        os.utime(pathm.to_sys(path), (new_modified, new_modified), follow_symlinks=False)
 
     if supports_chmod:
         def chmod(self, path, mode, *args, **kwargs):
