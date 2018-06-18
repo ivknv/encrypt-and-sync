@@ -193,7 +193,11 @@ class SFTPStorage(Storage):
     type = "remote"
     case_sensitive = True
     parallelizable = False
+    persistent_mode = True
+
     supports_set_modified = True
+    supports_chmod = True
+    supports_symlinks = True
 
     @staticmethod
     def split_path(path):
@@ -238,8 +242,29 @@ class SFTPStorage(Storage):
 
         return connection
 
+    def get_secondary_connection(self, address):
+        username, host, port = self.split_host_address(address)
+        tid = threading.get_ident()
+        connection = self._get_secondary_connection(username, host, port, tid)
+
+        # Check if the connection is closed
+        channel = connection.sftp_client.get_channel()
+
+        if not channel.closed:
+            return connection
+
+        # Overwrite cache
+        connection = self.make_connection(username, host, port, tid)
+        self._get_connection.cache[((username, host, port, tid), ())] = connection
+
+        return connection
+
     @LRUCache.decorate(max_size=1024)
     def _get_connection(self, username, host, port, tid):
+        return self.make_connection(username, host, port, tid)
+
+    @LRUCache.decorate(max_size=1024)
+    def _get_secondary_connection(self, username, host, port, tid):
         return self.make_connection(username, host, port, tid)
 
     def make_connection(self, username, host, port, tid):
@@ -283,7 +308,7 @@ class SFTPStorage(Storage):
             resource_type = None
             modified = 0
             size = 0
-            real_path = None
+            link_path = None
 
             if stat.S_ISREG(s.st_mode):
                 resource_type = "file"
@@ -293,10 +318,11 @@ class SFTPStorage(Storage):
                 resource_type = "dir"
                 size = 0
                 modified = local_to_utc(s.st_mtime)
+            elif stat.S_ISLNK(s.st_mode):
+                resource_type = "file"
 
-                if stat.S_ISLNK(s.st_mode):
-                    # connection.readlink() will always return absolute path, we don't want that
-                    real_path = connection.sftp_client.readlink(path)
+                # connection.readlink() will always return absolute path, we don't want that
+                link_path = connection.sftp_client.readlink(path)
 
             mode = s.st_mode
 
@@ -305,7 +331,7 @@ class SFTPStorage(Storage):
                     "modified": modified,
                     "size":     size,
                     "mode":     mode,
-                    "link":     real_path}
+                    "link":     link_path}
 
         return auto_retry(attempt, n_retries, 0.0)
 
@@ -317,13 +343,14 @@ class SFTPStorage(Storage):
 
         def attempt():
             connection = self.get_connection(host_address)
+            secondary_connection = self.get_secondary_connection(host_address)
 
             # Using listdir_iter() for better memory usage
             for s in connection.sftp_client.listdir_iter(path):
                 resource_type = None
                 modified = 0
                 size = 0
-                real_path = None
+                link_path = None
 
                 if stat.S_ISREG(s.st_mode):
                     resource_type = "file"
@@ -334,8 +361,12 @@ class SFTPStorage(Storage):
                     size = 0
                     modified = local_to_utc(s.st_mtime)
 
-                    if stat.S_ISLNK(s.st_mode):
-                        real_path = connection.readlink(path)
+                try:
+                    # listdir_iter() appears to always follow symlinks :(
+                    link_path = secondary_connection.sftp_client.readlink(pathm.join(path, s.filename))
+                    resource_type = "file"
+                except OSError:
+                    pass
 
                 mode = s.st_mode
 
@@ -344,7 +375,7 @@ class SFTPStorage(Storage):
                        "modified": modified,
                        "size":     size,
                        "mode":     mode,
-                       "link":     real_path}
+                       "link":     link_path}
 
         return auto_retry(attempt, n_retries, 0.0)
 
@@ -449,6 +480,45 @@ class SFTPStorage(Storage):
         def attempt():
             connection = self.get_connection(host_address)
 
+            # It always follows symlinks :(
+            if stat.S_ISLNK(connection.lstat(path).st_mode):
+                return
+
             connection.sftp_client.utime(path, (new_modified, new_modified))
+
+        auto_retry(attempt, n_retries, 0.0)
+
+    def chmod(self, path, mode, n_retries=None, timeout=None):
+        if mode is None:
+            return
+
+        mode = pysftp.st_mode_to_int(mode)
+
+        if n_retries is None:
+            n_retries = self.config.n_retries
+
+        host_address, path = self.split_path(path)
+
+        def attempt():
+            connection = self.get_connection(host_address)
+
+            # It always follows symlinks :(
+            if stat.S_ISLNK(connection.lstat(path).st_mode):
+                return
+
+            connection.chmod(path, mode)
+
+        auto_retry(attempt, n_retries, 0.0)
+
+    def create_symlink(self, path, link_path, n_retries=None, timeout=None):
+        if n_retries is None:
+            n_retries = self.config.n_retries
+
+        host_address, path = self.split_path(path)
+
+        def attempt():
+            connection = self.get_connection(host_address)
+
+            connection.symlink(link_path, path)
 
         auto_retry(attempt, n_retries, 0.0)

@@ -217,6 +217,9 @@ class FileComparator(object):
         if "new" not in self.checks:
             return False
 
+        if self.link_path1 is not None or self.link_path2 is not None:
+            return False
+
         return (self.node1 and self.node2) and (self.type1 == "f" and
                                                 (self.modified1 > self.modified2 or
                                                  self.padded_size1 != self.padded_size2))

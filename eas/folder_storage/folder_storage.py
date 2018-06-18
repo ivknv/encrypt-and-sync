@@ -52,7 +52,7 @@ class FolderStorage(object):
         else:
             n = rel.count("/") + 1
 
-        return closest["IVs"] + b"".join(encryption.gen_IV() for i in range(n))
+        return (closest["IVs"] or b"") + b"".join(encryption.gen_IV() for i in range(n))
 
     def encrypt_path(self, full_path, ivs=None):
         """

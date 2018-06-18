@@ -249,8 +249,9 @@ class EncryptedScannable(BaseScannable):
                     if meta["type"] == "dir":
                         enc_path = pathm.dir_normalize(enc_path)
 
-                    meta["link"] = self.storage.config.decrypt_path(meta["link"],
-                                                                    filename_encoding=self.filename_encoding)
+                    if meta["link"] is not None:
+                        meta["link"] = self.storage.config.decrypt_path(meta["link"],
+                                                                        filename_encoding=self.filename_encoding)[0]
 
                     meta["size"] = max((meta["size"] or 0) - MIN_ENC_SIZE, 0)
 
