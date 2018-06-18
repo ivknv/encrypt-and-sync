@@ -26,7 +26,11 @@ class TaskFailLogReceiver(Receiver):
                       ("new", "d"): "directory creation",
                       ("rm", "f"): "file removal",
                       ("rm", "d"): "directory removal",
-                      ("update", "f"): "file update"}
+                      ("update", "f"): "file update",
+                      ("modified", "f"): "setting modified date",
+                      ("modified", "d"): "setting modified date",
+                      ("chmod", "f"): "setting file mode",
+                      ("chmod", "d"): "setting file mode"}
 
         assert(not (task.type == "update" and task.type == "d"))
 
