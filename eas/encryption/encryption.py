@@ -515,6 +515,9 @@ def decrypt_filename(encrypted, key, filename_encoding="base64"):
         return preferred_type(), b""
 
     if encrypted in (b".", b".."):
+        if issubclass(preferred_type, str):
+            encrypted = encrypted.decode("utf8")
+
         return encrypted, DUMMY_IV
 
     try:
