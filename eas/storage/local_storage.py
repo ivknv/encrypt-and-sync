@@ -104,6 +104,7 @@ class LocalStorage(Storage):
 
     supports_set_modified = True
     supports_chmod = not is_windows() and hasattr(os, "chmod")
+    supports_symlinks = not is_windows()
     persistent_mode = True
 
     def get_meta(self, path, *args, **kwargs):
@@ -111,7 +112,10 @@ class LocalStorage(Storage):
         filename = os.path.split(path)[1]
 
         s = os.lstat(path)
-        real_path = None
+        link_path = None
+        modified = 0
+        size = 0
+        mode = None
 
         if stat.S_ISREG(s.st_mode):
             resource_type = "file"
@@ -125,13 +129,14 @@ class LocalStorage(Storage):
                         "modified": 0,
                         "size":     0,
                         "mode":     None,
-                        "link":     real_path}
-
-            if stat.S_ISLNK(s.st_mode):
-                real_path = pathm.from_sys(os.path.realpath(path))
+                        "link":     link_path}
 
             resource_type = "dir"
             size = 0
+            modified = local_to_utc(s.st_mtime)
+        elif stat.ISLNK(s.st_mode):
+            resource_type = "file"
+            link_path = pathm.from_sys(os.readlink(path))
             modified = local_to_utc(s.st_mtime)
         else:
             return {"type":     None,
@@ -139,7 +144,7 @@ class LocalStorage(Storage):
                     "modified": 0,
                     "size":     0,
                     "mode":     None,
-                    "link":     real_path}
+                    "link":     link_path}
 
         mode = s.st_mode
 
@@ -148,11 +153,11 @@ class LocalStorage(Storage):
                 "modified": modified,
                 "size":     size,
                 "mode":     mode,
-                "link":     real_path}
+                "link":     link_path}
 
     def listdir(self, path, *args, **kwargs):
         for entry in os.scandir(pathm.to_sys(path)):
-            real_path = None
+            link_path = None
             
             if entry.is_file():
                 resource_type = "file"
@@ -163,14 +168,16 @@ class LocalStorage(Storage):
                 if _is_reparse_point(entry.stat()):
                     continue
 
-                if entry.is_symlink():
-                    real_path = pathm.from_sys(os.path.realpath(entry.path))
-
                 resource_type = "dir"
                 size = 0
                 modified = local_to_utc(entry.stat().st_mtime)
             else:
                 continue
+
+            if entry.is_symlink():
+                resource_type = "file"
+                size = 0
+                link_path = pathm.from_sys(os.readlink(entry.path))
 
             mode = entry.stat().st_mode
 
@@ -179,7 +186,7 @@ class LocalStorage(Storage):
                    "modified": modified,
                    "size":     size,
                    "mode":     mode,
-                   "link":     real_path}
+                   "link":     link_path}
 
     def mkdir(self, path, *args, **kwargs):
         os.mkdir(pathm.to_sys(path))
@@ -222,3 +229,6 @@ class LocalStorage(Storage):
                 return
 
             os.chmod(path, mode)
+
+    def create_symlink(self, path, link_path, *args, **kwargs):
+        os.symlink(pathm.to_sys(link_path), pathm.to_sys(path))

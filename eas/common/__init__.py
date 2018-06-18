@@ -44,13 +44,15 @@ def node_tuple_to_dict(t):
                 "padded_size": t[2],
                 "mode": t[3],
                 "path": t[4],
-                "IVs": t[5] if len(t) >= 6 else b""}
+                "link_path": t[5],
+                "IVs": t[6] if len(t) >= 7 else b""}
 
     return {"type": None,
             "modified": None,
             "padded_size": None,
             "mode": None,
             "path": None,
+            "link_path": None,
             "IVs": None}
 
 def normalize_node(node):

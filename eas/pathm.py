@@ -123,6 +123,21 @@ def join(*paths, sep=None):
 
     return sep.join(new_paths)
 
+def _join_filename_properly(x, y, sep, preferred_type):
+    if x is None:
+        x = preferred_type()
+
+    if y is None:
+        y = preferred_type()
+
+    if y in (".", b".") or not y:
+        return x
+
+    if y in ("..", b".."):
+        return split(x, sep)[0]
+
+    return join(x, y, sep=sep)
+
 def join_properly(*paths, sep=None):
     """
         Analogous to `join`, except it works like a 'cd' command.
@@ -141,25 +156,12 @@ def join_properly(*paths, sep=None):
     if sep is None:
         sep = get_default_sep(preferred_type)
 
-    def func(x, y):
-        if x is None:
-            x = preferred_type()
-
-        if y is None:
-            y = preferred_type()
-
-        if y in (".", b".") or not y:
-            return x
-
-        if y in ("..", b".."):
-            return split(x, sep)[0]
-
-        return join(x, y, sep=sep)
-
     result = paths[0]
 
     if not result:
         result = sep
+
+    func = lambda x, y: _join_filename_properly(x, y, sep, preferred_type)
 
     for path in paths[1:]:
         if path.startswith(sep) or not path:
@@ -264,7 +266,7 @@ def split(path, sep=None):
     res = path.rsplit(sep, 1)
 
     if len(res) == 1:
-        res.append("")
+        res.append(preferred_type())
 
     return (sep if not res[0] else res[0], res[1])
 
@@ -502,6 +504,8 @@ def is_equal(path1, path2, sep=None):
         :param path1: first path
         :param path2: second path
         :param sep: separator to use
+
+        :returns: `bool`
     """
 
     preferred_type = get_preferred_type([path1, path2, sep])
@@ -519,3 +523,53 @@ def is_equal(path1, path2, sep=None):
     path2 = dir_denormalize(join_properly(sep, path2, sep=sep))
 
     return path1 == path2
+
+def dirname(path, sep=None):
+    """
+        Returns parent directory path.
+
+        :param path: path to split
+        :param sep: separator to use
+
+        :returns: `str` or `bytes`
+    """
+
+    return split(path, sep=sep)[0]
+
+def relpath(path1, path2, sep=None):
+    """
+        Returns relative path of `path1` from `path2`.
+
+        :param path1: absolute path
+        :param path2: absolute path the result will be relative to
+        :param sep: separator to use
+
+        :returns: `str` or `bytes`
+    """
+
+    preferred_type = get_preferred_type([path1, path2, sep])
+
+    if sep is None:
+        sep = get_default_sep(preferred_type)
+
+    if path1 is None:
+        path1 = preferred_type()
+
+    if path2 is None:
+        path2 = preferred_type()
+
+    rel = preferred_type()
+
+    while not contains(path2, path1, sep=sep):
+        rel = join(rel, "..", sep=sep)
+        path2 = dirname(path2, sep=sep)
+
+    rel = join(rel, cut_prefix(path1, path2, sep=sep)).lstrip(sep)
+
+    if not rel:
+        if issubclass(preferred_type, bytes):
+            rel = b"."
+        else:
+            rel = "."
+
+    return rel

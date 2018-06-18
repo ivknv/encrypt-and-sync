@@ -26,8 +26,8 @@ class DiffList(object):
     def create(self):
         with self.connection:
             self.connection.execute("""CREATE TABLE IF NOT EXISTS differences
-                                       (type TEXT, node_type TEXT,
-                                        path TEXT, src_path TEXT, dst_path TEXT)""")
+                                       (type TEXT, node_type TEXT, path TEXT,
+                                        link_path TEXT, src_path TEXT, dst_path TEXT)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS differences_path_index
                                        ON differences(path ASC)""")
 
@@ -37,9 +37,10 @@ class DiffList(object):
         path = diff["path"]
         src_path = diff["src_path"]
         dst_path = diff["dst_path"]
+        link_path = diff["link_path"]
 
-        self.connection.execute("INSERT INTO differences VALUES (?, ?, ?, ?, ?)",
-                                (diff_type, node_type, path, src_path, dst_path))
+        self.connection.execute("INSERT INTO differences VALUES (?, ?, ?, ?, ?, ?)",
+                                (diff_type, node_type, path, link_path, src_path, dst_path))
 
     def remove(self, src_path, dst_path):
         self.connection.execute("""DELETE FROM differences WHERE
@@ -50,8 +51,9 @@ class DiffList(object):
             yield {"type": i[0],
                    "node_type": i[1],
                    "path": i[2],
-                   "src_path": i[3],
-                   "dst_path": i[4]}
+                   "link_path": i[3],
+                   "src_path": i[4],
+                   "dst_path": i[5]}
 
     def find_rm(self, src_path, dst_path):
         with self.connection:

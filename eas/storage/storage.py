@@ -25,6 +25,7 @@ class Storage(object):
                               (or at least if it's useful or not)
         :cvar supports_set_modified: `bool`, determines whether the storage supports `set_modified()` method
         :cvar supports_chmod: `bool`, determines whether the storage supports `chmod()` method
+        :cvar supports_symlinks: `bool`, determines whether the storage supports symbolic links
         :cvar persistent_mode: `bool`, determines whether the storage maintains file mode after overwrite
         :ivar config: `Config` instance
     """
@@ -38,6 +39,7 @@ class Storage(object):
 
     supports_set_modified = False
     supports_chmod = False
+    supports_symlinks = False
     persistent_mode = False
 
     @classmethod
@@ -145,7 +147,7 @@ class Storage(object):
                        "modified": <modified date, timestamp in UTC, `int` or `float`>,
                        "size":     <file size, `int`, 0 if not a file>,
                        "mode":     <file mode, `int` or None>,
-                       "link":     <real path or None>}
+                       "link":     <link path or None>}
                       It doesn't have to be exactly the same, it can have any extra keys,
                       this is just the minimum.
         """
@@ -287,15 +289,13 @@ class Storage(object):
 
             :raises IOError: in case of I/O errors
             :raises TemporaryStorageError: in case of temporary I/O errors
-
-            :returns: `bool`
         """
 
         raise NotImplementedError
 
     def chmod(self, path, mode, timeout=float("inf"), n_retries=0):
         """
-            Set last modified date to `new_modified` for `path`.
+            Set file mode to `mode` for `path`.
 
             :param path: path to update
             :param mode: `int` or `None`, new mode, `None` means no change
@@ -304,8 +304,21 @@ class Storage(object):
 
             :raises IOError: in case of I/O errors
             :raises TemporaryStorageError: in case of temporary I/O errors
+        """
 
-            :returns: `bool`
+        raise NotImplementedError
+
+    def create_symlink(self, path, link_path, timeout=float("inf"), n_retries=0):
+        """
+            Create a symlink to `link_path` at `path`.
+
+            :param path: path to update
+            :param link_path: `str` or `bytes`, symbolic link path
+            :param timeout: `int` or `float`, timeout for the operation
+            :param n_retries: `int`, maximum number of retries
+
+            :raises IOError: in case of I/O errors
+            :raises TemporaryStorageError: in case of temporary I/O errors
         """
 
         raise NotImplementedError

@@ -561,7 +561,6 @@ def decrypt_filename(encrypted, key, filename_encoding="base64"):
 
     return decrypted, iv
 
-
 def encrypt_path(path, key, prefix=None, ivs=b"", sep=None, filename_encoding="base64"):
     """
         Encrypt path with a given key.
@@ -576,50 +575,49 @@ def encrypt_path(path, key, prefix=None, ivs=b"", sep=None, filename_encoding="b
         :returns: `tuple` of 2 elements: encrypted path (`str` or `bytes`) and IVs (`bytes`)
     """
 
-    encode = get_encode_function(filename_encoding)
-
     preferred_type = pathm.get_preferred_type([path, prefix, sep])
-
-    if path is None:
-        path = preferred_type()
 
     if sep is None:
         sep = pathm.get_default_sep(preferred_type)
 
-    if not path:
-        return path, b""
+    if path is None:
+        path = preferred_type()
 
-    prefix = prefix or sep
+    encode = get_encode_function(filename_encoding)
 
-    orig_path = path
-    path = pathm.cut_prefix(path, prefix, sep)
+    frags = path.split(sep)
 
-    func = lambda x, iv: encrypt_filename(x, key, iv, encode) if x else (preferred_type(), b"")
+    cur_path = preferred_type()
+    result = []
     out_ivs = b""
-    path_names = []
 
-    if ivs:
-        for name, iv in zip(path.split(sep), (ivs[x:x + 16] for x in range(0, len(ivs), 16))):
-            enc_name, iv = func(name, iv)
-            path_names.append(enc_name)
-            out_ivs += iv
+    prefix = pathm.dir_normalize(prefix, sep=sep)
+
+    iv_idx = 0
+
+    if issubclass(preferred_type, str):
+        cdir, pdir = ".", ".."
     else:
-        for name in path.split(sep):
-            enc_name, iv = func(name, b"")
-            path_names.append(enc_name)
-            out_ivs += iv
+        cdir, pdir = b".", b".."
 
-    if pathm.contains(prefix, orig_path, sep):
-        result = pathm.join(prefix, sep.join(path_names), sep=sep)
+    nothing = preferred_type()
 
-        if orig_path.endswith(sep):
-            result = pathm.dir_normalize(result)
-        else:
-            result = pathm.dir_denormalize(result)
+    for frag in frags:
+        cur_path = pathm._join_filename_properly(cur_path, frag, sep, preferred_type)
 
-        return result, out_ivs
+        if cur_path.startswith(prefix) and frag not in (cdir, pdir, nothing):
+            try:
+                frag_iv = ivs[iv_idx:iv_idx + 16]
+            except IndexError:
+                frag_iv = b""
 
-    return sep.join(path_names), out_ivs
+            frag, frag_ivs = encrypt_filename(frag, key, frag_iv, encode)
+            out_ivs += frag_ivs
+            iv_idx += 16
+
+        result.append(frag)
+
+    return sep.join(result), out_ivs
 
 def decrypt_path(path, key, prefix=None, sep=None, filename_encoding="base64"):
     """
@@ -634,8 +632,6 @@ def decrypt_path(path, key, prefix=None, sep=None, filename_encoding="base64"):
         :returns: `tuple` of 2 elements: decrypted path (`str` or `bytes`) and IVs (`bytes`)
     """
 
-    decode = get_decode_function(filename_encoding)
-
     preferred_type = pathm.get_preferred_type([path, prefix, sep])
 
     if sep is None:
@@ -644,26 +640,23 @@ def decrypt_path(path, key, prefix=None, sep=None, filename_encoding="base64"):
     if path is None:
         path = preferred_type()
 
-    if prefix is not None:
-        dec_path, ivs = decrypt_path(pathm.cut_prefix(path, prefix, sep), key, None, sep, decode)
+    decode = get_decode_function(filename_encoding)
 
-        if pathm.contains(prefix, path, sep):
-            result = pathm.join(prefix, dec_path, sep=sep)
-            if path.endswith(sep):
-                result = pathm.dir_normalize(result)
-            else:
-                result = pathm.dir_denormalize(result)
+    frags = path.split(sep)
 
-            return result, ivs
-
-        return dec_path, ivs
-
+    cur_path = preferred_type()
+    result = []
     ivs = b""
-    path_names = []
 
-    for name in path.split(sep):
-        dec_name, iv = decrypt_filename(name, key, decode) if name else (preferred_type(), b"")
-        path_names.append(dec_name)
-        ivs += iv
+    prefix = pathm.dir_normalize(prefix, sep=sep)
 
-    return sep.join(path_names), ivs
+    for frag in frags:
+        cur_path = pathm._join_filename_properly(cur_path, frag, sep, preferred_type)
+
+        if cur_path.startswith(prefix):
+            frag, frag_iv = decrypt_filename(frag, key, decode)
+            ivs += frag_iv
+
+        result.append(frag)
+
+    return sep.join(result), ivs

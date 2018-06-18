@@ -38,22 +38,21 @@ class FolderStorage(object):
         self.filelist.create()
 
     def get_ivs(self, full_path):
-        node = self.filelist.find(full_path)
+        closest = self.filelist.find_closest(full_path)
 
-        if node["IVs"] is not None:
-            return node["IVs"]
+        if pathm.contains(closest["path"], self.prefix):
+            closest_path = self.prefix
+        else:
+            closest_path = closest["path"]
 
-        parent = pathm.dir_normalize(pathm.split(full_path)[0])
+        rel = pathm.relpath(full_path, closest_path).rstrip("/")
 
-        if parent == self.prefix:
-            return b""
+        if rel == ".":
+            n = 0
+        else:
+            n = rel.count("/") + 1
 
-        node = self.filelist.find(parent)
-
-        if node["IVs"] is not None:
-            return node["IVs"] + encryption.gen_IV()
-
-        return b""
+        return closest["IVs"] + b"".join(encryption.gen_IV() for i in range(n))
 
     def encrypt_path(self, full_path, ivs=None):
         """
@@ -105,10 +104,9 @@ class FolderStorage(object):
         meta = self.storage.get_meta(path, *args, **kwargs)
 
         if self.encrypted:
-            if pathm.dir_normalize(path) != self.prefix:
-                meta["name"] = self.config.decrypt_path(
-                    meta["name"],
-                    filename_encoding=self.filename_encoding)[0]
+            meta["name"] = pathm.split(path)[0]
+            meta["link"] = self.config.decrypt_path(meta["link"],
+                                                    filename_encoding=self.filename_encoding)[0]
 
         return meta
 
@@ -123,6 +121,8 @@ class FolderStorage(object):
         if self.encrypted:
             for meta in result:
                 meta["name"] = self.config.decrypt_path(meta["name"],
+                                                        filename_encoding=self.filename_encoding)[0]
+                meta["link"] = self.config.decrypt_path(meta["link"],
                                                         filename_encoding=self.filename_encoding)[0]
 
                 yield meta
@@ -181,3 +181,15 @@ class FolderStorage(object):
             path, ivs = self.encrypt_path(path, ivs)
 
         return self.storage.chmod(path, mode, *args, **kwargs)
+
+    def create_symlink(self, path, link_path, *args, ivs=None, **kwargs):
+        path = pathm.join(self.prefix, path)
+
+        if self.encrypted:
+            path, ivs = self.encrypt_path(path, ivs)
+            link_path = self.config.encrypt_path(link_path,
+                                                 filename_encoding=self.filename_encoding)[0]
+
+        self.storage.create_symlink(path, link_path, *args, **kwargs)
+
+        return ivs or b""

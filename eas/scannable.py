@@ -16,13 +16,15 @@ except ImportError:
     UnauthorizedError = DummyException
 
 class BaseScannable(object):
-    def __init__(self, storage, path=None, type=None, modified=0, size=0, mode=None):
+    def __init__(self, storage, path=None, type=None, modified=0,
+                 size=0, mode=None, link_path=None):
         self.storage = storage
         self.path = path
         self.type = type
         self.modified = modified
         self.size = size
         self.mode = mode
+        self.link_path = link_path
 
     def identify(self, ignore_unreachable=False):
         raise NotImplementedError
@@ -36,6 +38,7 @@ class BaseScannable(object):
                 "modified": self.modified,
                 "padded_size": self.size,
                 "mode": self.mode,
+                "link_path": self.link_path,
                 "IVs": b""}
 
         normalize_node(node)
@@ -133,6 +136,7 @@ class DecryptedScannable(BaseScannable):
         self.modified = meta["modified"]
         self.size = meta["size"]
         self.mode = meta["mode"]
+        self.link_path = meta["link"]
 
         if self.type == "f":
             self.size = pad_size(self.size)
@@ -156,15 +160,12 @@ class DecryptedScannable(BaseScannable):
                     if meta["type"] == "dir":
                         path = pathm.dir_normalize(path)
 
-                        if meta["link"] is not None:
-                            if pathm.contains(meta["link"], path):
-                                continue
-
                     meta["size"] = pad_size(meta["size"])
 
                     if path_match.match(path, allowed_paths):
                         s = DecryptedScannable(self.storage, path, meta["type"][0],
-                                               meta["modified"], meta["size"], meta["mode"])
+                                               meta["modified"], meta["size"],
+                                               meta["mode"], meta["link"])
                         scannables.append(s)
                 break
             except (TemporaryStorageError, UnauthorizedError) as e:
@@ -181,7 +182,7 @@ class DecryptedScannable(BaseScannable):
 
 class EncryptedScannable(BaseScannable):
     def __init__(self, storage, prefix, enc_path=None, type=None, modified=0, size=0,
-                 mode=None, filename_encoding="base64"):
+                 mode=None, link_path=None, filename_encoding="base64"):
 
         if enc_path is None:
             enc_path = prefix
@@ -189,7 +190,7 @@ class EncryptedScannable(BaseScannable):
         path, IVs = storage.config.decrypt_path(enc_path, prefix,
                                                 filename_encoding=filename_encoding)
         
-        BaseScannable.__init__(self, storage, path, type, modified, size, mode)
+        BaseScannable.__init__(self, storage, path, type, modified, size, mode, link_path)
 
         self.prefix = prefix
         self.enc_path = enc_path
@@ -225,6 +226,7 @@ class EncryptedScannable(BaseScannable):
         self.modified = meta["modified"]
         self.size = meta["size"]
         self.mode = meta["mode"]
+        self.link_path = meta["link"]
 
         self.size = max((self.size or 0) - MIN_ENC_SIZE, 0)
 
@@ -247,15 +249,14 @@ class EncryptedScannable(BaseScannable):
                     if meta["type"] == "dir":
                         enc_path = pathm.dir_normalize(enc_path)
 
-                        if meta["link"] is not None:
-                            if pathm.contains(meta["link"], enc_path):
-                                continue
+                    meta["link"] = self.storage.config.decrypt_path(meta["link"],
+                                                                    filename_encoding=self.filename_encoding)
 
                     meta["size"] = max((meta["size"] or 0) - MIN_ENC_SIZE, 0)
 
                     scannable = EncryptedScannable(self.storage, self.prefix, enc_path,
                                                    meta["type"][0], meta["modified"], meta["size"],
-                                                   meta["mode"], filename_encoding=self.filename_encoding)
+                                                   meta["mode"], meta["link"], self.filename_encoding)
 
                     if path_match.match(scannable.path, allowed_paths):
                         scannables.append(scannable)

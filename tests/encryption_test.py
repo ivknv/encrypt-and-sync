@@ -81,6 +81,11 @@ class EncryptionTestCase(unittest.TestCase):
         self.assertEqual(encryption.encrypt_path("/a", key, "/a"), ("/a", b""))
         self.assertEqual(encryption.encrypt_path("/a/", key, "/a"), ("/a/", b""))
 
+        self.assertEqual(encryption.encrypt_path("/prefix/a/b/../", key, "/prefix", iv*2),
+                         ("/prefix/Dzc4Nzg3ODc4Nzg3ODc4Nzhco8ML30VzCM4DK8QelkAJ/Dzc4Nzg3ODc4Nzg3ODc4NzgOJL8M76jvKJ-GjEVaLhpH/../", iv*2))
+        self.assertEqual(encryption.encrypt_path("/prefix/a/b/.././.", key, "/prefix", iv*2),
+                         ("/prefix/Dzc4Nzg3ODc4Nzg3ODc4Nzhco8ML30VzCM4DK8QelkAJ/Dzc4Nzg3ODc4Nzg3ODc4NzgOJL8M76jvKJ-GjEVaLhpH/.././.", iv*2))
+
     def test_decrypt_path(self):
         key = b"1234" * 4
         iv = b"78" * 8

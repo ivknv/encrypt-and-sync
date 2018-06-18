@@ -172,7 +172,7 @@ class Config(object):
 
     def decrypt_path(self, path, prefix=None, filename_encoding="base64"):
         return encryption.decrypt_path(path, self.key, prefix,
-                                       filename_encoding=filename_encoding)    
+                                       filename_encoding=filename_encoding)
 
     def load_encrypted_data(self, path_or_file, enable_test=True):
         self.encrypted_data = load_encrypted_data(path_or_file, self.master_key, enable_test)

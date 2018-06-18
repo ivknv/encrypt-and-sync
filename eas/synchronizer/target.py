@@ -12,7 +12,7 @@ from ..worker import WorkerPool, get_current_worker
 from ..common import threadsafe_iterator, recognize_path
 from .. import pathm, file_comparator
 from .worker import SyncWorker
-from .tasks import UploadTask, MkdirTask, RmTask, ModifiedTask, ChmodTask
+from .tasks import UploadTask, MkdirTask, RmTask, ModifiedTask, ChmodTask, CreateSymlinkTask
 
 __all__ = ["SyncTarget"]
 
@@ -195,7 +195,10 @@ class SyncTarget(StagedTask):
 
             if diff["type"] == "new":
                 if diff["node_type"] == "f":
-                    task = UploadTask(self)
+                    if diff["link_path"] is not None:
+                        task = CreateSymlinkTask(self)
+                    else:
+                        task = UploadTask(self)
                 elif diff["node_type"] == "d":
                     task = MkdirTask(self)
             elif diff["type"] == "update":
@@ -210,6 +213,7 @@ class SyncTarget(StagedTask):
             task.type = diff["type"]
             task.node_type = diff["node_type"]
             task.path = diff["path"]
+            task.link_path = diff["link_path"]
             task.upload_limit = self.upload_limit
             task.download_limit = self.download_limit
 

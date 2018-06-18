@@ -12,7 +12,8 @@ from ..common import get_file_size
 from ..storage.exceptions import ControllerInterrupt
 from .. import pathm
 
-__all__ = ["SyncTask", "UploadTask", "MkdirTask", "RmTask", "ModifiedTask", "ChmodTask"]
+__all__ = ["SyncTask", "UploadTask", "MkdirTask", "RmTask", "ModifiedTask",
+           "ChmodTask", "CreateSymlinkTask"]
 
 class UploadControllerReceiver(Receiver):
     def __init__(self, task):
@@ -248,10 +249,11 @@ class UploadTask(SyncTask):
                        "padded_size": padded_size,
                        "modified":    modified,
                        "mode":        mode,
+                       "link_path":   None,
                        "IVs":         ivs}
 
             self.dst_flist.insert(newnode)
-            self.dst_flist.update_modified(pathm.split(full_dst_path)[0], modified)
+            self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
             self.autocommit()
 
             self.status = "finished"
@@ -262,6 +264,42 @@ class UploadTask(SyncTask):
         finally:
             self.upload_controller = None
             self.download_controller = None
+
+class CreateSymlinkTask(SyncTask):
+    def complete(self):
+        if self.stopped:
+            return True
+
+        self.status = "pending"
+
+        src_subpath = self.parent.subpath1
+        dst_subpath = self.parent.subpath2
+
+        src_path = pathm.join(src_subpath, self.path)
+        dst_path = pathm.join(dst_subpath, self.path)
+
+        full_src_path = pathm.join(self.src.prefix, src_path)
+        full_dst_path = pathm.join(self.dst.prefix, dst_path)
+
+        ivs = self.dst.create_symlink(dst_path, self.link_path)
+
+        modified = time.mktime(time.gmtime())
+
+        newnode = {"type":        "f",
+                   "path":        full_dst_path,
+                   "modified":    modified,
+                   "mode":        None,
+                   "padded_size": 0,
+                   "link_path":   self.link_path,
+                   "IVs":         ivs}
+
+        self.dst_flist.insert(newnode)
+        self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
+        self.autocommit()
+
+        self.status = "finished"
+
+        return True
 
 class MkdirTask(SyncTask):
     def complete(self):
@@ -288,10 +326,11 @@ class MkdirTask(SyncTask):
                    "modified":    modified,
                    "mode":        None,
                    "padded_size": 0,
+                   "link_path":   None,
                    "IVs":         ivs}
 
         self.dst_flist.insert(newnode)
-        self.dst_flist.update_modified(pathm.split(full_dst_path)[0], modified)
+        self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
         self.autocommit()
 
         self.status = "finished"
@@ -329,7 +368,7 @@ class RmTask(SyncTask):
 
         if removed:
             modified = time.mktime(time.gmtime())
-            self.dst_flist.update_modified(pathm.split(full_dst_path)[0], modified)
+            self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
 
         self.autocommit()
 

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from io import BytesIO
+
 import time
 
 from requests.exceptions import RequestException
@@ -26,6 +28,7 @@ def _yadisk_meta_to_dict(meta):
 
     mode = properties.get("eas_file_mode")
     modified = properties.get("eas_modified")
+    link_path = properties.get("eas_link_path")
 
     if not isinstance(modified, (int, float)):
         try:
@@ -37,12 +40,15 @@ def _yadisk_meta_to_dict(meta):
     if not isinstance(mode, int):
         mode = None
 
+    if not isinstance(link_path, str):
+        link_path = None
+
     return {"type":     meta.type,
             "name":     meta.name,
             "modified": modified,
             "size":     meta.size if meta.type != "dir" else 0,
             "mode":     mode,
-            "link":     None}
+            "link":     link_path}
 
 class YaDiskDownloadController(DownloadController):
     def __init__(self, config, ynd, in_path, out_file, **kwargs):
@@ -181,6 +187,7 @@ class YaDiskStorage(Storage):
 
     supports_set_modified = True
     supports_chmod = True
+    supports_symlinks = True
 
     def __init__(self, config):
         Storage.__init__(self, config)
@@ -310,8 +317,8 @@ class YaDiskStorage(Storage):
             n_retries = self.config.n_retries
 
         try:
-            return self.yadisk.patch(path, {"eas_modified": modified},
-                                     timeout=timeout, n_retries=n_retries)
+            self.yadisk.patch(path, {"eas_modified": modified},
+                              timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
         except (RetriableYaDiskError, RequestException) as e:
@@ -328,8 +335,35 @@ class YaDiskStorage(Storage):
             n_retries = self.config.n_retries
 
         try:
-            return self.yadisk.patch(path, {"eas_file_mode": mode},
-                                     timeout=timeout, n_retries=n_retries)
+            self.yadisk.patch(path, {"eas_file_mode": mode},
+                              timeout=timeout, n_retries=n_retries)
+        except PathNotFoundError as e:
+            raise FileNotFoundError(str(e))
+        except (RetriableYaDiskError, RequestException) as e:
+            raise TemporaryStorageError(str(e))
+
+    def create_symlink(self, path, link_path, timeout=None, n_retries=None):
+        if timeout is None:
+            timeout = self.config.timeout
+
+        if n_retries is None:
+            n_retries = self.config.n_retries
+
+        first_try = True
+
+        def attempt():
+            nonlocal first_try
+
+            # Avoid overwriting existing files
+            if first_try:
+                self.yadisk.upload(BytesIO(), path, timeout=timeout, n_retries=0)
+                first_try = False
+
+            self.yadisk.patch(path, {"eas_link_path": link_path},
+                              timeout=timeout, n_retries=0)
+
+        try:
+            yadisk.utils.auto_retry(attempt, n_retries, 0.0)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
         except (RetriableYaDiskError, RequestException) as e:

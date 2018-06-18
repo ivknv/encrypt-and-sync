@@ -295,7 +295,8 @@ class SFTPStorage(Storage):
                 modified = local_to_utc(s.st_mtime)
 
                 if stat.S_ISLNK(s.st_mode):
-                    real_path = connection.readlink(path)
+                    # connection.readlink() will always return absolute path, we don't want that
+                    real_path = connection.sftp_client.readlink(path)
 
             mode = s.st_mode
 

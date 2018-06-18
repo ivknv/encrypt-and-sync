@@ -132,3 +132,16 @@ class PathmTestCase(unittest.TestCase):
         self.assertFalse(pathm.is_equal("/", "/a/b/d"))
         self.assertFalse(pathm.is_equal("/a/b/c", "/c/b/a"))
         self.assertFalse(pathm.is_equal("/a/b/c/..", "/c/b/a"))
+
+    def test_dirname(self):
+        self.assertEqual(pathm.dirname("/a/b/c"), "/a/b")
+        self.assertEqual(pathm.dirname("/a/b/c/d"), "/a/b/c")
+        self.assertEqual(pathm.dirname("/"), "/")
+        self.assertEqual(pathm.dirname("/./.."), "/.")
+
+    def test_relpath(self):
+        self.assertEqual(pathm.relpath("/some/absolute/path", "/some/absolute"), "path")
+        self.assertEqual(pathm.relpath("/some/path", "/some/absolute"), "../path")
+        self.assertEqual(pathm.relpath("/some/path", "/some/path"), ".")
+        self.assertEqual(pathm.relpath("", ""), ".")
+        self.assertEqual(pathm.relpath("/a/b/c/1/2/3", "/a/b/c/d/e/f/g"), "../../../../1/2/3")

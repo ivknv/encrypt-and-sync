@@ -3,7 +3,7 @@
 
 import os
 
-from . import cdb, pathm
+from . import cdb, pathm, encryption
 from .common import node_tuple_to_dict, format_timestamp
 from .common import escape_glob, validate_folder_name
 
@@ -54,6 +54,7 @@ class Filelist(object):
                                         padded_size INTEGER,
                                         mode INTEGER,
                                         path TEXT UNIQUE ON CONFLICT REPLACE,
+                                        link_path TEXT,
                                         IVs TEXT)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS path_index
                                        ON filelist(path ASC)""")
@@ -86,13 +87,14 @@ class Filelist(object):
             raise ValueError("Node type is None")
 
         self.connection.execute("""INSERT INTO filelist(type, modified, padded_size,
-                                                        mode, path, IVs)
-                                   VALUES(?, ?, ?, ?, ?, ?)""",
+                                                        mode, path, link_path, IVs)
+                                   VALUES(?, ?, ?, ?, ?, ?, ?)""",
                                 (node["type"],
                                  format_timestamp(node["modified"]),
                                  node["padded_size"],
                                  node["mode"],
                                  node["path"],
+                                 node["link_path"],
                                  node["IVs"]))
 
     def remove(self, path):
@@ -138,7 +140,7 @@ class Filelist(object):
         path = prepare_path(path)
 
         with self.connection:
-            self.connection.execute("""SELECT type, modified, padded_size, mode, path, IVs
+            self.connection.execute("""SELECT type, modified, padded_size, mode, path, link_path, IVs
                                        FROM filelist WHERE path=? OR path=? LIMIT 1""",
                                     (path, pathm.dir_normalize(path)))
             return node_tuple_to_dict(self.connection.fetchone())
@@ -157,7 +159,7 @@ class Filelist(object):
         pattern = escape_glob(path_n) + "*"
 
         with self.connection:
-            self.connection.execute("""SELECT type, modified, padded_size, mode, path, IVs
+            self.connection.execute("""SELECT type, modified, padded_size, mode, path, link_path, IVs
                                        FROM filelist WHERE path GLOB ? OR path=? OR path=?
                                        ORDER BY path ASC""",
                                     (pattern, path, path_n))
@@ -244,6 +246,80 @@ class Filelist(object):
 
         self.connection.execute("UPDATE filelist SET mode=? WHERE path=? or path=?",
                                 (mode, path, path_n))
+
+    def update_link_path(self, path, link_path):
+        """
+            Update node's link path.
+
+            :param path: path of the node
+            :param link_path: `str` or `bytes`, new link path
+        """
+
+        path = prepare_path(path)
+        path_n = pathm.dir_normalize(path)
+
+        self.connection.execute("UPDATE filelist SET link_path=? WHERE path=? or path=?",
+                                (link_path, path, path_n))
+
+    def find_closest(self, path):
+        """
+            Find a node that is the closest to `path` (e.g node at `path`, parent node, etc.)
+
+            :param path: node path
+
+            :returns: `dict`
+        """
+
+        node = self.find(path)
+
+        while node["path"] is None and path not in ("", "/"):
+            path = pathm.dirname(path)
+            node = self.find(path)
+
+        return node
+
+    def create_virtual_node(self, path, ivs):
+        """
+            Create a virtual node if it doesn't exist.
+
+            :param path: path of the node
+            :param ivs: node IVs
+        """
+
+        self.connection.execute("""INSERT OR FAIL INTO filelist(type, path, IVs, modified)
+                                   VALUES(?, ?, ?, ?)""", ("v", path, ivs, format_timestamp(0)))
+
+    def create_virtual_nodes(self, path, prefix):
+        """
+            Create virtual nodes if they don't exist.
+
+            :param path: path of the node
+            :param prefix: prefix, node with empty IVs
+        """
+
+        with self.connection:
+            closest = self.find_closest(path)
+            if pathm.contains(closest["path"], prefix) and not pathm.is_equal(closest["path"], prefix):
+                try:
+                    self.create_virtual_node(prefix, b"")
+                except sqlite3.IntegrityError:
+                    pass
+
+                ivs = b""
+                cur_path = prefix
+            else:
+                ivs = closest["IVs"]
+                cur_path = closest["path"]
+
+            rel = pathm.relpath(path, cur_path)
+            frags = [i for i in rel.split("/") if i]
+
+            for frag in frags:
+                cur_path = pathm.join(cur_path, frag)
+                ivs += encryption.gen_IV()
+                self.create_virtual_node(cur_path, ivs)
+
+        return ivs
 
     def begin_transaction(self, *args, **kwargs):
         """Start a transaction."""
