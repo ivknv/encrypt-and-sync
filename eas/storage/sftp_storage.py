@@ -18,6 +18,7 @@ from .controlled_speed_limiter import ControlledSpeedLimiter
 
 from .. import pathm
 from ..common import LRUCache
+from ..constants import PERMISSION_MASK
 
 __all__ = ["SFTPStorage"]
 
@@ -197,6 +198,7 @@ class SFTPStorage(Storage):
 
     supports_set_modified = True
     supports_chmod = True
+    supports_chown = True
     supports_symlinks = True
 
     @staticmethod
@@ -324,13 +326,17 @@ class SFTPStorage(Storage):
                 # connection.readlink() will always return absolute path, we don't want that
                 link_path = connection.sftp_client.readlink(path)
 
-            mode = s.st_mode
+            mode = s.st_mode & PERMISSION_MASK
+            owner = s.st_uid
+            group = s.st_gid
 
             return {"type":     resource_type,
                     "name":     filename,
                     "modified": modified,
                     "size":     size,
                     "mode":     mode,
+                    "owner":    owner,
+                    "group":    group,
                     "link":     link_path}
 
         return auto_retry(attempt, n_retries, 0.0)
@@ -368,13 +374,17 @@ class SFTPStorage(Storage):
                 except OSError:
                     pass
 
-                mode = s.st_mode
+                mode = s.st_mode & PERMISSION_MASK
+                owner = s.st_uid
+                group = s.st_gid
 
                 yield {"type":     resource_type,
                        "name":     s.filename,
                        "modified": modified,
                        "size":     size,
                        "mode":     mode,
+                       "owner":    owner,
+                       "group":    group,
                        "link":     link_path}
 
         return auto_retry(attempt, n_retries, 0.0)
@@ -507,6 +517,26 @@ class SFTPStorage(Storage):
                 return
 
             connection.chmod(path, mode)
+
+        auto_retry(attempt, n_retries, 0.0)
+
+    def chown(self, path, uid, gid, n_retries=None, timeout=None):
+        if uid is None and gid is None:
+            return
+
+        if n_retries is None:
+            n_retries = self.config.n_retries
+
+        host_address, path = self.split_path(path)
+
+        def attempt():
+            connection = self.get_connection(host_address)
+
+            # It always follows symlinks :(
+            if stat.S_ISLNK(connection.lstat(path).st_mode):
+                return
+
+            connection.chown(path, uid, gid)
 
         auto_retry(attempt, n_retries, 0.0)
 
