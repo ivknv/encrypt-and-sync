@@ -27,6 +27,8 @@ def _dropbox_meta_to_dict(meta):
                 "modified": meta.server_modified.timestamp(),
                 "size":     meta.size,
                 "mode":     None,
+                "owner":    None,
+                "group":    None,
                 "link":     None}
     elif isinstance(meta, dropbox.files.FolderMetadata):
         return {"name":     meta.name,
@@ -34,6 +36,8 @@ def _dropbox_meta_to_dict(meta):
                 "modified": 0,
                 "size":     0,
                 "mode":     None,
+                "owner":    None,
+                "group":    None,
                 "link":     None}
     else:
         if isinstance(meta, dropbox.files.Metadata):
@@ -46,6 +50,8 @@ def _dropbox_meta_to_dict(meta):
                 "modified": 0,
                 "size":     0,
                 "mode":     None,
+                "owner":    None,
+                "group":    None,
                 "link":     None}
 
 def auto_retry(attempt, n_retries, retry_interval):
@@ -291,7 +297,6 @@ class DropboxStorage(Storage):
     type = "remote"
     case_sensitive = False
     parallelizable = True
-    supports_set_modified = False
 
     def __init__(self, config):
         Storage.__init__(self, config)
@@ -313,6 +318,9 @@ class DropboxStorage(Storage):
                     "type":     "dir",
                     "modified": 0,
                     "size":     0,
+                    "mode":     None,
+                    "owner":    None,
+                    "group":    None,
                     "link":     None}
 
         def attempt():
