@@ -9,6 +9,7 @@ import time
 
 from .. import pathm
 from ..common import is_windows, get_file_size
+from ..constants import PERMISSION_MASK
 
 from .storage import Storage
 from .exceptions import ControllerInterrupt
@@ -104,6 +105,7 @@ class LocalStorage(Storage):
 
     supports_set_modified = True
     supports_chmod = not is_windows() and hasattr(os, "chmod")
+    supports_chown = not is_windows()
     supports_symlinks = not is_windows()
     persistent_mode = True
 
@@ -112,81 +114,73 @@ class LocalStorage(Storage):
         filename = os.path.split(path)[1]
 
         s = os.lstat(path)
-        link_path = None
-        modified = 0
-        size = 0
-        mode = None
+
+        meta = {"type":     None,
+                "name":     filename,
+                "modified": 0,
+                "size":     0,
+                "mode":     None,
+                "owner":    None,
+                "group":    None,
+                "link":     None}
 
         if stat.S_ISREG(s.st_mode):
-            resource_type = "file"
-            size = s.st_size
-
-            modified = local_to_utc(s.st_mtime)
+            meta["type"]     = "file"
+            meta["size"]     = s.st_size
+            meta["modified"] = local_to_utc(s.st_mtime)
         elif stat.S_ISDIR(s.st_mode):
             if _is_reparse_point(s):
-                return {"type":     None,
-                        "name":     filename,
+                return meta
+
+            meta["type"]     = "dir"
+            meta["modified"] = local_to_utc(s.st_mtime)
+        elif stat.S_ISLNK(s.st_mode):
+            meta["type"]     = "file"
+            meta["link"]     = pathm.from_sys(os.readlink(path))
+            meta["modified"] = local_to_utc(s.st_mtime)
+        else:
+            return meta
+
+        meta["mode"]  = s.st_mode & PERMISSION_MASK
+        meta["owner"] = s.st_uid
+        meta["group"] = s.st_gid
+
+        return meta
+
+    def listdir(self, path, *args, **kwargs):
+        with os.scandir(pathm.to_sys(path)) as it:
+            for entry in it:
+                link_path = None
+                meta = {"type":     None,
+                        "name":     entry.name,
                         "modified": 0,
                         "size":     0,
                         "mode":     None,
-                        "link":     link_path}
+                        "owner":    None,
+                        "group":    None,
+                        "link":     None}
 
-            resource_type = "dir"
-            size = 0
-            modified = local_to_utc(s.st_mtime)
-        elif stat.ISLNK(s.st_mode):
-            resource_type = "file"
-            link_path = pathm.from_sys(os.readlink(path))
-            modified = local_to_utc(s.st_mtime)
-        else:
-            return {"type":     None,
-                    "name":     filename,
-                    "modified": 0,
-                    "size":     0,
-                    "mode":     None,
-                    "link":     link_path}
+                s = entry.stat(follow_symlinks=False)
+                
+                if entry.is_file(follow_symlinks=False):
+                    meta["type"]     = "file"
+                    meta["size"]     = s.st_size
+                    meta["modified"] = local_to_utc(s.st_mtime)
+                elif entry.is_dir(follow_symlinks=False):
+                    if _is_reparse_point(s):
+                        continue
 
-        mode = s.st_mode
+                    meta["type"]     = "dir"
+                    meta["modified"] = local_to_utc(s.st_mtime)
+                elif entry.is_symlink():
+                    meta["type"] = "file"
+                    meta["link"] = pathm.from_sys(os.readlink(entry.path))
 
-        return {"type":     resource_type,
-                "name":     filename,
-                "modified": modified,
-                "size":     size,
-                "mode":     mode,
-                "link":     link_path}
+                meta["mode"] = s.st_mode & PERMISSION_MASK
+                meta["owner"] = s.st_uid
+                meta["group"] = s.st_gid
 
-    def listdir(self, path, *args, **kwargs):
-        for entry in os.scandir(pathm.to_sys(path)):
-            link_path = None
-            
-            if entry.is_file():
-                resource_type = "file"
-                size = entry.stat().st_size
-
-                modified = local_to_utc(entry.stat().st_mtime)
-            elif entry.is_dir():
-                if _is_reparse_point(entry.stat()):
-                    continue
-
-                resource_type = "dir"
-                size = 0
-                modified = local_to_utc(entry.stat().st_mtime)
-            else:
-                continue
-
-            if entry.is_symlink():
-                resource_type = "file"
-                size = 0
-                link_path = pathm.from_sys(os.readlink(entry.path))
-
-            mode = entry.stat().st_mode
-
-            yield {"type":     resource_type,
-                   "name":     entry.name,
-                   "modified": modified,
-                   "size":     size,
-                   "mode":     mode,
-                   "link":     link_path}
+                yield meta
 
     def mkdir(self, path, *args, **kwargs):
         os.mkdir(pathm.to_sys(path))
@@ -228,7 +222,13 @@ class LocalStorage(Storage):
             if mode is None:
                 return
 
-            os.chmod(path, mode)
+            os.chmod(pathm.to_sys(path), mode)
+
+    def chown(self, path, uid, gid, *args, **kwargs):
+        if uid is None and gid is None:
+            return
+
+        os.lchown(pathm.to_sys(path), uid, gid)
 
     def create_symlink(self, path, link_path, *args, **kwargs):
         os.symlink(pathm.to_sys(link_path), pathm.to_sys(path))

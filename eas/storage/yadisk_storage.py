@@ -27,6 +27,8 @@ def _yadisk_meta_to_dict(meta):
     properties = meta.custom_properties or {}
 
     mode = properties.get("eas_file_mode")
+    owner = properties.get("eas_file_owner")
+    group = properties.get("eas_file_group")
     modified = properties.get("eas_modified")
     link_path = properties.get("eas_link_path")
 
@@ -37,17 +39,18 @@ def _yadisk_meta_to_dict(meta):
         except (OSError, OverflowError):
             modified = 0
 
-    if not isinstance(mode, int):
-        mode = None
-
-    if not isinstance(link_path, str):
-        link_path = None
+    mode      = None if not isinstance(mode,      int) else mode
+    owner     = None if not isinstance(owner,     int) else owner
+    group     = None if not isinstance(group,     int) else group
+    link_path = None if not isinstance(link_path, str) else link_path
 
     return {"type":     meta.type,
             "name":     meta.name,
             "modified": modified,
             "size":     meta.size if meta.type != "dir" else 0,
             "mode":     mode,
+            "owner":    owner,
+            "group":    group,
             "link":     link_path}
 
 class YaDiskDownloadController(DownloadController):
@@ -187,6 +190,7 @@ class YaDiskStorage(Storage):
 
     supports_set_modified = True
     supports_chmod = True
+    supports_chown = True
     supports_symlinks = True
 
     def __init__(self, config):
@@ -337,6 +341,33 @@ class YaDiskStorage(Storage):
         try:
             self.yadisk.patch(path, {"eas_file_mode": mode},
                               timeout=timeout, n_retries=n_retries)
+        except PathNotFoundError as e:
+            raise FileNotFoundError(str(e))
+        except (RetriableYaDiskError, RequestException) as e:
+            raise TemporaryStorageError(str(e))
+
+    def chown(self, path, uid, gid, timeout=None, n_retries=None):
+        if uid is None and gid is None:
+            return
+
+        if timeout is None:
+            timeout = self.config.timeout
+
+        if n_retries is None:
+            n_retries = self.config.n_retries
+
+        ownership = {}
+
+        if uid is not None:
+            ownership["eas_file_owner"] = uid
+
+        if gid is not None:
+            ownership["eas_file_group"] = gid
+
+        assert(ownership)
+
+        try:
+            self.yadisk.patch(path, ownership, timeout=timeout, n_retries=n_retries)
         except PathNotFoundError as e:
             raise FileNotFoundError(str(e))
         except (RetriableYaDiskError, RequestException) as e:

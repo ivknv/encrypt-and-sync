@@ -79,10 +79,11 @@ class ScanTarget(Task):
                 raise KeyError("Can't find %r in the database" % (self.path,))
 
             enc_path = self.config.encrypt_path(self.path, self.prefix, IVs=IVs)[0]
-            scannable = EncryptedScannable(self.storage, self.prefix, enc_path,
+            scannable = EncryptedScannable(self.storage, self.prefix,
+                                           enc_path=enc_path,
                                            filename_encoding=self.filename_encoding)
         else:
-            scannable = DecryptedScannable(self.storage, self.path)
+            scannable = DecryptedScannable(self.storage, path=self.path)
 
         if pathm.is_equal(self.path, self.prefix):
             self.shared_flist.clear()

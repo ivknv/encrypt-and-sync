@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sqlite3
 
 from . import cdb, pathm, encryption
 from .common import node_tuple_to_dict, format_timestamp
@@ -53,6 +54,8 @@ class Filelist(object):
                                         modified DATETIME,
                                         padded_size INTEGER,
                                         mode INTEGER,
+                                        uid INTEGER,
+                                        gid INTEGER,
                                         path TEXT UNIQUE ON CONFLICT REPLACE,
                                         link_path TEXT,
                                         IVs TEXT)""")
@@ -86,13 +89,21 @@ class Filelist(object):
         if node["type"] is None:
             raise ValueError("Node type is None")
 
+        node.setdefault("mode", None)
+        node.setdefault("owner", None)
+        node.setdefault("group", None)
+        node.setdefault("link_path", None)
+
         self.connection.execute("""INSERT INTO filelist(type, modified, padded_size,
-                                                        mode, path, link_path, IVs)
-                                   VALUES(?, ?, ?, ?, ?, ?, ?)""",
+                                                        mode, uid, gid, path,
+                                                        link_path, IVs)
+                                   VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                                 (node["type"],
                                  format_timestamp(node["modified"]),
                                  node["padded_size"],
                                  node["mode"],
+                                 node["owner"],
+                                 node["group"],
                                  node["path"],
                                  node["link_path"],
                                  node["IVs"]))
@@ -140,7 +151,8 @@ class Filelist(object):
         path = prepare_path(path)
 
         with self.connection:
-            self.connection.execute("""SELECT type, modified, padded_size, mode, path, link_path, IVs
+            self.connection.execute("""SELECT type, modified, padded_size, mode,
+                                              uid, gid, path, link_path, IVs
                                        FROM filelist WHERE path=? OR path=? LIMIT 1""",
                                     (path, pathm.dir_normalize(path)))
             return node_tuple_to_dict(self.connection.fetchone())
@@ -159,7 +171,8 @@ class Filelist(object):
         pattern = escape_glob(path_n) + "*"
 
         with self.connection:
-            self.connection.execute("""SELECT type, modified, padded_size, mode, path, link_path, IVs
+            self.connection.execute("""SELECT type, modified, padded_size, mode,
+                                              uid, gid, path, link_path, IVs
                                        FROM filelist WHERE path GLOB ? OR path=? OR path=?
                                        ORDER BY path ASC""",
                                     (pattern, path, path_n))
@@ -238,7 +251,7 @@ class Filelist(object):
             Update node's mode.
 
             :param path: path of the node
-            :param mode: `int`, new file mode
+            :param mode: `int` or `None`, new file mode
         """
 
         path = prepare_path(path)
@@ -247,12 +260,40 @@ class Filelist(object):
         self.connection.execute("UPDATE filelist SET mode=? WHERE path=? or path=?",
                                 (mode, path, path_n))
 
+    def update_owner(self, path, uid):
+        """
+            Update node's owner.
+
+            :param path: path of the node
+            :param uid: `int` or `None`, new owner
+        """
+
+        path = prepare_path(path)
+        path_n = pathm.dir_normalize(path)
+
+        self.connection.execute("UPDATE filelist SET uid=? WHERE path=? or path=?",
+                                (uid, path, path_n))
+
+    def update_group(self, path, gid):
+        """
+            Update node's group.
+
+            :param path: path of the node
+            :param gid: `int` or `None`, new group
+        """
+
+        path = prepare_path(path)
+        path_n = pathm.dir_normalize(path)
+
+        self.connection.execute("UPDATE filelist SET gid=? WHERE path=? or path=?",
+                                (gid, path, path_n))
+
     def update_link_path(self, path, link_path):
         """
             Update node's link path.
 
             :param path: path of the node
-            :param link_path: `str` or `bytes`, new link path
+            :param link_path: `str`, `bytes` or `None`, new link path
         """
 
         path = prepare_path(path)

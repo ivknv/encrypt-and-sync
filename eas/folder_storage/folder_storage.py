@@ -182,6 +182,17 @@ class FolderStorage(object):
 
         return self.storage.chmod(path, mode, *args, **kwargs)
 
+    def chown(self, path, uid, gid, *args, ivs=None, **kwargs):
+        if uid is None and gid is None:
+            return
+
+        path = pathm.join(self.prefix, path)
+
+        if self.encrypted:
+            path, ivs = self.encrypt_path(path, ivs)
+
+        return self.storage.chown(path, uid, gid, *args, **kwargs)
+
     def create_symlink(self, path, link_path, *args, ivs=None, **kwargs):
         path = pathm.join(self.prefix, path)
 

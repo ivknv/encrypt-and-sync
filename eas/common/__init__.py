@@ -43,14 +43,18 @@ def node_tuple_to_dict(t):
                 "modified": parse_timestamp(t[1]),
                 "padded_size": t[2],
                 "mode": t[3],
-                "path": t[4],
-                "link_path": t[5],
-                "IVs": t[6] if len(t) >= 7 else b""}
+                "owner": t[4],
+                "group": t[5],
+                "path": t[6],
+                "link_path": t[7],
+                "IVs": t[8] if len(t) >= 9 else b""}
 
     return {"type": None,
             "modified": None,
             "padded_size": None,
             "mode": None,
+            "owner": None,
+            "group": None,
             "path": None,
             "link_path": None,
             "IVs": None}

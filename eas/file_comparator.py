@@ -14,7 +14,7 @@ def try_next(it, default=None):
 
 class FileComparator(object):
     def __init__(self, config, src_path, dst_path, directory=None,
-                 checks=("rm", "new", "update", "modified", "chmod")):
+                 checks=("rm", "new", "update", "modified", "chmod", "chown")):
         self.config = config
 
         src_path, src_path_type = recognize_path(src_path)
@@ -62,6 +62,8 @@ class FileComparator(object):
         self.modified1 = None
         self.padded_size1 = None
         self.mode1 = None
+        self.owner1 = None
+        self.group1 = None
         self.link_path1 = None
 
         self.type2 = None
@@ -69,6 +71,8 @@ class FileComparator(object):
         self.modified2 = None
         self.padded_size2 = None
         self.mode2 = None
+        self.owner2 = None
+        self.group2 = None
         self.link_path2 = None
 
         self.last_rm = None
@@ -140,6 +144,14 @@ class FileComparator(object):
                "src_path": self.src_path_with_proto,
                "dst_path": self.dst_path_with_proto}
 
+    def diff_chown(self):
+        yield {"type": "chown",
+               "node_type": self.type2,
+               "path": self.path2,
+               "link_path": None,
+               "src_path": self.src_path_with_proto,
+               "dst_path": self.dst_path_with_proto}
+
     def __next__(self):
         while True:
             if self.node1 is None and self.node2 is None:
@@ -151,6 +163,8 @@ class FileComparator(object):
                 self.modified1 = None
                 self.padded_size1 = None
                 self.mode1 = None
+                self.owner1 = None
+                self.group1 = None
                 self.link_path1 = None
             else:
                 self.type1 = self.node1["type"]
@@ -159,6 +173,8 @@ class FileComparator(object):
                 self.modified1 = self.node1["modified"]
                 self.padded_size1 = self.node1["padded_size"]
                 self.mode1 = self.node1["mode"]
+                self.owner1 = self.node1["owner"]
+                self.group1 = self.node1["group"]
                 self.link_path1 = self.node1["link_path"]
 
                 assert(self.type1 is not None)
@@ -169,6 +185,8 @@ class FileComparator(object):
                 self.modified2 = None
                 self.padded_size2 = None
                 self.mode2 = None
+                self.owner2 = None
+                self.group2 = None
                 self.link_path2 = None
             else:
                 self.type2 = self.node2["type"]
@@ -177,6 +195,8 @@ class FileComparator(object):
                 self.modified2 = self.node2["modified"]
                 self.padded_size2 = self.node2["padded_size"]
                 self.mode2 = self.node2["mode"]
+                self.owner2 = self.node2["owner"]
+                self.group2 = self.node2["group"]
                 self.link_path2 = self.node2["link_path"]
 
                 assert(self.type2 is not None)
@@ -206,6 +226,9 @@ class FileComparator(object):
 
                 if self.is_mode_different():
                     diffs.extend(self.diff_chmod())
+
+                if self.is_owner_different() or self.is_group_different():
+                    diffs.extend(self.diff_chown())
 
                 self.node1 = try_next(self.it1)
                 self.node2 = try_next(self.it2)
@@ -260,8 +283,20 @@ class FileComparator(object):
         return self.node1 and self.node2 and (self.path1 == self.path2 and
                                               self.mode1 != self.mode2)
 
+    def is_owner_different(self):
+        if "chown" not in self.checks:
+            return False
+
+        return self.node1 and self.node2 and self.owner1 != self.owner2
+
+    def is_group_different(self):
+        if "chown" not in self.checks:
+            return False
+
+        return self.node1 and self.node2 and self.group1 != self.group2
+
 def compare_lists(config, src_path, dst_path, directory=None,
-                  checks=("rm", "new", "update", "modified", "chmod")):
+                  checks=("rm", "new", "update", "modified", "chmod", "chown")):
     comparator = FileComparator(config, src_path, dst_path, directory, checks)
 
     for i in comparator:

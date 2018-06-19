@@ -20,6 +20,8 @@ class SyncCommand(Command):
                             help="Number of workers to use")
         parser.add_argument("--ask", action="store_true",
                             help="(deprecated)")
+        parser.add_argument("--sync-ownership", action="store_true",
+                            help="Sync ownership of files")
         parser.add_argument("--no-ask", action="store_true",
                             help="Don't ask for any user input")
         parser.add_argument("--choose-targets", action="store_true",
@@ -55,6 +57,7 @@ class SyncCommand(Command):
         env["no_progress"] = ns.no_progress
         env["no_sync_modified"] = ns.no_sync_modified
         env["no_sync_mode"] = ns.no_sync_mode
+        env["sync_ownership"] = ns.sync_ownership
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers

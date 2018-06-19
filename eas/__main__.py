@@ -118,6 +118,7 @@ def main(args=None):
         env["no_remove"] = ns.no_remove
         env["no_sync_modified"] = ns.no_sync_modified
         env["no_sync_mode"] = ns.no_sync_mode
+        env["sync_ownership"] = ns.sync_ownership
     elif ns.action == "download":
         env["no_skip"] = ns.no_skip
     elif ns.action == "rmdup":
@@ -240,6 +241,8 @@ def parse_args(args):
     sync_parser.add_argument("-a", "--all", action="store_true",
                              help="Sync all targets")
     sync_parser.add_argument("--ask", action="store_true", help="(deprecated)")
+    sync_parser.add_argument("--sync-ownership", action="store_true",
+                             help="Sync ownership of files")
     sync_parser.add_argument("--no-ask", action="store_true",
                              help="Don't ask for any user input")
     sync_parser.add_argument("--choose-targets", action="store_true",

@@ -30,7 +30,9 @@ class TaskFailLogReceiver(Receiver):
                       ("modified", "f"): "setting modified date",
                       ("modified", "d"): "setting modified date",
                       ("chmod", "f"): "setting file mode",
-                      ("chmod", "d"): "setting file mode"}
+                      ("chmod", "d"): "setting file mode",
+                      ("chown", "f"): "setting file ownership",
+                      ("chown", "d"): "setting file ownership"}
 
         assert(not (task.type == "update" and task.type == "d"))
 

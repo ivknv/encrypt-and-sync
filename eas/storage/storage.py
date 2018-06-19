@@ -25,8 +25,9 @@ class Storage(object):
                               (or at least if it's useful or not)
         :cvar supports_set_modified: `bool`, determines whether the storage supports `set_modified()` method
         :cvar supports_chmod: `bool`, determines whether the storage supports `chmod()` method
+        :cvar supports_chown: `bool`, determines whether the storage supports `chown()` method
         :cvar supports_symlinks: `bool`, determines whether the storage supports symbolic links
-        :cvar persistent_mode: `bool`, determines whether the storage maintains file mode after overwrite
+        :cvar persistent_mode: `bool`, determines whether the storage maintains file mode (and ownership) after overwrite
         :ivar config: `Config` instance
     """
 
@@ -39,6 +40,7 @@ class Storage(object):
 
     supports_set_modified = False
     supports_chmod = False
+    supports_chown = False
     supports_symlinks = False
     persistent_mode = False
 
@@ -146,7 +148,9 @@ class Storage(object):
                        "type":     <"file" or "dir">,
                        "modified": <modified date, timestamp in UTC, `int` or `float`>,
                        "size":     <file size, `int`, 0 if not a file>,
-                       "mode":     <file mode, `int` or None>,
+                       "mode":     <file mode (permissions), `int` or None>,
+                       "owner":    <UID, `int` or None>,
+                       "group":    <GID, `int` or None>,
                        "link":     <link path or None>}
                       It doesn't have to be exactly the same, it can have any extra keys,
                       this is just the minimum.
@@ -299,6 +303,22 @@ class Storage(object):
 
             :param path: path to update
             :param mode: `int` or `None`, new mode, `None` means no change
+            :param timeout: `int` or `float`, timeout for the operation
+            :param n_retries: `int`, maximum number of retries
+
+            :raises IOError: in case of I/O errors
+            :raises TemporaryStorageError: in case of temporary I/O errors
+        """
+
+        raise NotImplementedError
+
+    def chown(self, path, uid, gid, timeout=float("inf"), n_retries=0):
+        """
+            Set file's owner and group.
+
+            :param path: path to update
+            :param uid: `int` or `None`, new owner, `None` means no change
+            :param gid: `int` or `None`, new group, `None` means no change
             :param timeout: `int` or `float`, timeout for the operation
             :param n_retries: `int`, maximum number of retries
 

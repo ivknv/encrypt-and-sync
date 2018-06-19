@@ -96,6 +96,8 @@ def print_diffs(env, target):
                                          target.path2_with_proto)
     n_chmod = difflist.count_chmod(target.path1_with_proto,
                                    target.path2_with_proto)
+    n_chown = difflist.count_chown(target.path1_with_proto,
+                                   target.path2_with_proto)
 
     display_name = get_target_display_name(target)
 
@@ -109,8 +111,21 @@ def print_diffs(env, target):
     print("%s: %d new directories" % (display_name, n_dirs))
     print("%s: %d new files to upload" % (display_name, n_new_files))
     print("%s: %d files to update" % (display_name, n_update))
-    print("%s: %d files to set modified date for" % (display_name, n_modified))
-    print("%s: %d files to set mode for" % (display_name, n_chmod))
+
+    if target.sync_modified:
+        print("%s: %d files to set modified date for" % (display_name, n_modified))
+    else:
+        print("%s: 0 files to set modified date for (disabled)" % (display_name,))
+
+    if target.sync_mode:
+        print("%s: %d files to set mode for" % (display_name, n_chmod))
+    else:
+        print("%s: 0 files to set mode for (disabled)" % (display_name,))
+
+    if target.sync_ownership:
+        print("%s: %d files to set ownership for" % (display_name, n_chown))
+    else:
+        print("%s: 0 files to set ownership for (disabled)" % (display_name,))
 
 def ask_continue():
     answer = None
@@ -133,9 +148,9 @@ def view_diffs(env, target):
     funcs = {"r":  view_rm_diffs,       "d":  view_dirs_diffs,
              "f":  view_new_file_diffs, "u":  view_update_diffs,
              "du": view_duplicates,     "m":  view_modified_diffs,
-             "c":  view_chmod_diffs}
+             "c":  view_chmod_diffs,    "o":  view_chown_diffs}
 
-    s = "What differences?\n[(r)m / (d)irs /new (f)iles / (u)pdates / (m)odified / (c)hmod / (du)plicates / (s)top]: "
+    s = "What differences?\n[(r)m / (d)irs /new (f)iles / (u)pdates / (m)odified / (c)hmod / ch(o)wn / (du)plicates / (s)top]: "
 
     while True:
         answer = input(s).lower()
@@ -172,38 +187,18 @@ def get_diff_dst_path(config, diff):
     return dst_path
 
 def format_diff(config, diff):
-    dst_path = get_diff_dst_path(config, diff)
-
-    assert(diff["type"] in ("new", "update", "rm", "modified", "chmod"))
+    assert(diff["type"] in ("new", "update", "rm", "modified", "chmod", "chown"))
 
     if diff["type"] in ("new", "update"):
         return format_new_diff(config, diff)
-    elif diff["type"] == "rm":
-        return format_rm_diff(config, diff)
-    elif diff["type"] == "modified":
-        return format_modified_diff(config, diff)
-    elif diff["type"] == "chmod":
-        return format_chmod_diff(config, diff)
+
+    dst_path = get_diff_dst_path(config, diff)
+    return "%s %s\n" % (diff["node_type"], dst_path)
 
 def format_new_diff(config, diff):
     dst_path = get_diff_dst_path(config, diff)
 
     return "%s\n" % (dst_path,)
-
-def format_rm_diff(config, diff):
-    dst_path = get_diff_dst_path(config, diff)
-
-    return "%s %s\n" % (diff["node_type"], dst_path)
-
-def format_modified_diff(config, diff):
-    dst_path = get_diff_dst_path(config, diff)
-
-    return "%s %s\n" % (diff["node_type"], dst_path)
-
-def format_chmod_diff(config, diff):
-    dst_path = get_diff_dst_path(config, diff)
-
-    return "%s %s\n" % (diff["node_type"], dst_path)
 
 def view_rm_diffs(env, target):
     difflist = DiffList(env["db_dir"])
@@ -307,6 +302,24 @@ def view_chmod_diffs(env, target):
         pager.command = None
 
     diffs = difflist.find_chmod(target.path1_with_proto, target.path2_with_proto)
+
+    for diff in diffs:
+        pager.stdin.write("  " + format_diff(env["config"], diff))
+
+    pager.run()
+
+def view_chown_diffs(env, target):
+    difflist = DiffList(env["db_dir"])
+
+    pager = Pager()
+    pager.stdin.write("Files to set ownership for:\n")
+
+    diff_count = difflist.count_chown(target.path1_with_proto, target.path2_with_proto)
+
+    if diff_count < 50:
+        pager.command = None
+
+    diffs = difflist.find_chown(target.path1_with_proto, target.path2_with_proto)
 
     for diff in diffs:
         pager.stdin.write("  " + format_diff(env["config"], diff))
@@ -447,6 +460,11 @@ class TargetReceiver(Receiver):
             n = difflist.count_chmod(target.path1_with_proto, target.path2_with_proto)
 
             print("%s: %d files need mode to be set" % (display_name, n))
+        elif target.stage["name"] == "chown" and target.sync_ownership:
+            difflist = DiffList(self.env["db_dir"])
+            n = difflist.count_chown(target.path1_with_proto, target.path2_with_proto)
+
+            print("%s: %d files need ownership to be set" % (display_name, n))
 
     def on_entered_stage(self, event, stage):
         if self.env.get("no_progress", False):
@@ -545,6 +563,8 @@ class WorkerReceiver(Receiver):
             msg += "setting modified date"
         elif task.type == "chmod":
             msg += "setting file mode"
+        elif task.type == "chown":
+            msg += "setting file ownership"
 
         print(msg)
 
@@ -663,6 +683,7 @@ def do_sync(env, names_or_paths):
     no_journal = env.get("no_journal", False)
     no_sync_modified = env.get("no_sync_modified", False)
     no_sync_mode = env.get("no_sync_mode", False)
+    sync_ownership = env.get("sync_ownership", False)
 
     synchronizer = Synchronizer(config,
                                 env["db_dir"],
@@ -725,6 +746,7 @@ def do_sync(env, names_or_paths):
         target.n_scan_workers = n_scan_workers
         target.sync_modified = not no_sync_modified
         target.sync_mode = not no_sync_mode
+        target.sync_ownership = sync_ownership
 
         targets.append(target)
 

@@ -13,7 +13,7 @@ from ..storage.exceptions import ControllerInterrupt
 from .. import pathm
 
 __all__ = ["SyncTask", "UploadTask", "MkdirTask", "RmTask", "ModifiedTask",
-           "ChmodTask", "CreateSymlinkTask"]
+           "ChmodTask", "ChownTask", "CreateSymlinkTask"]
 
 class UploadControllerReceiver(Receiver):
     def __init__(self, task):
@@ -237,10 +237,13 @@ class UploadTask(SyncTask):
 
             controller.work()
 
-            mode = None
+            mode = owner = group = None
 
             if self.dst.storage.persistent_mode:
-                mode = self.dst_flist.find(full_dst_path)["mode"]
+                dst_node = self.dst_flist.find(full_dst_path)
+                mode = dst_node["mode"]
+                owner = dst_node["owner"]
+                group = dst_node["group"]
 
             modified = time.mktime(time.gmtime())
 
@@ -249,6 +252,8 @@ class UploadTask(SyncTask):
                        "padded_size": padded_size,
                        "modified":    modified,
                        "mode":        mode,
+                       "owner":       owner,
+                       "group":       group,
                        "link_path":   None,
                        "IVs":         ivs}
 
@@ -429,6 +434,42 @@ class ChmodTask(SyncTask):
 
         self.dst.chmod(dst_path, mode)
         self.dst_flist.update_mode(full_dst_path, mode)
+
+        self.status = "finished"
+
+        return True
+
+class ChownTask(SyncTask):
+    def complete(self):
+        if self.stopped:
+            return True
+
+        self.status = "pending"
+
+        src_subpath = self.parent.subpath1
+        dst_subpath = self.parent.subpath2
+
+        src_path = pathm.join(src_subpath, self.path)
+        dst_path = pathm.join(dst_subpath, self.path)
+
+        full_src_path = pathm.join(self.src.prefix, src_path)
+        full_dst_path = pathm.join(self.dst.prefix, dst_path)
+
+        src_node = self.src_flist.find(full_src_path)
+
+        owner, group = src_node["owner"], src_node["group"]
+
+        if owner is None and group is None:
+            self.status = "skipped"
+            return True
+
+        self.dst.chown(dst_path, owner, group)
+
+        if owner is not None:
+            self.dst_flist.update_owner(full_dst_path, owner)
+
+        if group is not None:
+            self.dst_flist.update_group(full_dst_path, group)
 
         self.status = "finished"
 

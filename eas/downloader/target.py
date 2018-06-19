@@ -104,7 +104,7 @@ class DownloadTarget(Task):
 
         if folder is None:
             self.expected_total_children = -1
-            scannable = DecryptedScannable(self.src.storage, self.src_path)
+            scannable = DecryptedScannable(self.src.storage, path=self.src_path)
             scannable.identify()
 
             self.type = scannable.type
@@ -133,11 +133,11 @@ class DownloadTarget(Task):
                     enc_path = folder_storage.encrypt_path(self.src_path)[0]
                     filename_encoding = folder_storage.filename_encoding
 
-                    scannable = EncryptedScannable(self.src.storage,
-                                                   prefix, enc_path,
+                    scannable = EncryptedScannable(self.src.storage, prefix,
+                                                   enc_path=enc_path,
                                                    filename_encoding=filename_encoding)
                 else:
-                    scannable = DecryptedScannable(self.src.storage, self.src_path)
+                    scannable = DecryptedScannable(self.src.storage, path=self.src_path)
 
                 scannable.identify()
 

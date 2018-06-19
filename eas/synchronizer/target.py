@@ -12,7 +12,8 @@ from ..worker import WorkerPool, get_current_worker
 from ..common import threadsafe_iterator, recognize_path
 from .. import pathm, file_comparator
 from .worker import SyncWorker
-from .tasks import UploadTask, MkdirTask, RmTask, ModifiedTask, ChmodTask, CreateSymlinkTask
+from .tasks import UploadTask, MkdirTask, RmTask, ModifiedTask
+from .tasks import ChmodTask, ChownTask, CreateSymlinkTask
 
 __all__ = ["SyncTarget"]
 
@@ -83,6 +84,7 @@ class SyncTarget(StagedTask):
         self.avoid_dst_rescan = self.folder2["avoid_rescan"]
         self.sync_modified = False
         self.sync_mode = False
+        self.sync_ownership = False
 
         self.pool = WorkerPool(None)
 
@@ -99,6 +101,7 @@ class SyncTarget(StagedTask):
         self.set_stage("dirs",     self.init_dirs,     self.finalize_dirs)
         self.set_stage("files",    self.init_files,    self.finalize_files)
         self.set_stage("chmod",    self.init_chmod,    self.finalize_chmod)
+        self.set_stage("chown",    self.init_chown,    self.finalize_chown)
         self.set_stage("modified", self.init_modified, self.finalize_modified)
         self.set_stage("check",    self.init_check,    self.finalize_check)
 
@@ -152,6 +155,9 @@ class SyncTarget(StagedTask):
             if self.dst.storage.supports_chmod and self.sync_mode:
                 checks = checks + ("chmod",)
 
+            if self.dst.storage.supports_chown and self.sync_ownership:
+                checks = checks + ("chown",)
+
         diffs = self.get_differences(checks)
         
         try:
@@ -190,7 +196,7 @@ class SyncTarget(StagedTask):
             except StopIteration:
                 break
 
-            assert(diff["type"] in ("new", "update", "rm", "modified", "chmod"))
+            assert(diff["type"] in ("new", "update", "rm", "modified", "chmod", "chown"))
             assert(diff["node_type"] in ("f", "d"))
 
             if diff["type"] == "new":
@@ -209,6 +215,8 @@ class SyncTarget(StagedTask):
                 task = ModifiedTask(self)
             elif diff["type"] == "chmod":
                 task = ChmodTask(self)
+            elif diff["type"] == "chown":
+                task = ChownTask(self)
 
             task.type = diff["type"]
             task.node_type = diff["node_type"]
@@ -371,6 +379,30 @@ class SyncTarget(StagedTask):
     def finalize_chmod(self):
         self.shared_flist2.commit()
 
+    def init_chown(self):
+        if not self.sync_ownership or not self.dst.storage.supports_chown:
+            return
+
+        self.build_diffs_table(("chown",))
+
+        differences = self.difflist.find_chown(self.path1_with_proto,
+                                               self.path2_with_proto)
+
+        self.shared_flist2.begin_transaction()
+
+        if self.dst.storage.parallelizable:
+            n_workers = self.n_workers
+        else:
+            n_workers = 1
+
+        self.pool.clear()
+        self.pool.queue = self.task_iterator(differences)
+        self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
+        self.pool.join()
+
+    def finalize_chown(self):
+        self.shared_flist2.commit()
+
     def init_modified(self):
         if not self.sync_modified or not self.dst.storage.supports_set_modified:
             return
@@ -453,7 +485,7 @@ class SyncTarget(StagedTask):
             self.shared_flist2.create()
             self.difflist.create()
 
-            stages = ("scan", "rmdup", "rm", "dirs", "files", "chmod", "modified", "check")
+            stages = ("scan", "rmdup", "rm", "dirs", "files", "chmod", "chown", "modified", "check")
 
             if self.stage is not None:
                 # Skip completed stages
