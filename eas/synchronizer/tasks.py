@@ -399,7 +399,7 @@ class ModifiedTask(SyncTask):
 
         modified = self.src_flist.find(full_src_path)["modified"]
 
-        if not modified:
+        if modified is None:
             self.status = "skipped"
             return True
 
