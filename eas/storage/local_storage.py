@@ -127,20 +127,18 @@ class LocalStorage(Storage):
         if stat.S_ISREG(s.st_mode):
             meta["type"]     = "file"
             meta["size"]     = s.st_size
-            meta["modified"] = local_to_utc(s.st_mtime)
         elif stat.S_ISDIR(s.st_mode):
             if _is_reparse_point(s):
                 return meta
 
             meta["type"]     = "dir"
-            meta["modified"] = local_to_utc(s.st_mtime)
         elif stat.S_ISLNK(s.st_mode):
             meta["type"]     = "file"
             meta["link"]     = pathm.from_sys(os.readlink(path))
-            meta["modified"] = local_to_utc(s.st_mtime)
         else:
             return meta
 
+        meta["modified"] = local_to_utc(s.st_mtime)
         meta["mode"]  = s.st_mode & PERMISSION_MASK
         meta["owner"] = s.st_uid
         meta["group"] = s.st_gid
@@ -165,17 +163,16 @@ class LocalStorage(Storage):
                 if entry.is_file(follow_symlinks=False):
                     meta["type"]     = "file"
                     meta["size"]     = s.st_size
-                    meta["modified"] = local_to_utc(s.st_mtime)
                 elif entry.is_dir(follow_symlinks=False):
                     if _is_reparse_point(s):
                         continue
 
                     meta["type"]     = "dir"
-                    meta["modified"] = local_to_utc(s.st_mtime)
                 elif entry.is_symlink():
                     meta["type"] = "file"
                     meta["link"] = pathm.from_sys(os.readlink(entry.path))
 
+                meta["modified"] = local_to_utc(s.st_mtime)
                 meta["mode"] = s.st_mode & PERMISSION_MASK
                 meta["owner"] = s.st_uid
                 meta["group"] = s.st_gid

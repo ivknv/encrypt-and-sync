@@ -315,17 +315,16 @@ class SFTPStorage(Storage):
             if stat.S_ISREG(s.st_mode):
                 resource_type = "file"
                 size = s.st_size
-                modified = s.st_mtime
             elif stat.S_ISDIR(s.st_mode):
                 resource_type = "dir"
                 size = 0
-                modified = local_to_utc(s.st_mtime)
             elif stat.S_ISLNK(s.st_mode):
                 resource_type = "file"
 
                 # connection.readlink() will always return absolute path, we don't want that
                 link_path = connection.sftp_client.readlink(path)
 
+            modified = local_to_utc(s.st_mtime)
             mode = s.st_mode & PERMISSION_MASK
             owner = s.st_uid
             group = s.st_gid
@@ -361,11 +360,9 @@ class SFTPStorage(Storage):
                 if stat.S_ISREG(s.st_mode):
                     resource_type = "file"
                     size = s.st_size
-                    modified = local_to_utc(s.st_mtime)
                 elif stat.S_ISDIR(s.st_mode):
                     resource_type = "dir"
                     size = 0
-                    modified = local_to_utc(s.st_mtime)
 
                 try:
                     # listdir_iter() appears to always follow symlinks :(
@@ -374,6 +371,7 @@ class SFTPStorage(Storage):
                 except OSError:
                     pass
 
+                modified = local_to_utc(s.st_mtime)
                 mode = s.st_mode & PERMISSION_MASK
                 owner = s.st_uid
                 group = s.st_gid
