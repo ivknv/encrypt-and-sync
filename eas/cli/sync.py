@@ -450,21 +450,12 @@ class TargetReceiver(Receiver):
 
         print("%s: finished building the difference table" % (display_name,))
 
-        if target.stage["name"] == "modified" and target.sync_modified:
+        if target.stage["name"] == "metadata":
             difflist = DiffList(self.env["db_dir"])
-            n = difflist.count_modified(target.path1_with_proto, target.path2_with_proto)
+            n = difflist.count_metadata(target.path1_with_proto, target.path2_with_proto)
 
-            print("%s: %d files need modification date to be set" % (display_name, n))
-        elif target.stage["name"] == "chmod" and target.sync_mode:
-            difflist = DiffList(self.env["db_dir"])
-            n = difflist.count_chmod(target.path1_with_proto, target.path2_with_proto)
-
-            print("%s: %d files need mode to be set" % (display_name, n))
-        elif target.stage["name"] == "chown" and target.sync_ownership:
-            difflist = DiffList(self.env["db_dir"])
-            n = difflist.count_chown(target.path1_with_proto, target.path2_with_proto)
-
-            print("%s: %d files need ownership to be set" % (display_name, n))
+            if n:
+                print("%s: %d files need metadata to be set" % (display_name, n))
 
     def on_entered_stage(self, event, stage):
         if self.env.get("no_progress", False):

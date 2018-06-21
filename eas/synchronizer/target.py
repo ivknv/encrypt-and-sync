@@ -100,9 +100,7 @@ class SyncTarget(StagedTask):
         self.set_stage("rm",       self.init_rm,       self.finalize_rm)
         self.set_stage("dirs",     self.init_dirs,     self.finalize_dirs)
         self.set_stage("files",    self.init_files,    self.finalize_files)
-        self.set_stage("chmod",    self.init_chmod,    self.finalize_chmod)
-        self.set_stage("chown",    self.init_chown,    self.finalize_chown)
-        self.set_stage("modified", self.init_modified, self.finalize_modified)
+        self.set_stage("metadata", self.init_metadata, self.finalize_metadata)
         self.set_stage("check",    self.init_check,    self.finalize_check)
 
         self.add_receiver(TargetFailLogReceiver())
@@ -162,6 +160,11 @@ class SyncTarget(StagedTask):
                 checks = checks + ("chown",)
 
         diffs = self.get_differences(checks)
+
+        enable_remove = not self.no_remove
+        enable_modified = self.dst.storage.supports_set_modified and self.sync_modified
+        enable_chmod = self.dst.storage.supports_chmod and self.sync_mode
+        enable_chown = self.dst.storage.supports_chown and self.sync_ownership
         
         try:
             self.difflist.begin_transaction()
@@ -169,8 +172,19 @@ class SyncTarget(StagedTask):
 
             with self.difflist:
                 for diff in diffs:
-                    if not (self.no_remove and diff["type"] == "rm"):
-                        self.difflist.insert(diff)
+                    if not enable_remove and diff["type"] == "rm":
+                        continue
+
+                    if not enable_modified and diff["type"] == "modified":
+                        continue
+
+                    if not enable_chmod and diff["type"] == "chmod":
+                        continue
+
+                    if not enable_chown and diff["type"] == "chown":
+                        continue
+
+                    self.difflist.insert(diff)
 
             self.difflist.commit()
         except Exception as e:
@@ -358,61 +372,10 @@ class SyncTarget(StagedTask):
     def finalize_files(self):
         self.shared_flist2.commit()
 
-    def init_chmod(self):
-        if not self.sync_mode or not self.dst.storage.supports_chmod:
-            return
+    def init_metadata(self):
+        self.build_diffs_table(("modified", "chmod", "chown"))
 
-        self.build_diffs_table(("chmod",))
-
-        differences = self.difflist.find_chmod(self.path1_with_proto,
-                                               self.path2_with_proto)
-
-        self.shared_flist2.begin_transaction()
-
-        if self.dst.storage.parallelizable:
-            n_workers = self.n_workers
-        else:
-            n_workers = 1
-
-        self.pool.clear()
-        self.pool.queue = self.task_iterator(differences)
-        self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
-        self.pool.join()
-
-    def finalize_chmod(self):
-        self.shared_flist2.commit()
-
-    def init_chown(self):
-        if not self.sync_ownership or not self.dst.storage.supports_chown:
-            return
-
-        self.build_diffs_table(("chown",))
-
-        differences = self.difflist.find_chown(self.path1_with_proto,
-                                               self.path2_with_proto)
-
-        self.shared_flist2.begin_transaction()
-
-        if self.dst.storage.parallelizable:
-            n_workers = self.n_workers
-        else:
-            n_workers = 1
-
-        self.pool.clear()
-        self.pool.queue = self.task_iterator(differences)
-        self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
-        self.pool.join()
-
-    def finalize_chown(self):
-        self.shared_flist2.commit()
-
-    def init_modified(self):
-        if not self.sync_modified or not self.dst.storage.supports_set_modified:
-            return
-
-        self.build_diffs_table(("modified",))
-
-        differences = self.difflist.find_modified(self.path1_with_proto,
+        differences = self.difflist.find_metadata(self.path1_with_proto,
                                                   self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
@@ -427,7 +390,7 @@ class SyncTarget(StagedTask):
         self.pool.spawn_many(n_workers, SyncWorker, self.synchronizer)
         self.pool.join()
 
-    def finalize_modified(self):
+    def finalize_metadata(self):
         self.shared_flist2.commit()
 
     def init_check(self):
@@ -488,7 +451,7 @@ class SyncTarget(StagedTask):
             self.shared_flist2.create()
             self.difflist.create()
 
-            stages = ("scan", "rmdup", "rm", "dirs", "files", "chmod", "chown", "modified", "check")
+            stages = ("scan", "rmdup", "rm", "dirs", "files", "metadata", "check")
 
             if self.stage is not None:
                 # Skip completed stages

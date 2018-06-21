@@ -134,6 +134,15 @@ class DiffList(object):
                                     (src_path, dst_path))
             return self.connection.fetchone()[0]
 
+    def count_metadata(self, src_path, dst_path):
+        with self.connection:
+            self.connection.execute("""SELECT COUNT(*) FROM differences
+                                       WHERE (type='modified' OR type='chmod' OR type='chown')
+                                             AND src_path=? AND dst_path=?""",
+                                    (src_path, dst_path))
+
+            return self.connection.fetchone()[0]
+
     def find_files(self, src_path, dst_path):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
@@ -180,6 +189,15 @@ class DiffList(object):
         with self.connection:
             self.connection.execute("""SELECT * FROM differences
                                        WHERE type='chown' AND src_path=? AND dst_path=?
+                                       ORDER BY path ASC""", (src_path, dst_path))
+
+            return self.fetch_differences()
+
+    def find_metadata(self, src_path, dst_path):
+        with self.connection:
+            self.connection.execute("""SELECT * FROM differences
+                                       WHERE (type='modified' OR type='chmod' OR type='chown')
+                                             AND src_path=? AND dst_path=?
                                        ORDER BY path ASC""", (src_path, dst_path))
 
             return self.fetch_differences()
