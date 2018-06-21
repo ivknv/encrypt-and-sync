@@ -6,6 +6,7 @@ from ..staged_task import StagedTask
 from ..scanner import Scanner, ScanTarget
 from ..duplicate_remover import DuplicateRemover, DuplicateRemoverTarget
 from ..difflist import DiffList
+from ..duplicate_list import DuplicateList
 from ..folder_storage import get_folder_storage
 from ..constants import AUTOCOMMIT_INTERVAL
 from ..worker import WorkerPool, get_current_worker
@@ -295,21 +296,28 @@ class SyncTarget(StagedTask):
 
     def init_rmdup(self):
         if self.src.encrypted:
-            target = DuplicateRemoverTarget(self.duprem, self.src.storage.name, self.path1)
-            target.n_workers = self.n_workers
-            target.preserve_modified = self.sync_modified
-            self.duprem.add_target(target)
+            src_duplist = DuplicateList(self.src.storage.name, self.synchronizer.directory)
+
+            if src_duplist.get_file_count(self.path1):
+                target = DuplicateRemoverTarget(self.duprem, self.src.storage.name, self.path1)
+                target.n_workers = self.n_workers
+                target.preserve_modified = self.sync_modified
+                self.duprem.add_target(target)
 
         if self.dst.encrypted:
-            target = DuplicateRemoverTarget(self.duprem, self.dst.storage.name, self.path2)
-            target.n_workers = self.n_workers
-            target.preserve_modified = self.sync_modified
-            self.duprem.add_target(target)
+            dst_duplist = DuplicateList(self.dst.storage.name, self.synchronizer.directory)
+
+            if dst_duplist.get_file_count(self.path2):
+                target = DuplicateRemoverTarget(self.duprem, self.dst.storage.name, self.path2)
+                target.n_workers = self.n_workers
+                target.preserve_modified = self.sync_modified
+                self.duprem.add_target(target)
 
         if self.stopped:
             return
 
-        self.duprem.run()
+        if self.duprem.get_target_list():
+            self.duprem.run()
 
     def finalize_rmdup(self):
         pass
