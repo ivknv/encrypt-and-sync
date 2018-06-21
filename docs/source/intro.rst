@@ -12,7 +12,7 @@ Features
 2. Synchronization between storages in any direction
 3. Downloader
 4. Multithreading
-5. Auto-retries for failing requests
+5. Can sync file metadata (permissions, modified date, ownership)
 
 ==================
 Supported storages

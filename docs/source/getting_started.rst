@@ -10,8 +10,8 @@ Installation
 Installing on Windows
 ---------------------
 
-.. _here (32-bit): https://encrypt-and-sync.com/download/windows/eas-0.6.2-win32.zip
-.. _here (64-bit): https://encrypt-and-sync.com/download/windows/eas-0.6.2-win64.zip
+.. _here (32-bit): https://encrypt-and-sync.com/download/windows/eas-0.7.0-win32.zip
+.. _here (64-bit): https://encrypt-and-sync.com/download/windows/eas-0.7.0-win64.zip
 
 1. Download the portable zip archive from `here (64-bit)`_ or `here (32-bit)`_
 2. Unpack it anywhere you want
@@ -22,40 +22,28 @@ Installing on Windows
 Installing on Arch Linux
 ------------------------
 
-^^^^^^^^^^^^^^^^^^^
-Installing from AUR
-^^^^^^^^^^^^^^^^^^^
-
-Install from AUR using yaourt:
+Install the package from AUR using aurman:
 
 .. code:: bash
 
-   yaourt -S python-eas
-
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Installing from the website
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-1. Download the package from `here <https://encrypt-and-sync.com/download/python/python-eas-0.6.2-any.pkg.tar.xz>`_
-2. Install it with pacman:
-
-.. code:: bash
-
-   sudo pacman -S python-eas-0.6.2-any.pkg.tar.xz
+   aurman -S python-eas
 
 ---------------------------
-Installing on Debian/Ubuntu
+Installing on Ubuntu
 ---------------------------
 
-.. _here (Debian): https://encrypt-and-sync.com/download/debian/python3-eas-0.6.2_all.deb
-.. _here (Ubuntu): https://encrypt-and-sync.com/download/ubuntu/python3-eas-0.6.2_all.deb
-
-1. Download the package from `here (Debian)`_ or `here (Ubuntu)`_
-2. Install it with dpkg:
+1. Add the PPA:
 
 .. code:: bash
 
-   sudo dpkg -i python3-eas-0.6.2_all.deb
+   sudo add-apt-repository ppa:ivknv/encrypt-and-sync
+
+2. Install the package with apt-get:
+
+.. code:: bash
+
+   sudo apt-get update
+   sudo apt-get install python3-eas
 
 ---------------------------
 Installing on other systems
@@ -71,16 +59,16 @@ Install from PyPI using pip:
 
    pip install eas
 
-^^^^^^^^^^^^^^^^^^^^^^^^
-Install from the website
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Installing from the website
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Download the python wheel from `here <https://encrypt-and-sync.com/download/python/eas-0.6.2-py3-none-any.whl>`_
+1. Download the python wheel from `here <https://encrypt-and-sync.com/download/python/eas-0.7.0-py3-none-any.whl>`_
 2. Install it with pip:
 
 .. code:: bash
 
-   pip install eas-0.6.2-py3-none-any.whl
+   pip install eas-0.7.0-py3-none-any.whl
 
 =============
 Configuration

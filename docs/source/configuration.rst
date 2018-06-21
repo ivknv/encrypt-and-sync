@@ -245,7 +245,7 @@ folders
 -------
 
 This block is used to specify folders.
-Folder name must only contain letters, digits, :code:`\_`, :code:`-`, :code:`+` and :code:`.`.
+Folder name must only contain letters, digits, :code:`_`, :code:`-`, :code:`+` and :code:`.`.
 
 Usage:
 
@@ -256,6 +256,16 @@ Usage:
            encrypted [true | false] # Enable/disable folder encryption, (false by default)
            avoid-rescan [true | false] # If true, makes the synchronizer avoid rescanning the folder, unless it's empty in the database
            filename-encoding [base64 | base41 | base32] # Filename encoding to use for encrypted filenames (base64 by default)
+
+           # Exclude certain files/directories, you can have multiple exclude/include blocks
+           exclude {
+               # relative paths
+           }
+
+           # Overrides exclude blocks, you can have multiple exclude/include blocks
+           include {
+               # relative paths
+           }
        }
 
        <folder-name> <folder-path> {}
@@ -265,7 +275,21 @@ Usage:
 
    # Examples:
    folders {
-       python-local ~/Python {}
+       python-local ~/Python {
+           exclude {
+               ./some/relative/path/*
+               /some/absolute/path/*
+               unwanted-file
+               unwanted-directory/
+               .*.sw[a-z]
+               *.py[co]
+           }
+
+           include {
+               ./some/relative/path/do-not-exclude/*
+               /some/absolute/path/do-not-exclude/*
+           }
+       }
 
        python-yadisk disk://Python {
            encrypted true
@@ -273,7 +297,7 @@ Usage:
            filename-encoding base64
        }
 
-       remote-only-folder disk://SomeFolder {
+       remote-folder disk://SomeFolder {
            encrypted true
        }
 

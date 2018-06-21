@@ -9,7 +9,12 @@ Folder
 ======
 
 A folder refers to a directory in a certain storage.
-Folder path is specified like this: :code:`<storage-name>:///path/to/the/folder`.
+Folder path is specified like this: 
+
+.. code:: sh
+
+   <storage-name>:///path/to/the/folder
+
 If :code:`<storage-name>` is empty, the path will be considered local.
 
 ------------------
