@@ -12,22 +12,12 @@ class DownloaderWorker(PoolWorkerThread):
     """
 
     def __init__(self, downloader):
-        self._stopped = False
-
         super().__init__()
 
         self.cur_task = None
         self.downloader = downloader
 
         self.add_receiver(LogReceiver(logger))
-
-    @property
-    def stopped(self):
-        return self._stopped or self.downloader.stopped
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def stop(self):
         super().stop()
@@ -36,13 +26,7 @@ class DownloaderWorker(PoolWorkerThread):
         task = self.cur_task
 
         if task is not None:
-            target = task.parent
-
-            if target is not None and not target.stopped:
-                target.stop()
-
-            if not task.stopped:
-                task.stop()
+            task.stop()
 
     def get_info(self):
         if self.cur_task is None:

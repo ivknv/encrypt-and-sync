@@ -15,8 +15,6 @@ __all__ = ["DownloadTarget"]
 
 class DownloadTarget(Task):
     def __init__(self, downloader, src_storage_name, src_path, dst_storage_name, dst_path):
-        self._stopped = False
-
         Task.__init__(self)
 
         self.src_storage_name = src_storage_name
@@ -40,17 +38,6 @@ class DownloadTarget(Task):
         self.n_workers = 1
 
         self.pool = WorkerPool(None)
-
-    @property
-    def stopped(self):
-        if self._stopped or self.downloader.stopped:
-            return True
-
-        return self.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def stop(self):
         super().stop()

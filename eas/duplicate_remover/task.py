@@ -8,8 +8,6 @@ __all__ = ["DuplicateRemoverTask"]
 
 class DuplicateRemoverTask(Task):
     def __init__(self, target):
-        self._stopped = False
-
         Task.__init__(self)
 
         self.parent = target
@@ -20,17 +18,6 @@ class DuplicateRemoverTask(Task):
         self.filename_encoding = None
         self.storage = None
         self.duplist = target.shared_duplist
-
-    @property
-    def stopped(self):
-        if self._stopped or self.parent.stopped:
-            return True
-
-        return self.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def autocommit(self):
         self.parent.autocommit()

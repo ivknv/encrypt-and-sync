@@ -20,8 +20,6 @@ class DuplicateRemoverTarget(Task):
     """
 
     def __init__(self, duprem, storage_name, path):
-        self._stopped = False
-
         Task.__init__(self)
 
         self.duprem = duprem
@@ -54,17 +52,6 @@ class DuplicateRemoverTarget(Task):
         self.n_workers = 1
 
         self.pool = WorkerPool(None)
-
-    @property
-    def stopped(self):
-        if self._stopped or self.duprem.stopped:
-            return True
-
-        return self.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def stop(self):
         super().stop()

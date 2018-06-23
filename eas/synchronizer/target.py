@@ -27,8 +27,6 @@ class SyncTarget(StagedTask):
 
     def __init__(self, synchronizer, path1, path2,
                  enable_scan, skip_integrity_check=False):
-        self._stopped = False
-
         StagedTask.__init__(self)
 
         self.synchronizer = synchronizer
@@ -108,17 +106,6 @@ class SyncTarget(StagedTask):
 
     def get_n_done(self):
         return self.progress["finished"] + self.progress["failed"] + self.progress["skipped"]
-
-    @property
-    def stopped(self):
-        if self._stopped or self.synchronizer.stopped:
-            return True
-
-        return self.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def stop(self):
         super().stop()

@@ -133,7 +133,7 @@ class WorkerPool(Emitter):
     def wait_idle(self, timeout=None):
         workers = self.get_worker_list()
 
-        while any(not w.is_idle() for w in workers):
+        while any(not w.is_idle() for w in workers) or not workers:
             for worker in workers:
                 worker.wait_idle(timeout)
 

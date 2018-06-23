@@ -214,7 +214,7 @@ def do_scan(env, names_or_paths):
 
         try:
             target = ScanTarget(scanner, path_with_proto)
-            target.n_worker = n_workers
+            target.n_workers = n_workers
 
             targets.append(target)
         except KeyError as e:

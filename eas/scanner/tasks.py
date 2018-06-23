@@ -16,8 +16,6 @@ class ScanTask(Task):
     """
 
     def __init__(self, target, scannable=None):
-        self._stopped = False
-
         Task.__init__(self)
 
         self.parent = target
@@ -27,20 +25,6 @@ class ScanTask(Task):
         self.duplist = target.shared_duplist
         self.config = target.config
         self.cur_path = None
-
-    @property
-    def stopped(self):
-        if self._stopped or self.parent.stopped:
-            return True
-
-        if self.status not in (None, "pending"):
-            return True
-
-        return self.parent.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
 class DecryptedScanTask(ScanTask):
     def complete(self):

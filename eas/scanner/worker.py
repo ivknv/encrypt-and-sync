@@ -12,8 +12,6 @@ class ScanWorker(PoolWaiterThread):
     """
 
     def __init__(self, scanner):
-        self._stopped = False
-
         PoolWaiterThread.__init__(self)
 
         self.cur_task = None
@@ -38,14 +36,6 @@ class ScanWorker(PoolWaiterThread):
         return {"operation": "%s scan" % (storage_name,),
                 "path": cur_path}
 
-    @property
-    def stopped(self):
-        return self._stopped or self.scanner.stopped
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
-
     def stop(self):
         super().stop()
 
@@ -53,13 +43,7 @@ class ScanWorker(PoolWaiterThread):
         task = self.cur_task
 
         if task is not None:
-            target = task.parent
-
-            if target is not None and not target.stopped:
-                target.stop()
-
-            if not task.stopped:
-                task.stop()
+            task.stop()
 
     def handle_task(self, task):
         try:

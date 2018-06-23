@@ -57,8 +57,6 @@ class SyncTask(Task):
     """
 
     def __init__(self, target):
-        self._stopped = False
-
         Task.__init__(self)
 
         self.parent = target
@@ -81,17 +79,6 @@ class SyncTask(Task):
         self.dst = target.dst
 
         self.add_receiver(TaskFailLogReceiver())
-
-    @property
-    def stopped(self):
-        if self._stopped or self.parent.stopped:
-            return True
-
-        return self.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     @property
     def uploaded(self):
@@ -151,7 +138,7 @@ class UploadTask(SyncTask):
             self.download_controller.limit = self.download_limit
 
     def stop(self):
-        SyncTask.stop(self)
+        super().stop()
 
         upload_controller = self.upload_controller
         download_controller = self.download_controller

@@ -14,7 +14,7 @@ class TargetRunner(Emitter):
     def __init__(self, config, directory, enable_journal=True):
         Emitter.__init__(self)
 
-        self._stopped = False
+        self.stopped = False
         self.cur_target = None
 
         self.config = config
@@ -73,17 +73,6 @@ class TargetRunner(Emitter):
 
         if target is not None:
             target.stop()
-
-    @property
-    def stopped(self):
-        if self._stopped:
-            return self._stopped
-
-        return self.cur_target is not None and self.cur_target.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def change_status(self, status):
         for target in self.get_target_list() + [self.cur_target]:

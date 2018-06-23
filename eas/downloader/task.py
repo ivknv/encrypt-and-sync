@@ -52,8 +52,6 @@ class DownloadTask(Task):
     """
 
     def __init__(self, target):
-        self._stopped = False
-
         Task.__init__(self)
 
         self.type = None # "f" or "d"
@@ -102,7 +100,7 @@ class DownloadTask(Task):
             download_controller.limit = value
 
     def stop(self):
-        Task.stop(self)
+        super().stop()
 
         upload_controller = self.upload_controller
         download_controller = self.download_controller
@@ -139,17 +137,6 @@ class DownloadTask(Task):
 
         if old_value != value:
             self.emit_event("uploaded_changed")
-
-    @property
-    def stopped(self):
-        if self._stopped or self.parent.stopped:
-            return True
-
-        return self.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def recursive_mkdir(self, path):
         path = pathm.join_properly("/", path)

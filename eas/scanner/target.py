@@ -20,8 +20,6 @@ class ScanTarget(Task):
     """
 
     def __init__(self, scanner, path):
-        self._stopped = True
-
         Task.__init__(self)
 
         self.scanner = scanner
@@ -51,17 +49,6 @@ class ScanTarget(Task):
         self.n_workers = 1
 
         self.pool = WorkerPool(None)
-
-    @property
-    def stopped(self):
-        if self._stopped or self.scanner.stopped:
-            return True
-
-        return self.status not in (None, "pending")
-
-    @stopped.setter
-    def stopped(self, value):
-        self._stopped = value
 
     def stop(self):
         super().stop()
