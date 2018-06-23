@@ -73,9 +73,9 @@ class Worker(Emitter):
             interval = min(interval, timeout)
 
             while self.is_alive() and timeout > 0.0:
-                last_time = time.time()
+                last_time = time.monotonic()
                 self.actual_join(interval)
-                timeout -= time.time() - last_time
+                timeout -= time.monotonic() - last_time
 
     def is_alive(self):
         raise NotImplementedError

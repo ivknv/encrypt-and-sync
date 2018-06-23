@@ -16,7 +16,7 @@ class Connection(s3m.Connection):
         if self.single_cursor_mode:
             self.cursor().arraysize = 1000
 
-        self.last_commit = time.time()
+        self.last_commit = time.monotonic()
 
     def begin_transaction(self, transaction_type=""):
         if transaction_type.lower() not in ("", "immediate", "deferred", "exclusive"):
@@ -25,10 +25,10 @@ class Connection(s3m.Connection):
         return self.execute("BEGIN %s TRANSACTION" % transaction_type)
 
     def time_since_last_commit(self):
-        return time.time() - self.last_commit
+        return time.monotonic() - self.last_commit
 
     def commit(self):
-        self.last_commit = time.time()
+        self.last_commit = time.monotonic()
         s3m.Connection.commit(self)
 
     def seamless_commit(self):

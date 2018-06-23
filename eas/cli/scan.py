@@ -149,10 +149,10 @@ class WorkerReceiver(Receiver):
         if self.env.get("no_progress", False):
             return
 
-        if time.time() - self.last_print < PRINT_RATE_LIMIT:
+        if time.monotonic() - self.last_print < PRINT_RATE_LIMIT:
             return
 
-        self.last_print = time.time()
+        self.last_print = time.monotonic()
 
         print(scannable.path)
 

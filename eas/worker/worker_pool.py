@@ -120,11 +120,11 @@ class WorkerPool(Emitter):
                 break
 
             for worker in alive_workers:
-                t = time.time()
+                t = time.monotonic()
 
                 worker.join(each_timeout, interval)
 
-                dt = time.time() - t
+                dt = time.monotonic() - t
 
                 if timeout is not None:
                     timeout -= dt

@@ -9,12 +9,12 @@ class Sleeper(object):
         self._time_wasted = 0.0
 
     def sleep(self, duration):
-        t1 = time.time()
+        t1 = time.monotonic()
 
         if duration > self._time_wasted:
             time.sleep(duration - self._time_wasted)
 
-        t2 = time.time()
+        t2 = time.monotonic()
 
         self._time_wasted += t2 - t1 - duration
 
@@ -23,11 +23,11 @@ class SpeedLimiter(object):
         self._quantity = 0
         self.limit = limit
         self.interval = interval
-        self._last_delay = time.time()
+        self._last_delay = time.monotonic()
         self._sleeper = Sleeper()
 
     def begin(self):
-        self._last_delay = time.time()
+        self._last_delay = time.monotonic()
 
     @property
     def quantity(self):
@@ -44,7 +44,7 @@ class SpeedLimiter(object):
         if self._quantity < self.limit * self.interval:
             return
 
-        dt = min(time.time() - self._last_delay, self.interval)
+        dt = min(time.monotonic() - self._last_delay, self.interval)
 
         sleep_duration = self._quantity / self.limit - dt
 
@@ -52,4 +52,4 @@ class SpeedLimiter(object):
             self.sleep(sleep_duration)
 
         self._quantity = 0
-        self._last_delay = time.time()
+        self._last_delay = time.monotonic()

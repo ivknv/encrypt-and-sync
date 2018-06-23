@@ -18,11 +18,11 @@ class ControlledSpeedLimiter(SpeedLimiter):
 
         tolerance = 0.001
         check_interval = 0.25
-        t1 = time.time()
+        t1 = time.monotonic()
 
         left_to_sleep = duration
 
         while not controller.stopped and left_to_sleep > tolerance:
             time.sleep(min(left_to_sleep, check_interval))
 
-            left_to_sleep = duration - (time.time() - t1)
+            left_to_sleep = duration - (time.monotonic() - t1)
