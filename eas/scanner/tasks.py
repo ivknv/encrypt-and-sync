@@ -2,6 +2,8 @@
 
 from functools import reduce
 
+import eventlet
+
 from ..task import Task
 from ..scannable import scan_files
 from ..worker import get_current_worker
@@ -25,6 +27,12 @@ class ScanTask(Task):
         self.duplist = target.shared_duplist
         self.config = target.config
         self.cur_path = None
+
+    def run(self):
+        try:
+            super().run()
+        except eventlet.greenlet.GreenletExit:
+            return False
 
 class DecryptedScanTask(ScanTask):
     def complete(self):

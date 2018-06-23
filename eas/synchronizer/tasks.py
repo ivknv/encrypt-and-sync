@@ -3,6 +3,8 @@
 import time
 import weakref
 
+import eventlet
+
 from .logging import TaskFailLogReceiver
 
 from ..events import Receiver
@@ -30,9 +32,6 @@ class UploadControllerReceiver(Receiver):
         task = result[0]
         task.uploaded = uploaded
 
-        if task.stopped:
-            event.emitter.stop()
-
 class DownloadControllerReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
@@ -47,9 +46,6 @@ class DownloadControllerReceiver(Receiver):
 
         task = result[0]
         task.downloaded = downloaded
-
-        if task.stopped:
-            event.emitter.stop()
 
 class SyncTask(Task):
     """
@@ -106,6 +102,12 @@ class SyncTask(Task):
     def autocommit(self):
         self.parent.autocommit()
 
+    def run(self):
+        try:
+            super().run()
+        except (ControllerInterrupt, eventlet.greenlet.GreenletExit):
+            return True
+
 class UploadTask(SyncTask):
     def __init__(self, *args, **kwargs):
         self.upload_controller = None
@@ -139,6 +141,8 @@ class UploadTask(SyncTask):
 
     def stop(self):
         super().stop()
+
+        return
 
         upload_controller = self.upload_controller
         download_controller = self.download_controller

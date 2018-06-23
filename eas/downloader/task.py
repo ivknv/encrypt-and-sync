@@ -2,6 +2,8 @@
 
 import weakref
 
+import eventlet
+
 from ..task import Task
 from ..events import Receiver
 from ..common import get_file_size
@@ -242,19 +244,22 @@ class DownloadTask(Task):
             return
 
     def complete(self):
-        if self.stopped:
+        try:
+            if self.stopped:
+                return True
+
+            self.status = "pending"
+
+            if self.type == "d":
+                if not self.recursive_mkdir(self.dst_path):
+                    self.status = "skipped"
+            else:
+                self.download_file()
+
+            if self.stopped:
+                return True
+
+            if self.status in ("pending", None):
+                self.status = "finished"
+        except (ControllerInterrupt, eventlet.greenlet.GreenletExit):
             return True
-
-        self.status = "pending"
-
-        if self.type == "d":
-            if not self.recursive_mkdir(self.dst_path):
-                self.status = "skipped"
-        else:
-            self.download_file()
-
-        if self.stopped:
-            return True
-
-        if self.status in ("pending", None):
-            self.status = "finished"

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import eventlet
+
 from ..task import Task
 from ..filelist import Filelist
 from .. import pathm
@@ -23,45 +25,48 @@ class DuplicateRemoverTask(Task):
         self.parent.autocommit()
 
     def complete(self):
-        if self.stopped:
-            return True
+        try:
+            if self.stopped:
+                return True
 
-        self.status = "pending"
+            self.status = "pending"
 
-        encoding = self.filename_encoding
-        encpath = self.config.encrypt_path(self.path, self.prefix,
-                                            IVs=self.ivs,
-                                            filename_encoding=encoding)[0]
+            encoding = self.filename_encoding
+            encpath = self.config.encrypt_path(self.path, self.prefix,
+                                                IVs=self.ivs,
+                                                filename_encoding=encoding)[0]
 
-        if self.parent.preserve_modified and self.storage.supports_set_modified:
-            if not pathm.is_equal(self.path, self.prefix):
-                folder = self.config.identify_folder(self.storage.name, self.path)
+            if self.parent.preserve_modified and self.storage.supports_set_modified:
+                if not pathm.is_equal(self.path, self.prefix):
+                    folder = self.config.identify_folder(self.storage.name, self.path)
 
-                if folder is not None:
-                    filelist = Filelist(folder["name"], self.parent.duprem.directory)
-                    parent_modified = filelist.find(pathm.split(self.path)[0])["modified"]
-                else:
-                    parent_modified = None
-
-                if not parent_modified:
-                    try:
-                        parent_modified = self.storage.get_meta(pathm.split(encpath)[0])["modified"]
-                    except FileNotFoundError:
+                    if folder is not None:
+                        filelist = Filelist(folder["name"], self.parent.duprem.directory)
+                        parent_modified = filelist.find(pathm.split(self.path)[0])["modified"]
+                    else:
                         parent_modified = None
 
-        try:
-            self.storage.remove(encpath)
-            removed = True
-        except FileNotFoundError:
-            removed = False 
+                    if not parent_modified:
+                        try:
+                            parent_modified = self.storage.get_meta(pathm.split(encpath)[0])["modified"]
+                        except FileNotFoundError:
+                            parent_modified = None
 
-        self.duplist.remove(self.ivs, self.path)
+            try:
+                self.storage.remove(encpath)
+                removed = True
+            except FileNotFoundError:
+                removed = False 
 
-        self.autocommit()
+            self.duplist.remove(self.ivs, self.path)
 
-        # Preserve parent modified date
-        if self.parent.preserve_modified and self.path not in ("", "/") and removed:
-            if self.storage.supports_set_modified and parent_modified:
-                self.storage.set_modified(pathm.split(encpath)[0], parent_modified)
+            self.autocommit()
 
-        self.status = "finished"
+            # Preserve parent modified date
+            if self.parent.preserve_modified and self.path not in ("", "/") and removed:
+                if self.storage.supports_set_modified and parent_modified:
+                    self.storage.set_modified(pathm.split(encpath)[0], parent_modified)
+
+            self.status = "finished"
+        except eventlet.greenlet.GreenletExit:
+            return
