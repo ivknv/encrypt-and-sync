@@ -61,7 +61,7 @@ class FolderBlock(ConfigBlock):
         else:
             avoid_rescan = True
 
-        filename_encoding = "base64"
+        filename_encoding = "base32"
 
         if name in config.folders:
             raise EvaluationError(self, "Duplicate folder name: %r" % (name,))
