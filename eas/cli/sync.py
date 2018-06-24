@@ -556,6 +556,7 @@ class TargetReceiver(Receiver):
                         target.synchronizer.stop()
                     elif action == "skip":
                         target.status = "skipped"
+                        target.stop()
 
                 if not target.enable_scan:
                     return
