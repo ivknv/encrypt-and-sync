@@ -499,7 +499,7 @@ class TargetReceiver(Receiver):
             n = difflist.count_metadata(target.path1_with_proto, target.path2_with_proto)
 
             if n:
-                print("%s: %d files need metadata to be set" % (display_name, n))
+                print("%s: %d metadata setting tasks" % (display_name, n))
 
     def on_entered_stage(self, event, stage):
         if self.env.get("no_progress", False):
