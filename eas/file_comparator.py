@@ -89,7 +89,6 @@ class FileComparator(object):
         yield {"type": "rm",
                "node_type": self.type2,
                "path": self.path2,
-               "link_path": None,
                "src_path": self.src_path_with_proto,
                "dst_path": self.dst_path_with_proto}
 
@@ -105,7 +104,6 @@ class FileComparator(object):
         yield {"type": "update",
                "node_type": self.type2,
                "path": self.path2,
-               "link_path": None,
                "src_path": self.src_path_with_proto,
                "dst_path": self.dst_path_with_proto}
 
@@ -114,25 +112,15 @@ class FileComparator(object):
             if self.type2 == "d":
                 self.last_rm = self.path2
 
-            yield {"type": "rm",
-                   "node_type": self.type2,
-                   "path": self.path2,
-                   "link_path": None,
-                   "src_path": self.src_path_with_proto,
-                   "dst_path": self.dst_path_with_proto}
+            yield from self.diff_rm()
 
-        yield {"type": "new",
-               "node_type": self.type1,
-               "path": self.path1,
-               "link_path": self.link_path1,
-               "src_path": self.src_path_with_proto,
-               "dst_path": self.dst_path_with_proto}
+        yield from self.diff_new()
 
     def diff_modified(self):
         yield {"type": "modified",
                "node_type": self.type2,
                "path": self.path2,
-               "link_path": None,
+               "modified": self.modified1,
                "src_path": self.src_path_with_proto,
                "dst_path": self.dst_path_with_proto}
 
@@ -140,7 +128,7 @@ class FileComparator(object):
         yield {"type": "chmod",
                "node_type": self.type2,
                "path": self.path2,
-               "link_path": None,
+               "mode": self.mode1,
                "src_path": self.src_path_with_proto,
                "dst_path": self.dst_path_with_proto}
 
@@ -148,7 +136,8 @@ class FileComparator(object):
         yield {"type": "chown",
                "node_type": self.type2,
                "path": self.path2,
-               "link_path": None,
+               "owner": self.owner1,
+               "group": self.group1,
                "src_path": self.src_path_with_proto,
                "dst_path": self.dst_path_with_proto}
 
@@ -273,12 +262,18 @@ class FileComparator(object):
         if "modified" not in self.checks:
             return False
 
+        if self.modified1 is None:
+            return False
+
         return self.node1 and self.node2 and (self.path1 == self.path2 and
                                               self.modified1 != self.modified2)
 
     def is_mode_different(self):
         if "chmod" not in self.checks:
             return False
+
+        if self.mode1 is None:
+            return
 
         return self.node1 and self.node2 and (self.path1 == self.path2 and
                                               self.mode1 != self.mode2)
@@ -287,10 +282,16 @@ class FileComparator(object):
         if "chown" not in self.checks:
             return False
 
+        if self.owner1 is None:
+            return False
+
         return self.node1 and self.node2 and self.owner1 != self.owner2
 
     def is_group_different(self):
         if "chown" not in self.checks:
+            return False
+
+        if self.group1 is None:
             return False
 
         return self.node1 and self.node2 and self.group1 != self.group2

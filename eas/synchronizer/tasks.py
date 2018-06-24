@@ -60,6 +60,12 @@ class SyncTask(Task):
         self.node_type = None # "f" or "d"
         self.path = None
         self.size = 0
+        self.link_path = None
+        self.modified = None
+        self.mode = None
+        self.owner = None
+        self.group = None
+
         self._uploaded = 0
         self._downloaded = 0
 
@@ -388,14 +394,10 @@ class ModifiedTask(SyncTask):
         full_src_path = pathm.join(self.src.prefix, src_path)
         full_dst_path = pathm.join(self.dst.prefix, dst_path)
 
-        modified = self.src_flist.find(full_src_path)["modified"]
+        assert(self.modified is not None)
 
-        if modified is None:
-            self.status = "skipped"
-            return True
-
-        self.dst.set_modified(dst_path, modified)
-        self.dst_flist.update_modified(full_dst_path, modified)
+        self.dst.set_modified(dst_path, self.modified)
+        self.dst_flist.update_modified(full_dst_path, self.modified)
 
         self.status = "finished"
 
@@ -417,14 +419,10 @@ class ChmodTask(SyncTask):
         full_src_path = pathm.join(self.src.prefix, src_path)
         full_dst_path = pathm.join(self.dst.prefix, dst_path)
 
-        mode = self.src_flist.find(full_src_path)["mode"]
+        assert(self.mode is not None)
 
-        if mode is None:
-            self.status = "skipped"
-            return True
-
-        self.dst.chmod(dst_path, mode)
-        self.dst_flist.update_mode(full_dst_path, mode)
+        self.dst.chmod(dst_path, self.mode)
+        self.dst_flist.update_mode(full_dst_path, self.mode)
 
         self.status = "finished"
 
@@ -448,19 +446,15 @@ class ChownTask(SyncTask):
 
         src_node = self.src_flist.find(full_src_path)
 
-        owner, group = src_node["owner"], src_node["group"]
+        assert(self.owner is not None or self.group is not None)
 
-        if owner is None and group is None:
-            self.status = "skipped"
-            return True
+        self.dst.chown(dst_path, self.owner, self.group)
 
-        self.dst.chown(dst_path, owner, group)
+        if self.owner is not None:
+            self.dst_flist.update_owner(full_dst_path, self.owner)
 
-        if owner is not None:
-            self.dst_flist.update_owner(full_dst_path, owner)
-
-        if group is not None:
-            self.dst_flist.update_group(full_dst_path, group)
+        if self.group is not None:
+            self.dst_flist.update_group(full_dst_path, self.group)
 
         self.status = "finished"
 

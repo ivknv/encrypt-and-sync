@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import functools
+import grp
+import pwd
 import os
 import sys
+import time
 
 import portalocker
 
@@ -191,14 +194,55 @@ def format_diff(config, diff):
 
     if diff["type"] in ("new", "update"):
         return format_new_diff(config, diff)
+    elif diff["type"] == "rm":
+        return format_rm_diff(config, diff)
+    elif diff["type"] == "modified":
+        return format_modified_diff(config, diff)
+    elif diff["type"] == "chmod":
+        return format_chmod_diff(config, diff)
+    elif diff["type"] == "chown":
+        return format_chown_diff(config, diff)
 
-    dst_path = get_diff_dst_path(config, diff)
-    return "%s %s\n" % (diff["node_type"], dst_path)
+    assert(False)
 
 def format_new_diff(config, diff):
     dst_path = get_diff_dst_path(config, diff)
 
     return "%s\n" % (dst_path,)
+
+def format_rm_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    return "%s %s\n" % (diff["node_type"], dst_path,)
+
+def format_modified_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    return "%s %s %r\n" % (diff["node_type"], dst_path, time.ctime(diff["modified"]))
+
+def format_chmod_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    return "%s %s %s\n" % (diff["node_type"], dst_path, oct(diff["mode"])[2:])
+
+def format_chown_diff(config, diff):
+    dst_path = get_diff_dst_path(config, diff)
+
+    ownership_string = ""
+
+    if diff["owner"] is not None:
+        try:
+            ownership_string += pwd.getpwuid(diff["owner"]).pw_name
+        except KeyError:
+            ownership_string += str(diff["owner"])
+
+    if diff["group"] is not None:
+        try:
+            ownership_string += ":" + grp.getgrgid(diff["group"]).gr_name
+        except KeyError:
+            ownership_string += ":%s" % (diff["group"],)
+
+    return "%s %s %s\n" % (diff["node_type"], dst_path, ownership_string)
 
 def view_rm_diffs(env, target):
     difflist = DiffList(env["db_dir"])

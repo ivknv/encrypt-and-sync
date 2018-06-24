@@ -3,6 +3,7 @@
 import os
 
 from . import cdb
+from .common import format_timestamp, parse_timestamp
 
 __all__ = ["DiffList"]
 
@@ -27,7 +28,9 @@ class DiffList(object):
         with self.connection:
             self.connection.execute("""CREATE TABLE IF NOT EXISTS differences
                                        (type TEXT, node_type TEXT, path TEXT,
-                                        link_path TEXT, src_path TEXT, dst_path TEXT)""")
+                                        link_path TEXT, modified DATETIME,
+                                        mode INTEGER, uid INTEGER, gid INTEGER,
+                                        src_path TEXT, dst_path TEXT)""")
             self.connection.execute("""CREATE INDEX IF NOT EXISTS differences_path_index
                                        ON differences(path ASC)""")
 
@@ -37,10 +40,18 @@ class DiffList(object):
         path = diff["path"]
         src_path = diff["src_path"]
         dst_path = diff["dst_path"]
-        link_path = diff["link_path"]
+        link_path = diff.get("link_path")
+        modified = diff.get("modified", None)
+        mode = diff.get("mode")
+        uid = diff.get("owner")
+        gid = diff.get("group")
 
-        self.connection.execute("INSERT INTO differences VALUES (?, ?, ?, ?, ?, ?)",
-                                (diff_type, node_type, path, link_path, src_path, dst_path))
+        if modified is not None:
+            modified = format_timestamp(modified)
+
+        self.connection.execute("INSERT INTO differences VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                (diff_type, node_type, path, link_path, modified,
+                                 mode, uid, gid, src_path, dst_path))
 
     def remove(self, src_path, dst_path):
         self.connection.execute("""DELETE FROM differences WHERE
@@ -52,8 +63,12 @@ class DiffList(object):
                    "node_type": i[1],
                    "path": i[2],
                    "link_path": i[3],
-                   "src_path": i[4],
-                   "dst_path": i[5]}
+                   "modified": parse_timestamp(i[4]) if i[4] is not None else None,
+                   "mode": i[5],
+                   "owner": i[6],
+                   "group": i[7],
+                   "src_path": i[8],
+                   "dst_path": i[9]}
 
     def find_rm(self, src_path, dst_path):
         with self.connection:

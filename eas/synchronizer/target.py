@@ -227,6 +227,10 @@ class SyncTarget(StagedTask):
             task.node_type = diff["node_type"]
             task.path = diff["path"]
             task.link_path = diff["link_path"]
+            task.modified = diff["modified"]
+            task.mode = diff["mode"]
+            task.owner = diff["owner"]
+            task.group = diff["group"]
             task.upload_limit = self.upload_limit
             task.download_limit = self.download_limit
 
