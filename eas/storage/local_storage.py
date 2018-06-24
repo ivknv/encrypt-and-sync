@@ -118,7 +118,7 @@ class LocalUploadTask(UploadTask):
 class LocalStorage(Storage):
     name = "local"
     type = "local"
-    case_sensitive = True
+    case_sensitive = not is_windows()
     parallelizable = False
 
     supports_set_modified = True
