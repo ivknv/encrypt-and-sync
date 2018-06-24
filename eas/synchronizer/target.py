@@ -84,6 +84,7 @@ class SyncTarget(StagedTask):
         self.sync_modified = False
         self.sync_mode = False
         self.sync_ownership = False
+        self.force_scan = False
 
         self.pool = WorkerPool(None)
 
@@ -268,13 +269,13 @@ class SyncTarget(StagedTask):
             self.status = "failed"
 
     def init_scan(self):
-        if not self.enable_scan:
+        if not self.enable_scan and not self.force_scan:
             return
 
         if self.stopped:
             return
 
-        self.do_scan(self.path1_with_proto, self.path2_with_proto)
+        self.do_scan(self.path1_with_proto, self.path2_with_proto, force=self.force_scan)
 
     def finalize_scan(self):
         if not self.enable_scan:

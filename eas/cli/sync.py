@@ -719,6 +719,8 @@ def do_sync(env, names_or_paths):
     no_sync_modified = env.get("no_sync_modified", False)
     no_sync_mode = env.get("no_sync_mode", False)
     sync_ownership = env.get("sync_ownership", False)
+    force_scan = env.get("force_scan", False)
+    no_scan = no_scan and not force_scan
 
     synchronizer = Synchronizer(config,
                                 env["db_dir"],
@@ -782,6 +784,7 @@ def do_sync(env, names_or_paths):
         target.sync_modified = not no_sync_modified
         target.sync_mode = not no_sync_mode
         target.sync_ownership = sync_ownership
+        target.force_scan = force_scan
 
         targets.append(target)
 

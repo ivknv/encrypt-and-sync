@@ -22,6 +22,8 @@ class SyncCommand(Command):
                             help="(deprecated)")
         parser.add_argument("--sync-ownership", action="store_true",
                             help="Sync ownership of files")
+        parser.add_argument("--force-scan", action="store_true",
+                            help="Always scan everything")
         parser.add_argument("--no-ask", action="store_true",
                             help="Don't ask for any user input")
         parser.add_argument("--choose-targets", action="store_true",
@@ -58,6 +60,7 @@ class SyncCommand(Command):
         env["no_sync_modified"] = ns.no_sync_modified
         env["no_sync_mode"] = ns.no_sync_mode
         env["sync_ownership"] = ns.sync_ownership
+        env["force_scan"] = ns.force_scan
 
         if ns.n_workers is not None:
             env["n_workers"] = ns.n_workers
