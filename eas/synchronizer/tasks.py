@@ -17,7 +17,7 @@ from .. import pathm
 __all__ = ["SyncTask", "UploadTask", "MkdirTask", "RmTask", "ModifiedTask",
            "ChmodTask", "ChownTask", "CreateSymlinkTask"]
 
-class UploadControllerReceiver(Receiver):
+class UploadTaskReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
 
@@ -32,7 +32,7 @@ class UploadControllerReceiver(Receiver):
         task = result[0]
         task.uploaded = uploaded
 
-class DownloadControllerReceiver(Receiver):
+class DownloadTaskReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
 
@@ -110,8 +110,8 @@ class SyncTask(Task):
 
 class UploadTask(SyncTask):
     def __init__(self, *args, **kwargs):
-        self.upload_controller = None
-        self.download_controller = None
+        self.upload_task = None
+        self.download_task = None
         self._upload_limit = float("inf")
         self._download_limit = float("inf")
 
@@ -125,8 +125,8 @@ class UploadTask(SyncTask):
     def upload_limit(self, value):
         self._upload_limit = value
 
-        if self.upload_controller is not None:
-            self.upload_controller.limit = self.upload_limit
+        if self.upload_task is not None:
+            self.upload_task.limit = self.upload_limit
 
     @property
     def download_limit(self):
@@ -136,22 +136,22 @@ class UploadTask(SyncTask):
     def download_limit(self, value):
         self._download_limit = value
 
-        if self.download_controller is not None:
-            self.download_controller.limit = self.download_limit
+        if self.download_task is not None:
+            self.download_task.limit = self.download_limit
 
     def stop(self):
         super().stop()
 
         return
 
-        upload_controller = self.upload_controller
-        download_controller = self.download_controller
+        upload_task = self.upload_task
+        download_task = self.download_task
 
-        if upload_controller is not None:
-            upload_controller.stop()
+        if upload_task is not None:
+            upload_task.stop()
 
-        if download_controller is not None:
-            download_controller.stop()
+        if download_task is not None:
+            download_task.stop()
 
     def complete(self):
         try:
@@ -180,9 +180,9 @@ class UploadTask(SyncTask):
                                                        timeout=self.config.timeout,
                                                        limit=self.download_limit)
 
-            self.download_controller = next(download_generator)
-            if self.download_controller is not None:
-                self.download_controller.add_receiver(DownloadControllerReceiver(self))
+            self.download_task = next(download_generator)
+            if self.download_task is not None:
+                self.download_task.add_receiver(DownloadTaskReceiver(self))
 
             try:
                 temp_file = next(download_generator)
@@ -216,17 +216,17 @@ class UploadTask(SyncTask):
                 if upload_timeout == (None, None):
                     upload_timeout = None
 
-            controller, ivs = self.dst.upload(temp_file, dst_path,
-                                              timeout=upload_timeout,
-                                              limit=self.upload_limit)
+            task, ivs = self.dst.upload(temp_file, dst_path,
+                                        timeout=upload_timeout,
+                                        limit=self.upload_limit)
 
-            self.upload_controller = controller
-            controller.add_receiver(UploadControllerReceiver(self))
+            self.upload_task = task
+            task.add_receiver(UploadTaskReceiver(self))
 
             if self.stopped:
                 return True
 
-            controller.work()
+            task.run()
 
             mode = owner = group = None
 
@@ -258,8 +258,8 @@ class UploadTask(SyncTask):
         except ControllerInterrupt:
             return True
         finally:
-            self.upload_controller = None
-            self.download_controller = None
+            self.upload_task = None
+            self.download_task = None
 
 class CreateSymlinkTask(SyncTask):
     def complete(self):

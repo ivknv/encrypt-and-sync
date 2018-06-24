@@ -10,7 +10,7 @@ class UploadTask(Task):
     """
 
     def __init__(self, config, in_file, limit=None, timeout=None, n_retries=None):
-        super().__init__()
+        Task.__init__(self)
 
         self.config = config
         self.in_file = in_file
@@ -38,3 +38,6 @@ class UploadTask(Task):
         self._uploaded = value
 
         self.emit_event("uploaded_changed", value)
+
+    def complete(self):
+        raise NotImplementedError

@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
 
-from ..events import Emitter
+from ..task import Task
 
-__all__ = ["DownloadController"]
+__all__ = ["DownloadTask"]
 
-class DownloadController(Emitter):
+class DownloadTask(Task):
     """
         Events: downloaded_changed
     """
 
     def __init__(self, config, out_file, limit=None, timeout=None, n_retries=None):
-        Emitter.__init__(self)
+        super().__init__()
 
         self.config = config
         self.out_file = out_file
         self._downloaded = 0
-        self.stopped = False
         self.size = None
 
         if limit is None:
@@ -41,11 +40,5 @@ class DownloadController(Emitter):
 
         self.emit_event("downloaded_changed", value)
 
-    def stop(self):
-        self.stopped = True
-
     def begin(self):
-        raise NotImplementedError
-
-    def work(self):
         raise NotImplementedError

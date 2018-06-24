@@ -9,9 +9,9 @@ import requests
 from .exceptions import ControllerInterrupt, TemporaryStorageError
 from .storage import Storage
 from .limited_file import LimitedFile
-from .controlled_speed_limiter import ControlledSpeedLimiter
-from .upload_controller import UploadController
-from .download_controller import DownloadController
+from .stoppable_speed_limiter import StoppableSpeedLimiter
+from .upload_task import UploadTask
+from .download_task import DownloadTask
 from ..common import get_file_size
 
 UPLOAD_CHUNK_SIZE = 8 * 1024 ** 2 # Bytes
@@ -64,11 +64,11 @@ def auto_retry(attempt, n_retries, retry_interval):
 
         time.sleep(retry_interval)
 
-class DropboxUploadController(UploadController):
+class DropboxUploadTask(UploadTask):
     def __init__(self, config, dbx, in_file, out_path, **kwargs):
         in_file = LimitedFile(in_file, self, None)
 
-        UploadController.__init__(self, config, in_file, **kwargs)
+        UploadTask.__init__(self, config, in_file, **kwargs)
 
         self.dbx = dbx
         self.out_path = out_path
@@ -81,121 +81,135 @@ class DropboxUploadController(UploadController):
     def limit(self, value):
         self.in_file.limit = value
 
-    def work(self):
-        if self.stopped:
-            raise ControllerInterrupt
+    def stop(self):
+        super().stop()
 
-        file_size = get_file_size(self.in_file)
+        self.in_file.stop()
 
-        def attempt():
-            if self.stopped:
-                raise ControllerInterrupt
-
-            if file_size <= UPLOAD_CHUNK_SIZE:
-                try:
-                    self.dbx.files_upload(self.in_file.read(), self.out_path,
-                                          mode=dropbox.files.WriteMode.overwrite)
-                except dropbox.exceptions.ApiError as e:
-                    if not isinstance(e.error, dropbox.files.UploadError):
-                        raise e
-
-                    if not e.error.is_path():
-                        raise e
-
-                    reason = e.error.get_path().reason
-
-                    if reason.is_conflict():
-                        reason = reason.get_conflict()
-
-                        if reason.is_folder():
-                            raise IsADirectoryError(str(e))
-                        elif reason.is_file_ancestor():
-                            raise FileNotFoundError(str(e))
-
-                        raise e
-                    elif reason.is_no_write_permission():
-                        raise PermissionError(str(e))
-
-                    raise e
-
-                return
-
-            chunk = self.in_file.read(UPLOAD_CHUNK_SIZE)
-            result = self.dbx.files_upload_session_start(chunk)
+    def complete(self):
+        try:
+            self.status = "pending"
 
             if self.stopped:
                 raise ControllerInterrupt
 
-            cursor = dropbox.files.UploadSessionCursor(session_id=result.session_id,
-                                                       offset=self.in_file.tell())
-            commit_info = dropbox.files.CommitInfo(path=self.out_path,
-                                                   mode=dropbox.files.WriteMode.overwrite)
+            file_size = get_file_size(self.in_file)
 
-            chunk = self.in_file.read(UPLOAD_CHUNK_SIZE)
-
-            while len(chunk) >= UPLOAD_CHUNK_SIZE:
+            def attempt():
                 if self.stopped:
                     raise ControllerInterrupt
 
-                self.dbx.files_upload_session_append_v2(chunk, cursor)
+                if file_size <= UPLOAD_CHUNK_SIZE:
+                    try:
+                        self.dbx.files_upload(self.in_file.read(), self.out_path,
+                                              mode=dropbox.files.WriteMode.overwrite)
+                    except dropbox.exceptions.ApiError as e:
+                        if not isinstance(e.error, dropbox.files.UploadError):
+                            raise e
+
+                        if not e.error.is_path():
+                            raise e
+
+                        reason = e.error.get_path().reason
+
+                        if reason.is_conflict():
+                            reason = reason.get_conflict()
+
+                            if reason.is_folder():
+                                raise IsADirectoryError(str(e))
+                            elif reason.is_file_ancestor():
+                                raise FileNotFoundError(str(e))
+
+                            raise e
+                        elif reason.is_no_write_permission():
+                            raise PermissionError(str(e))
+
+                        raise e
+
+                    return
+
+                chunk = self.in_file.read(UPLOAD_CHUNK_SIZE)
+                result = self.dbx.files_upload_session_start(chunk)
+
+                if self.stopped:
+                    raise ControllerInterrupt
+
+                cursor = dropbox.files.UploadSessionCursor(session_id=result.session_id,
+                                                           offset=self.in_file.tell())
+                commit_info = dropbox.files.CommitInfo(path=self.out_path,
+                                                       mode=dropbox.files.WriteMode.overwrite)
 
                 chunk = self.in_file.read(UPLOAD_CHUNK_SIZE)
 
-            if self.stopped:
-                raise ControllerInterrupt
+                while len(chunk) >= UPLOAD_CHUNK_SIZE:
+                    if self.stopped:
+                        raise ControllerInterrupt
 
-            try:
-                self.dbx.files_upload_session_finish(chunk, cursor, commit_info)
-            except dropbox.exceptions.ApiError as e:
-                if not isinstance(e.error, dropbox.files.UploadSessionFinishError):
-                    raise e
+                    self.dbx.files_upload_session_append_v2(chunk, cursor)
 
-                if e.error.is_lookup_failed():
-                    error = e.error.get_lookup_failed()
+                    chunk = self.in_file.read(UPLOAD_CHUNK_SIZE)
 
-                    if error.is_not_found():
-                        raise FileNotFoundError(str(e))
+                if self.stopped:
+                    raise ControllerInterrupt
 
-                    raise e
-                elif e.error.is_path():
-                    error = e.error.get_path()
+                try:
+                    self.dbx.files_upload_session_finish(chunk, cursor, commit_info)
+                except dropbox.exceptions.ApiError as e:
+                    if not isinstance(e.error, dropbox.files.UploadSessionFinishError):
+                        raise e
 
-                    if error.is_conflict():
-                        error = error.get_conflict()
+                    if e.error.is_lookup_failed():
+                        error = e.error.get_lookup_failed()
 
-                        if error.is_folder():
-                            raise IsADirectoryError(str(e))
-                        elif error.is_file_ancestor():
+                        if error.is_not_found():
                             raise FileNotFoundError(str(e))
 
                         raise e
-                    elif error.is_no_write_permission():
-                        raise PermissionError(str(e))
+                    elif e.error.is_path():
+                        error = e.error.get_path()
+
+                        if error.is_conflict():
+                            error = error.get_conflict()
+
+                            if error.is_folder():
+                                raise IsADirectoryError(str(e))
+                            elif error.is_file_ancestor():
+                                raise FileNotFoundError(str(e))
+
+                            raise e
+                        elif error.is_no_write_permission():
+                            raise PermissionError(str(e))
+
+                        raise e
 
                     raise e
 
+            try:
+                auto_retry(attempt, self.n_retries, 0.0)
+            except Exception as e:
+                if e in RETRY_CAUSES:
+                    raise TemporaryStorageError(str(e))
+
                 raise e
 
-        try:
-            auto_retry(attempt, self.n_retries, 0.0)
+            self.status = "finished"
         except Exception as e:
-            if e in RETRY_CAUSES:
-                raise TemporaryStorageError(str(e))
+            self.status = "failed"
 
             raise e
 
-class DropboxDownloadController(DownloadController):
+class DropboxDownloadTask(DownloadTask):
     def __init__(self, config, dbx, in_path, out_file, **kwargs):
         self.response = None
-        self.speed_limiter = ControlledSpeedLimiter(self, None)
+        self.speed_limiter = StoppableSpeedLimiter(self, None)
 
-        DownloadController.__init__(self, config, out_file, **kwargs)
+        DownloadTask.__init__(self, config, out_file, **kwargs)
 
         self.dbx = dbx
         self.in_path = in_path
 
     def __del__(self):
-        DownloadController.__del__(self)
+        DownloadTask.__del__(self)
 
         if self.response is not None:
             self.response.close()
@@ -207,6 +221,11 @@ class DropboxDownloadController(DownloadController):
     @limit.setter
     def limit(self, value):
         self.speed_limiter.limit = value
+
+    def stop(self):
+        super().stop()
+
+        self.speed_limiter.stop()
 
     def begin(self, enable_retries=True):
         def attempt():
@@ -250,45 +269,54 @@ class DropboxDownloadController(DownloadController):
         else:
             attempt()
 
-    def work(self):
-        def attempt():
-            if self.stopped:
-                raise ControllerInterrupt
-
-            self.begin(False)
-
-            self.speed_limiter.begin()
-            self.speed_limiter.quantity = 0
-
-            with contextlib.closing(self.response):
-                for chunk in self.response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
-                    if self.stopped:
-                        raise ControllerInterrupt
-
-                    if not chunk:
-                        continue
-
-                    self.out_file.write(chunk)
-
-                    l = len(chunk)
-                    self.downloaded += l
-                    self.speed_limiter.quantity += l
-
-                    if self.stopped:
-                        raise ControllerInterrupt
-
-                    self.speed_limiter.delay()
-
-                    if self.stopped:
-                        raise ControllerInterrupt
-
-            self.response = None
-
+    def complete(self):
         try:
-            auto_retry(attempt, self.n_retries, 0.0)
+            self.status = "pending"
+
+            def attempt():
+                if self.stopped:
+                    raise ControllerInterrupt
+
+                self.begin(False)
+
+                self.speed_limiter.begin()
+                self.speed_limiter.quantity = 0
+
+                with contextlib.closing(self.response):
+                    for chunk in self.response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                        if self.stopped:
+                            raise ControllerInterrupt
+
+                        if not chunk:
+                            continue
+
+                        self.out_file.write(chunk)
+
+                        l = len(chunk)
+                        self.downloaded += l
+                        self.speed_limiter.quantity += l
+
+                        if self.stopped:
+                            raise ControllerInterrupt
+
+                        self.speed_limiter.delay()
+
+                        if self.stopped:
+                            raise ControllerInterrupt
+
+                self.response = None
+
+            try:
+                auto_retry(attempt, self.n_retries, 0.0)
+            except Exception as e:
+                if e in RETRY_CAUSES:
+                    raise TemporaryStorageError(str(e))
+
+                raise e
+
+            self.status = "finished"
         except Exception as e:
-            if e in RETRY_CAUSES:
-                raise TemporaryStorageError(str(e))
+            self.status = "failed"
 
             raise e
 
@@ -499,14 +527,14 @@ class DropboxStorage(Storage):
             raise e
 
     def download(self, in_path, out_file, **kwargs):
-        return DropboxDownloadController(self.config, self.dbx,
-                                         in_path, out_file, **kwargs)
+        return DropboxDownloadTask(self.config, self.dbx,
+                                   in_path, out_file, **kwargs)
 
     def upload(self, in_file, out_path, **kwargs):
         out_path = out_path.rstrip("/")
 
-        return DropboxUploadController(self.config, self.dbx,
-                                       in_file, out_path, **kwargs)
+        return DropboxUploadTask(self.config, self.dbx,
+                                 in_file, out_path, **kwargs)
 
     def exists(self, path, timeout=None, n_retries=None):
         if timeout is None:

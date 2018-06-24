@@ -30,7 +30,7 @@ class CatCommand(Command):
                 storage = console.get_storage(path_type)
 
             generator = storage.get_file(path)
-            controller = next(generator)
+            task = next(generator)
             f = next(generator)
 
             for line in f:

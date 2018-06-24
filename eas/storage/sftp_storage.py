@@ -12,9 +12,9 @@ import pysftp
 
 from .storage import Storage
 from .exceptions import ControllerInterrupt, TemporaryStorageError
-from .download_controller import DownloadController
-from .upload_controller import UploadController
-from .controlled_speed_limiter import ControlledSpeedLimiter
+from .download_task import DownloadTask
+from .upload_task import UploadTask
+from .stoppable_speed_limiter import StoppableSpeedLimiter
 
 from .. import pathm
 from ..common import LRUCache
@@ -71,10 +71,10 @@ class SFTPConnection(pysftp.Connection):
 
         pysftp.Connection.__init__(self, *args, **kwargs)
 
-class SFTPUploadController(UploadController):
+class SFTPUploadTask(UploadTask):
     def __init__(self, config, storage, in_file, out_path, **kwargs):
-        self.speed_limiter = ControlledSpeedLimiter(self, None)
-        UploadController.__init__(self, config, in_file, **kwargs)
+        self.speed_limiter = StoppableSpeedLimiter(self, None)
+        UploadTask.__init__(self, config, in_file, **kwargs)
 
         self.storage = storage
         self.out_path = out_path
@@ -87,7 +87,12 @@ class SFTPUploadController(UploadController):
     def limit(self, value):
         self.speed_limiter.limit = value
 
-    def _work(self):
+    def stop(self):
+        super().stop()
+
+        self.speed_limiter.stop()
+
+    def _complete(self):
         if self.stopped:
             raise ControllerInterrupt
 
@@ -117,14 +122,23 @@ class SFTPUploadController(UploadController):
                 self.speed_limiter.quantity += l
                 self.speed_limiter.delay()
 
-    def work(self):
-        auto_retry(self._work, self.n_retries, 0.0)
+    def complete(self):
+        try:
+            self.status = "pending"
 
-class SFTPDownloadController(DownloadController):
+            auto_retry(self._complete, self.n_retries, 0.0)
+
+            self.status = "finished"
+        except Exception as e:
+            self.status = "failed"
+
+            raise e
+
+class SFTPDownloadTask(DownloadTask):
     def __init__(self, config, storage, in_path, out_file, **kwargs):
-        self.speed_limiter = ControlledSpeedLimiter(self, None)
+        self.speed_limiter = StoppableSpeedLimiter(self, None)
 
-        DownloadController.__init__(self, config, out_file, **kwargs)
+        DownloadTask.__init__(self, config, out_file, **kwargs)
 
         self.in_path = in_path
         self.storage = storage
@@ -136,6 +150,11 @@ class SFTPDownloadController(DownloadController):
     @limit.setter
     def limit(self, value):
         self.speed_limiter.limit = value
+
+    def stop(self):
+        super().stop()
+
+        self.speed_limiter.stop()
 
     def begin(self, enable_retries=True):
         def attempt():
@@ -151,7 +170,7 @@ class SFTPDownloadController(DownloadController):
 
         auto_retry(attempt, self.n_retries, 0.0)
 
-    def _work(self):
+    def _complete(self):
         if self.stopped:
             raise ControllerInterrupt
 
@@ -186,8 +205,17 @@ class SFTPDownloadController(DownloadController):
                 self.speed_limiter.quantity += l
                 self.speed_limiter.delay()
 
-    def work(self):
-        auto_retry(self._work, self.n_retries, 0.0)
+    def complete(self):
+        try:
+            self.status = "pending"
+
+            auto_retry(self._complete, self.n_retries, 0.0)
+
+            self.status = "finished"
+        except Exception as e:
+            self.status = "failed"
+
+            raise e
 
 class SFTPStorage(Storage):
     name = "sftp"
@@ -433,10 +461,10 @@ class SFTPStorage(Storage):
         auto_retry(attempt, n_retries, 0.0)
 
     def upload(self, in_file, out_path, **kwargs):
-        return SFTPUploadController(self.config, self, in_file, out_path, **kwargs)
+        return SFTPUploadTask(self.config, self, in_file, out_path, **kwargs)
 
     def download(self, in_path, out_file, **kwargs):
-        return SFTPDownloadController(self.config, self, in_path, out_file, **kwargs)
+        return SFTPDownloadTask(self.config, self, in_path, out_file, **kwargs)
 
     def is_file(self, path, n_retries=None, timeout=None):
         if n_retries is None:

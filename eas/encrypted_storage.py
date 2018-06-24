@@ -87,10 +87,10 @@ class EncryptedStorage(object):
                 yield open(pathm.to_sys(path), "rb")
             else:
                 tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
-                controller = self.storage.download(path, tmp_file)
-                yield controller
+                task = self.storage.download(path, tmp_file)
+                yield task
 
-                controller.work()
+                task.work()
 
                 tmp_file.seek(0)
                 yield tmp_file
@@ -111,10 +111,10 @@ class EncryptedStorage(object):
                 yield self.config.temp_encrypt(pathm.to_sys(path))
             else:
                 tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
-                controller = self.storage.download(path, tmp_file)
-                yield controller
+                task = self.storage.download(path, tmp_file)
+                yield task
 
-                controller.work()
+                task.work()
 
                 yield self.config.temp_encrypt(tmp_file)
 

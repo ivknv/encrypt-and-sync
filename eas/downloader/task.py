@@ -12,7 +12,7 @@ from .. import pathm
 
 __all__ = ["DownloadTask"]
 
-class UploadControllerReceiver(Receiver):
+class UploadTaskReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
 
@@ -30,7 +30,7 @@ class UploadControllerReceiver(Receiver):
         if task.stopped:
             event.emitter.stop()
 
-class DownloadControllerReceiver(Receiver):
+class DownloadTaskReceiver(Receiver):
     def __init__(self, task):
         Receiver.__init__(self)
 
@@ -69,8 +69,8 @@ class DownloadTask(Task):
         self._downloaded = 0
         self._uploaded = 0
 
-        self.upload_controller = None
-        self.download_controller = None
+        self.upload_task = None
+        self.download_task = None
 
         self._upload_limit = target.upload_limit
         self._download_limit = target.download_limit
@@ -83,10 +83,10 @@ class DownloadTask(Task):
     def upload_limit(self, value):
         self._upload_limit = value
 
-        upload_controller = self.upload_controller
+        upload_task = self.upload_task
 
-        if upload_controller is not None:
-            upload_controller.limit = value
+        if upload_task is not None:
+            upload_task.limit = value
 
     @property
     def download_limit(self):
@@ -96,22 +96,22 @@ class DownloadTask(Task):
     def download_limit(self, value):
         self._download_limit = value
 
-        download_controller = self.download_controller
+        download_task = self.download_task
 
-        if download_controller is not None:
-            download_controller.limit = value
+        if download_task is not None:
+            download_task.limit = value
 
     def stop(self):
         super().stop()
 
-        upload_controller = self.upload_controller
-        download_controller = self.download_controller
+        upload_task = self.upload_task
+        download_task = self.download_task
 
-        if upload_controller is not None:
-            upload_controller.stop()
+        if upload_task is not None:
+            upload_task.stop()
 
-        if download_controller is not None:
-            download_controller.stop()
+        if download_task is not None:
+            download_task.stop()
 
     @property
     def downloaded(self):
@@ -211,33 +211,33 @@ class DownloadTask(Task):
                 else:
                     download_generator = self.src.get_file(self.src_path)
 
-            self.download_controller = next(download_generator)
-            if self.download_controller is not None:
-                self.download_controller.limit = self.download_limit
-                self.download_controller.add_receiver(DownloadControllerReceiver(self))
+            self.download_task = next(download_generator)
+            if self.download_task is not None:
+                self.download_task.limit = self.download_limit
+                self.download_task.add_receiver(DownloadTaskReceiver(self))
 
-                self.download_controller.begin()
-                self.download_size = self.download_controller.size
+                self.download_task.begin()
+                self.download_size = self.download_task.size
 
             if self.stopped:
                 return
 
             tmpfile = next(download_generator)
 
-            if self.download_controller is None:
+            if self.download_task is None:
                 self.downloaded = self.download_size
 
             if not self.upload_size:
                 self.upload_size = get_file_size(tmpfile)
 
-            self.upload_controller, ivs = self.dst.upload(tmpfile, self.dst_path)
-            self.upload_controller.limit = self.upload_limit
+            self.upload_task, ivs = self.dst.upload(tmpfile, self.dst_path)
+            self.upload_task.limit = self.upload_limit
 
             if self.stopped:
                 return
 
-            self.upload_controller.add_receiver(UploadControllerReceiver(self))
-            self.upload_controller.work()
+            self.upload_task.add_receiver(UploadTaskReceiver(self))
+            self.upload_task.run()
 
             self.status = "finished"
         except ControllerInterrupt:

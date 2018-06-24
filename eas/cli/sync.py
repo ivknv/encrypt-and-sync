@@ -588,7 +588,7 @@ class TaskReceiver(Receiver):
 
     def on_downloaded_changed(self, event):
         task = event["emitter"]
-        downloaded, size = task.downloaded, task.download_controller.size
+        downloaded, size = task.downloaded, task.download_task.size
 
         try:
             downloaded_percent = float(downloaded) / size * 100.0

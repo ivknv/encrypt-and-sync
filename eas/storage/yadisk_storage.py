@@ -12,12 +12,12 @@ import yadisk.utils
 
 from ..constants import YADISK_APP_ID, YADISK_APP_SECRET
 
-from .controlled_speed_limiter import ControlledSpeedLimiter
+from .stoppable_speed_limiter import StoppableSpeedLimiter
 from .limited_file import LimitedFile
 from .storage import Storage
 from .exceptions import ControllerInterrupt, TemporaryStorageError
-from .download_controller import DownloadController
-from .upload_controller import UploadController
+from .download_task import DownloadTask
+from .upload_task import UploadTask
 
 __all__ = ["YaDiskStorage"]
 
@@ -53,11 +53,11 @@ def _yadisk_meta_to_dict(meta):
             "group":    group,
             "link":     link_path}
 
-class YaDiskDownloadController(DownloadController):
+class YaDiskDownloadTask(DownloadTask):
     def __init__(self, config, ynd, in_path, out_file, **kwargs):
-        self.speed_limiter = ControlledSpeedLimiter(self, None)
+        self.speed_limiter = StoppableSpeedLimiter(None)
 
-        DownloadController.__init__(self, config, out_file, **kwargs)
+        DownloadTask.__init__(self, config, out_file, **kwargs)
 
         self.in_path = in_path
         self.link = None
@@ -71,6 +71,11 @@ class YaDiskDownloadController(DownloadController):
     @limit.setter
     def limit(self, value):
         self.speed_limiter.limit = value
+
+    def stop(self):
+        super().stop()
+
+        self.speed_limiter.stop()
 
     def begin(self, enable_retries=True):
         if self.stopped:
@@ -107,56 +112,65 @@ class YaDiskDownloadController(DownloadController):
         else:
             attempt()
 
-    def work(self):
-        if self.stopped:
-            raise ControllerInterrupt
-
-        def attempt():
-            if self.stopped:
-                raise ControllerInterrupt
-
-            self.begin(False)
-
-            if self.stopped:
-                raise ControllerInterrupt
-
-            self.speed_limiter.begin()
-            self.speed_limiter.quantity = 0
-
-            for chunk in self.response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
-                if self.stopped:
-                    raise ControllerInterrupt
-
-                if not chunk:
-                    continue
-
-                self.out_file.write(chunk)
-                l = len(chunk)
-                self.downloaded += l
-                self.speed_limiter.quantity += l
-
-                if self.stopped:
-                    raise ControllerInterrupt
-
-                self.speed_limiter.delay()
-
-                if self.stopped:
-                    raise ControllerInterrupt
-
-            self.response = None
-
+    def complete(self):
         try:
-            yadisk.utils.auto_retry(attempt, self.n_retries, 0.0)
-        except PathNotFoundError as e:
-            raise FileNotFoundError(str(e))
-        except (RetriableYaDiskError, RequestException) as e:
-            raise TemporaryStorageError(str(e))
+            self.status = "pending"
 
-class YaDiskUploadController(UploadController):
+            if self.stopped:
+                raise ControllerInterrupt
+
+            def attempt():
+                if self.stopped:
+                    raise ControllerInterrupt
+
+                self.begin(False)
+
+                if self.stopped:
+                    raise ControllerInterrupt
+
+                self.speed_limiter.begin()
+                self.speed_limiter.quantity = 0
+
+                for chunk in self.response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                    if self.stopped:
+                        raise ControllerInterrupt
+
+                    if not chunk:
+                        continue
+
+                    self.out_file.write(chunk)
+                    l = len(chunk)
+                    self.downloaded += l
+                    self.speed_limiter.quantity += l
+
+                    if self.stopped:
+                        raise ControllerInterrupt
+
+                    self.speed_limiter.delay()
+
+                    if self.stopped:
+                        raise ControllerInterrupt
+
+                self.response = None
+
+            try:
+                yadisk.utils.auto_retry(attempt, self.n_retries, 0.0)
+            except PathNotFoundError as e:
+                raise FileNotFoundError(str(e))
+            except (RetriableYaDiskError, RequestException) as e:
+                raise TemporaryStorageError(str(e))
+
+            self.status = "finished"
+        except Exception as e:
+            self.status = "failed"
+
+            raise e
+
+class YaDiskUploadTask(UploadTask):
     def __init__(self, config, ynd, in_file, out_path, **kwargs):
         in_file = LimitedFile(in_file, self, None)
 
-        UploadController.__init__(self, config, in_file, **kwargs)
+        UploadTask.__init__(self, config, in_file, **kwargs)
 
         self.yadisk = ynd
         self.out_path = out_path
@@ -169,18 +183,32 @@ class YaDiskUploadController(UploadController):
     def limit(self, value):
         self.in_file.limit = value
 
-    def work(self):
-        if self.stopped:
-            raise ControllerInterrupt
+    def stop(self):
+        super().stop()
 
+        self.in_file.stop()
+
+    def complete(self):
         try:
-            self.yadisk.upload(self.in_file, self.out_path, overwrite=True,
-                               timeout=self.timeout, n_retries=self.n_retries,
-                               retry_interval=3.0)
-        except PathNotFoundError as e:
-            raise FileNotFoundError(str(e))
-        except (RetriableYaDiskError, RequestException) as e:
-            raise TemporaryStorageError(str(e))
+            self.status = "pending"
+
+            if self.stopped:
+                raise ControllerInterrupt
+
+            try:
+                self.yadisk.upload(self.in_file, self.out_path, overwrite=True,
+                                   timeout=self.timeout, n_retries=self.n_retries,
+                                   retry_interval=3.0)
+            except PathNotFoundError as e:
+                raise FileNotFoundError(str(e))
+            except (RetriableYaDiskError, RequestException) as e:
+                raise TemporaryStorageError(str(e))
+
+            self.status = "finished"
+        except Exception as e:
+            self.status = "failed"
+
+            raise e
 
 class YaDiskStorage(Storage):
     name = "yadisk"
@@ -266,16 +294,12 @@ class YaDiskStorage(Storage):
             raise TemporaryStorageError(str(e))
 
     def upload(self, in_file, out_path, **kwargs):
-        controller = YaDiskUploadController(self.config, self.yadisk,
-                                            in_file, out_path, **kwargs)
-
-        return controller
+        return YaDiskUploadTask(self.config, self.yadisk,
+                                in_file, out_path, **kwargs)
 
     def download(self, in_path, out_file, **kwargs):
-        controller = YaDiskDownloadController(self.config, self.yadisk,
-                                              in_path, out_file, **kwargs)
-
-        return controller
+        return YaDiskDownloadTask(self.config, self.yadisk,
+                                  in_path, out_file, **kwargs)
 
     def is_file(self, path, timeout=None, n_retries=None):
         if timeout is None:

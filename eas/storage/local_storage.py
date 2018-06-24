@@ -13,8 +13,8 @@ from ..constants import PERMISSION_MASK
 
 from .storage import Storage
 from .exceptions import ControllerInterrupt
-from .download_controller import DownloadController
-from .upload_controller import UploadController
+from .download_task import DownloadTask
+from .upload_task import UploadTask
 
 __all__ = ["LocalStorage"]
 
@@ -36,9 +36,9 @@ def local_to_utc(local_timestamp):
     except (OSError, OverflowError):
         return 0
 
-class LocalDownloadController(DownloadController):
+class LocalDownloadTask(DownloadTask):
     def __init__(self, config, in_path, out_file, **kwargs):
-        DownloadController.__init__(self, config, out_file, **kwargs)
+        super().__init__(config, out_file, **kwargs)
 
         self.in_path = in_path
 
@@ -46,56 +46,74 @@ class LocalDownloadController(DownloadController):
         if self.size is None:
             self.size = get_file_size(self.in_path)
 
-    def work(self):
-        if self.stopped:
-            raise ControllerInterrupt
+    def complete(self):
+        try:
+            self.status = "pending"
 
-        self.begin()
+            if self.stopped:
+                raise ControllerInterrupt
 
-        if self.stopped:
-            raise ControllerInterrupt
+            self.begin()
 
-        with open(self.in_path, "rb") as in_file:
-            while True:
-                if self.stopped:
-                    raise ControllerInterrupt
+            if self.stopped:
+                raise ControllerInterrupt
 
-                content = in_file.read(MIN_READ_SIZE)
+            with open(self.in_path, "rb") as in_file:
+                while True:
+                    if self.stopped:
+                        raise ControllerInterrupt
 
-                if self.stopped:
-                    raise ControllerInterrupt
+                    content = in_file.read(MIN_READ_SIZE)
 
-                if not content:
-                    break
+                    if self.stopped:
+                        raise ControllerInterrupt
 
-                self.out_file.write(content)
-                self.downloaded += len(content)
+                    if not content:
+                        break
 
-class LocalUploadController(UploadController):
+                    self.out_file.write(content)
+                    self.downloaded += len(content)
+
+            self.status = "finished"
+        except Exception as e:
+            self.status = "failed"
+
+            raise e
+
+class LocalUploadTask(UploadTask):
     def __init__(self, config, in_file, out_path, **kwargs):
-        UploadController.__init__(self, config, in_file, **kwargs)
+        super().__init__(config, in_file, **kwargs)
 
         self.out_path = out_path
 
-    def work(self):
-        if self.stopped:
-            raise ControllerInterrupt
+    def complete(self):
+        try:
+            self.status = "pending"
 
-        with open(self.out_path, "wb") as out_file:
-            while True:
-                if self.stopped:
-                    raise ControllerInterrupt
+            if self.stopped:
+                raise ControllerInterrupt
 
-                content = self.in_file.read(MIN_READ_SIZE)
+            with open(self.out_path, "wb") as out_file:
+                while True:
+                    if self.stopped:
+                        raise ControllerInterrupt
 
-                if self.stopped:
-                    raise ControllerInterrupt
+                    content = self.in_file.read(MIN_READ_SIZE)
 
-                if not content:
-                    break
+                    if self.stopped:
+                        raise ControllerInterrupt
 
-                out_file.write(content)
-                self.uploaded += len(content)
+                    if not content:
+                        break
+
+                    out_file.write(content)
+                    self.uploaded += len(content)
+
+            self.status = "finished"
+        except Exception as e:
+            self.status = "failed"
+
+            raise e
 
 class LocalStorage(Storage):
     name = "local"
@@ -194,12 +212,12 @@ class LocalStorage(Storage):
     def upload(self, in_file, out_path, *args, **kwargs):
         out_path = pathm.to_sys(out_path)
 
-        return LocalUploadController(self.config, in_file, out_path)
+        return LocalUploadTask(self.config, in_file, out_path)
 
     def download(self, in_path, out_file, *args, **kwargs):
         in_path = pathm.to_sys(in_path)
 
-        return LocalDownloadController(self.config, in_path, out_file)
+        return LocalDownloadTask(self.config, in_path, out_file)
 
     def is_file(self, path, *args, **kwargs):
         return os.path.isfile(pathm.to_sys(path))

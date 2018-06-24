@@ -16,10 +16,10 @@ class RemoteFolderStorage(FolderStorage):
 
             tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
 
-            controller = self.storage.download(path, tmp_file, *args, **kwargs)
-            yield controller
+            download_task = self.storage.download(path, tmp_file, *args, **kwargs)
+            yield download_task
 
-            controller.work()
+            download_task.run()
 
             tmp_file.seek(0)
 
@@ -30,10 +30,10 @@ class RemoteFolderStorage(FolderStorage):
         else:
             tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
         
-            controller = self.storage.download(path, tmp_file, *args, **kwargs)
-            yield controller
+            download_task = self.storage.download(path, tmp_file, *args, **kwargs)
+            yield download_task
 
-            controller.work()
+            download_task.run()
 
             tmp_file.seek(0)
 
@@ -47,10 +47,10 @@ class RemoteFolderStorage(FolderStorage):
 
             tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
 
-            controller = self.storage.download(path, tmp_file, *args, **kwargs)
-            yield controller
+            download_task = self.storage.download(path, tmp_file, *args, **kwargs)
+            yield download_task
 
-            controller.work()
+            download_task.run()
 
             tmp_file.seek(0)
 
@@ -58,10 +58,10 @@ class RemoteFolderStorage(FolderStorage):
         else:
             tmp_file = tempfile.TemporaryFile("w+b", dir=self.config.temp_dir)
 
-            controller = self.storage.download(path, tmp_file, *args, **kwargs)
-            yield controller
+            download_task = self.storage.download(path, tmp_file, *args, **kwargs)
+            yield download_task
 
-            controller.work()
+            download_task.run()
 
             tmp_file.seek(0)
 
