@@ -2,8 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import functools
-import grp
-import pwd
+
+try:
+    import grp
+    import pwd
+except ImportError
+    grp = pwd = None
+
 import os
 import sys
 import time
@@ -230,17 +235,24 @@ def format_chown_diff(config, diff):
 
     ownership_string = ""
 
-    if diff["owner"] is not None:
-        try:
-            ownership_string += pwd.getpwuid(diff["owner"]).pw_name
-        except KeyError:
-            ownership_string += str(diff["owner"])
+    if pwd is None or grp is None:
+        if diff["owner"] is not None:
+            ownership_string = str(diff["owner"])
 
-    if diff["group"] is not None:
-        try:
-            ownership_string += ":" + grp.getgrgid(diff["group"]).gr_name
-        except KeyError:
-            ownership_string += ":%s" % (diff["group"],)
+        if diff["group"] is not None:
+            ownership_string = ":%s" % (diff["group"],)
+    else:
+        if diff["owner"] is not None:
+            try:
+                ownership_string += pwd.getpwuid(diff["owner"]).pw_name
+            except KeyError:
+                ownership_string += str(diff["owner"])
+
+        if diff["group"] is not None:
+            try:
+                ownership_string += ":" + grp.getgrgid(diff["group"]).gr_name
+            except KeyError:
+                ownership_string += ":%s" % (diff["group"],)
 
     return "%s %s %s\n" % (diff["node_type"], dst_path, ownership_string)
 
