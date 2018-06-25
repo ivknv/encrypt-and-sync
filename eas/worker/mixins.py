@@ -4,6 +4,26 @@ import threading
 
 __all__ = ["SupportsDirtyMixin", "WaiterMixin", "PoolWorkerMixin", "PoolWaiterMixin"]
 
+def _periodic_wait(event, timeout=None, interval=0.5):
+    if interval is None:
+        return event.wait(timeout)
+    elif timeout is None:
+        while not event.is_set():
+            if event.wait(interval):
+                return True
+    else:
+        interval = min(interval, timeout)
+
+        while not event.is_set() and timeout > 0.0:
+            last_time = time.monotonic()
+
+            if event.wait(interval):
+                return True
+
+            timeout -= time.monotonic() - last_time
+
+    return False
+
 class SupportsDirtyMixin(object):
     def __init__(self):
         self._dirty = threading.Event()
@@ -24,11 +44,11 @@ class SupportsDirtyMixin(object):
     def is_idle(self):
         return self._idle.is_set()
 
-    def wait_idle(self, timeout=None):
-        self._idle.wait(timeout)
+    def wait_idle(self, timeout=None, interval=0.5):
+        return _periodic_wait(self._idle, timeout, interval)
 
-    def wait_dirty(self, timeout=None):
-        self._dirty.wait(timeout)
+    def wait_dirty(self, timeout=None, interval=0.5):
+        return _periodic_wait(self._dirty, timeout, interval)
 
 class WaiterMixin(object):
     def get_task(self):
