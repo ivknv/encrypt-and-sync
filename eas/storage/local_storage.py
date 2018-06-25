@@ -230,20 +230,30 @@ class LocalStorage(Storage):
 
     def set_modified(self, path, new_modified, *args, **kwargs):
         new_modified = utc_to_local(new_modified)
-        os.utime(pathm.to_sys(path), (new_modified, new_modified), follow_symlinks=False)
+
+        if os.utime in os.supports_follow_symlinks:
+            os.utime(pathm.to_sys(path), (new_modified, new_modified), follow_symlinks=False)
+        else:
+            os.utime(pathm.to_sys(path), (new_modified, new_modified))
 
     if supports_chmod:
         def chmod(self, path, mode, *args, **kwargs):
             if mode is None:
                 return
 
-            os.chmod(pathm.to_sys(path), mode)
+            if os.chmod in os.supports_follow_symlinks:
+                os.chmod(pathm.to_sys(path), mode, follow_symlinks=False)
+            else:
+                os.chmod(pathm.to_sys(path), mode)
 
     def chown(self, path, uid, gid, *args, **kwargs):
         if uid is None and gid is None:
             return
 
-        os.lchown(pathm.to_sys(path), uid, gid)
+        if os.chown in os.supports_follow_symlinks:
+            os.chown(pathm.to_sys(path), uid, gid, follow_symlinks=False)
+        else:
+            os.chown(pathm.to_sys(path), uid, gid)
 
     def create_symlink(self, path, link_path, *args, **kwargs):
         os.symlink(pathm.to_sys(link_path), pathm.to_sys(path))
