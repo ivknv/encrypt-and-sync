@@ -6,7 +6,7 @@ import functools
 try:
     import grp
     import pwd
-except ImportError
+except ImportError:
     grp = pwd = None
 
 import os
