@@ -126,51 +126,41 @@ class SyncTarget(StagedTask):
             self.emit_event("autocommit_failed", self.shared_flist2)
             raise e
 
-    def get_differences(self, checks):
+    def get_differences(self):
         return file_comparator.compare_lists(self.config,
                                              self.path1_with_proto,
                                              self.path2_with_proto,
-                                             self.synchronizer.directory,
-                                             checks)
+                                             self.synchronizer.directory)
 
-    def build_diffs_table(self, checks=None):
+    def build_diffs_table(self, diff_types=None):
         self.emit_event("diffs_started")
 
-        if checks is None:
-            checks = ("rm", "new", "update")
+        if diff_types is None:
+            diff_types = {"rm", "new", "update", "modified", "chmod", "chown"}
+        else:
+            diff_types = set(diff_types)
 
-            if self.dst.storage.supports_set_modified and self.sync_modified:
-                checks = checks + ("modified",)
+        diffs = self.get_differences()
 
-            if self.dst.storage.supports_chmod and self.sync_mode:
-                checks = checks + ("chmod",)
+        if not self.no_remove:
+            diff_types.discard("rm")
 
-            if self.dst.storage.supports_chown and self.sync_ownership:
-                checks = checks + ("chown",)
+        if not self.sync_modified or not self.dst.storage.supports_set_modified:
+            diff_types.discard("modified")
 
-        diffs = self.get_differences(checks)
+        if not self.sync_mode or not self.dst.storage.supports_chmod:
+            diff_types.discard("chmod")
 
-        enable_remove = not self.no_remove
-        enable_modified = self.dst.storage.supports_set_modified and self.sync_modified
-        enable_chmod = self.dst.storage.supports_chmod and self.sync_mode
-        enable_chown = self.dst.storage.supports_chown and self.sync_ownership
-        
+        if not self.sync_ownership or not self.dst.storage.supports_chown:
+            diff_types.discard("chown")
+
         try:
             self.difflist.begin_transaction()
             self.difflist.remove(self.path1_with_proto, self.path2_with_proto)
 
             with self.difflist:
                 for diff in diffs:
-                    if not enable_remove and diff["type"] == "rm":
-                        continue
-
-                    if not enable_modified and diff["type"] == "modified":
-                        continue
-
-                    if not enable_chmod and diff["type"] == "chmod":
-                        continue
-
-                    if not enable_chown and diff["type"] == "chown":
+                    if diff not in diff_types:
                         continue
 
                     self.difflist.insert(diff)

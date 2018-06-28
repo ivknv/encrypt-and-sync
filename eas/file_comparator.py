@@ -13,8 +13,7 @@ def try_next(it, default=None):
         return default
 
 class FileComparator(object):
-    def __init__(self, config, src_path, dst_path, directory=None,
-                 checks=("rm", "new", "update", "modified", "chmod", "chown")):
+    def __init__(self, config, src_path, dst_path, directory=None):
         self.config = config
 
         src_path, src_path_type = recognize_path(src_path)
@@ -76,8 +75,6 @@ class FileComparator(object):
         self.link_path2 = None
 
         self.last_rm = None
-
-        self.checks = checks
 
     def __iter__(self):
         return self
@@ -195,28 +192,24 @@ class FileComparator(object):
             if self.is_removed():
                 self.node2 = try_next(self.it2)
 
-                if "rm" not in self.checks:
-                    continue
-
                 if self.last_rm is None or not pathm.contains(self.last_rm, self.path2):
                     diffs.extend(self.diff_rm())
             elif self.is_new():
                 self.node1 = try_next(self.it1)
 
-                if "new" not in self.checks:
-                    continue
-
                 diffs.extend(self.diff_new())
+                diffs.extend(self.diff_modified())
             elif self.is_transitioned():
                 self.node1 = try_next(self.it1)
                 self.node2 = try_next(self.it2)
 
                 diffs.extend(self.diff_transition())
+                diffs.extend(self.diff_modified())
             else:
                 if self.is_newer():
                     diffs.extend(self.diff_update())
-
-                if self.is_modified_different():
+                    diffs.extend(self.diff_modified())
+                elif self.is_modified_different():
                     diffs.extend(self.diff_modified())
 
                 if self.is_mode_different():
@@ -232,9 +225,6 @@ class FileComparator(object):
                 return diffs
 
     def is_newer(self):
-        if "update" not in self.checks:
-            return False
-
         if self.link_path1 is not None or self.link_path2 is not None:
             return False
 
@@ -250,19 +240,12 @@ class FileComparator(object):
                                (self.node1 and self.path1 > self.path2))
 
     def is_transitioned(self):
-        if "new" not in self.checks or "rm" not in self.checks:
-            return False
-
         return self.node1 and self.node2 and (self.type1 != self.type2 and
                                               self.link_path1 is None and
                                               self.link_path2 is None or
                                               self.link_path1 != self.link_path2)
 
     def is_modified_different(self):
-        global _counter
-        if "modified" not in self.checks:
-            return False
-
         if self.modified1 is None:
             return False
 
@@ -270,9 +253,6 @@ class FileComparator(object):
                                               self.modified1 != self.modified2)
 
     def is_mode_different(self):
-        if "chmod" not in self.checks:
-            return False
-
         if self.mode1 is None:
             return
 
@@ -280,26 +260,19 @@ class FileComparator(object):
                                               self.mode1 != self.mode2)
 
     def is_owner_different(self):
-        if "chown" not in self.checks:
-            return False
-
         if self.owner1 is None:
             return False
 
         return self.node1 and self.node2 and self.owner1 != self.owner2
 
     def is_group_different(self):
-        if "chown" not in self.checks:
-            return False
-
         if self.group1 is None:
             return False
 
         return self.node1 and self.node2 and self.group1 != self.group2
 
-def compare_lists(config, src_path, dst_path, directory=None,
-                  checks=("rm", "new", "update", "modified", "chmod", "chown")):
-    comparator = FileComparator(config, src_path, dst_path, directory, checks)
+def compare_lists(config, src_path, dst_path, directory=None):
+    comparator = FileComparator(config, src_path, dst_path, directory)
 
     for i in comparator:
         yield from i
