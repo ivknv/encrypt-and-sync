@@ -319,7 +319,7 @@ class SyncTarget(StagedTask):
             return
 
         differences = self.difflist.find_rm(self.path1_with_proto,
-                                                          self.path2_with_proto)
+                                            self.path2_with_proto)
 
         self.shared_flist2.begin_transaction()
 

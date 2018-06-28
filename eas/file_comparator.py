@@ -195,10 +195,16 @@ class FileComparator(object):
             if self.is_removed():
                 self.node2 = try_next(self.it2)
 
+                if "rm" not in self.checks:
+                    continue
+
                 if self.last_rm is None or not pathm.contains(self.last_rm, self.path2):
                     diffs.extend(self.diff_rm())
             elif self.is_new():
                 self.node1 = try_next(self.it1)
+
+                if "new" not in self.checks:
+                    continue
 
                 diffs.extend(self.diff_new())
             elif self.is_transitioned():
@@ -226,7 +232,7 @@ class FileComparator(object):
                 return diffs
 
     def is_newer(self):
-        if "new" not in self.checks:
+        if "update" not in self.checks:
             return False
 
         if self.link_path1 is not None or self.link_path2 is not None:
@@ -237,15 +243,9 @@ class FileComparator(object):
                                                  self.padded_size1 != self.padded_size2))
 
     def is_new(self):
-        if "update" not in self.checks:
-            return False
-
         return self.node1 and (not self.node2 or self.path1 < self.path2)
 
     def is_removed(self):
-        if "rm" not in self.checks:
-            return False
-
         return self.node2 and (not self.node1 or
                                (self.node1 and self.path1 > self.path2))
 
@@ -259,6 +259,7 @@ class FileComparator(object):
                                               self.link_path1 != self.link_path2)
 
     def is_modified_different(self):
+        global _counter
         if "modified" not in self.checks:
             return False
 
