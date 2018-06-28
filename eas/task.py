@@ -94,7 +94,7 @@ class Task(Emitter):
         raise NotImplementedError
 
     def _killer_func(self):
-        while not self.stopped:
+        while not self.stopped and not self._completed.is_set():
             time.sleep(0.5)
 
         if self._coroutine is not None:
@@ -110,3 +110,6 @@ class Task(Emitter):
             return self._coroutine.wait()
         finally:
             self._completed.set()
+
+            if self._killer_coroutine is not None:
+                self._killer_coroutine.kill()
