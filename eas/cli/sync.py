@@ -506,7 +506,7 @@ class TargetReceiver(Receiver):
 
         print("%s: finished building the difference table" % (display_name,))
 
-        if target.stage["name"] == "metadata":
+        if target.stage is not None and target.stage["name"] == "metadata":
             difflist = DiffList(self.env["db_dir"])
             n = difflist.count_metadata(target.path1_with_proto, target.path2_with_proto)
 
