@@ -37,7 +37,7 @@ def ask_target_choice(targets):
     for i, target in enumerate(targets):
         display_name = get_target_display_name(target)
 
-        print("[%d] [%s]" % (i + 1, display_name))
+        print("[%d] %s" % (i + 1, display_name))
 
     while True:
         try:
