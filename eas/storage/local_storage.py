@@ -157,9 +157,11 @@ class LocalStorage(Storage):
             return meta
 
         meta["modified"] = local_to_utc(s.st_mtime)
-        meta["mode"]  = s.st_mode & PERMISSION_MASK
-        meta["owner"] = s.st_uid
-        meta["group"] = s.st_gid
+
+        if not is_windows():
+            meta["mode"]  = s.st_mode & PERMISSION_MASK
+            meta["owner"] = s.st_uid
+            meta["group"] = s.st_gid
 
         return meta
 
@@ -191,9 +193,11 @@ class LocalStorage(Storage):
                     meta["link"] = pathm.from_sys(os.readlink(entry.path))
 
                 meta["modified"] = local_to_utc(s.st_mtime)
-                meta["mode"] = s.st_mode & PERMISSION_MASK
-                meta["owner"] = s.st_uid
-                meta["group"] = s.st_gid
+
+                if not is_windows():
+                    meta["mode"] = s.st_mode & PERMISSION_MASK
+                    meta["owner"] = s.st_uid
+                    meta["group"] = s.st_gid
 
                 yield meta
 
