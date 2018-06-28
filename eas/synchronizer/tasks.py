@@ -148,8 +148,6 @@ class UploadTask(SyncTask):
     def stop(self):
         super().stop()
 
-        return
-
         upload_task = self.upload_task
         download_task = self.download_task
 
