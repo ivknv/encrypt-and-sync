@@ -160,7 +160,7 @@ class SyncTarget(StagedTask):
 
             with self.difflist:
                 for diff in diffs:
-                    if diff not in diff_types:
+                    if diff["type"] not in diff_types:
                         continue
 
                     self.difflist.insert(diff)
