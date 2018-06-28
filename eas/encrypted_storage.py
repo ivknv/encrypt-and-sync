@@ -90,7 +90,7 @@ class EncryptedStorage(object):
                 task = self.storage.download(path, tmp_file)
                 yield task
 
-                task.work()
+                task.run()
 
                 tmp_file.seek(0)
                 yield tmp_file
