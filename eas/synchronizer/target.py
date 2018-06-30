@@ -142,7 +142,7 @@ class SyncTarget(StagedTask):
 
         diffs = self.get_differences()
 
-        if not self.no_remove:
+        if self.no_remove:
             diff_types.discard("rm")
 
         if not self.sync_modified or not self.dst.storage.supports_set_modified:

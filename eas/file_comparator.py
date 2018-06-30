@@ -250,7 +250,7 @@ class FileComparator(object):
             return False
 
         return self.node1 and self.node2 and (self.path1 == self.path2 and
-                                              self.modified1 != self.modified2)
+                                              int(self.modified1 * 1e6) != int(self.modified2 * 1e6))
 
     def is_mode_different(self):
         if self.mode1 is None:
