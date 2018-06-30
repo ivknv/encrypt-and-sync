@@ -3,7 +3,6 @@
 import os
 
 from . import cdb
-from .common import format_timestamp, parse_timestamp
 
 __all__ = ["DiffList"]
 
@@ -47,7 +46,7 @@ class DiffList(object):
         gid = diff.get("group")
 
         if modified is not None:
-            modified = format_timestamp(modified)
+            modified = modified * 1e6
 
         self.connection.execute("INSERT INTO differences VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                 (diff_type, node_type, path, link_path, modified,
@@ -63,7 +62,7 @@ class DiffList(object):
                    "node_type": i[1],
                    "path": i[2],
                    "link_path": i[3],
-                   "modified": parse_timestamp(i[4]) if i[4] is not None else None,
+                   "modified": i[4] / 1e6 if i[4] is not None else None,
                    "mode": i[5],
                    "owner": i[6],
                    "group": i[7],

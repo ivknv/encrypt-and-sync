@@ -5,7 +5,7 @@ import os
 import sqlite3
 
 from . import cdb, pathm, encryption
-from .common import node_tuple_to_dict, format_timestamp
+from .common import node_tuple_to_dict
 from .common import escape_glob, validate_folder_name
 
 __all__ = ["Filelist"]
@@ -51,7 +51,7 @@ class Filelist(object):
         with self.connection:
             self.connection.execute("""CREATE TABLE IF NOT EXISTS filelist
                                        (type TEXT,
-                                        modified DATETIME,
+                                        modified INTEGER,
                                         padded_size INTEGER,
                                         mode INTEGER,
                                         uid INTEGER,
@@ -99,7 +99,7 @@ class Filelist(object):
                                                         link_path, IVs)
                                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                                 (node["type"],
-                                 format_timestamp(node["modified"]),
+                                 node["modified"] * 1e6,
                                  node["padded_size"],
                                  node["mode"],
                                  node["owner"],
@@ -241,7 +241,7 @@ class Filelist(object):
         path = prepare_path(path)
         path_n = pathm.dir_normalize(path)
 
-        modified = format_timestamp(modified)
+        modified = modified * 1e6
 
         self.connection.execute("UPDATE filelist SET modified=? WHERE path=? or path=?",
                                 (modified, path, path_n))
@@ -328,7 +328,7 @@ class Filelist(object):
         """
 
         self.connection.execute("""INSERT OR FAIL INTO filelist(type, path, IVs, modified)
-                                   VALUES(?, ?, ?, ?)""", ("v", path, ivs, format_timestamp(0)))
+                                   VALUES(?, ?, ?, ?)""", ("v", path, ivs, 86400))
 
     def create_virtual_nodes(self, path, prefix):
         """

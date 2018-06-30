@@ -12,42 +12,27 @@ from .lockfile import *
 from .lru_cache import *
 from .speed_limiter import *
 
-__all__ = ["format_timestamp", "parse_timestamp", "node_tuple_to_dict",
-           "normalize_node", "escape_glob", "validate_folder_name",
-           "is_windows", "get_file_size", "parse_size", "DummyException",
-           "recognize_path", "threadsafe_iterator", "ThreadsafeIterator",
-           "LazyDict", "Lockfile", "LRUCache", "SpeedLimiter"]
-
-DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+__all__ = ["node_tuple_to_dict", "normalize_node", "escape_glob",
+           "validate_folder_name", "is_windows", "get_file_size", "parse_size",
+           "DummyException", "recognize_path", "threadsafe_iterator",
+           "ThreadsafeIterator", "LazyDict", "Lockfile", "LRUCache", "SpeedLimiter"]
 
 class DummyException(Exception):
     """Should not be raised anywhere."""
 
     pass
 
-def format_timestamp(timestamp):
-    try:
-        return datetime.fromtimestamp(timestamp).strftime(DATE_FORMAT)
-    except OSError:
-        return datetime.fromtimestamp(86400).strftime(DATE_FORMAT)
-
-def parse_timestamp(s):
-    try:
-        return datetime.strptime(s, DATE_FORMAT).timestamp()
-    except OSError:
-        return 86400
-
 def node_tuple_to_dict(t):
     if t is not None:
         return {"type": t[0],
-                "modified": parse_timestamp(t[1]),
+                "modified": t[1] / 1e6,
                 "padded_size": t[2],
                 "mode": t[3],
                 "owner": t[4],
                 "group": t[5],
                 "path": t[6],
                 "link_path": t[7],
-                "IVs": t[8] if len(t) >= 9 else b""}
+                "IVs": t[8]}
 
     return {"type": None,
             "modified": None,
