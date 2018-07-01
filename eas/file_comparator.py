@@ -115,8 +115,8 @@ class FileComparator(object):
 
     def diff_modified(self):
         yield {"type": "modified",
-               "node_type": self.type2,
-               "path": self.path2,
+               "node_type": self.type2 or self.type1,
+               "path": self.path1,
                "modified": self.modified1,
                "src_path": self.src_path_with_proto,
                "dst_path": self.dst_path_with_proto}
