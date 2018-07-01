@@ -397,6 +397,8 @@ def view_duplicates(env, target):
     if count < 50:
         pager.command = None
 
+    pager.stdin.write("Duplicates to remove:\n")
+
     if target.src.encrypted:
         duplicates = duplist1.find_recursively(target.src.prefix)
 
