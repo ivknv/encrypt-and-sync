@@ -194,6 +194,9 @@ class UploadTask(SyncTask):
                 self.src_flist.remove(full_src_path)
 
                 self.status = "skipped"
+
+                self.autocommit()
+
                 return True
 
             if self.stopped:
@@ -256,9 +259,10 @@ class UploadTask(SyncTask):
 
             self.dst_flist.insert(newnode)
             self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
-            self.autocommit()
 
             self.status = "finished"
+
+            self.autocommit()
 
             return True
         except ControllerInterrupt:
@@ -297,9 +301,10 @@ class CreateSymlinkTask(SyncTask):
 
         self.dst_flist.insert(newnode)
         self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
-        self.autocommit()
 
         self.status = "finished"
+
+        self.autocommit()
 
         return True
 
@@ -333,9 +338,10 @@ class MkdirTask(SyncTask):
 
         self.dst_flist.insert(newnode)
         self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
-        self.autocommit()
 
         self.status = "finished"
+
+        self.autocommit()
 
         return True
 
@@ -372,9 +378,9 @@ class RmTask(SyncTask):
             modified = time.mktime(time.gmtime())
             self.dst_flist.update_modified(pathm.dirname(full_dst_path), modified)
 
-        self.autocommit()
-
         self.status = "finished"
+
+        self.autocommit()
 
         return True
 
@@ -406,6 +412,8 @@ class ModifiedTask(SyncTask):
 
             self.status = "skipped"
 
+        self.autocommit()
+
         return True
 
 class ChmodTask(SyncTask):
@@ -435,6 +443,8 @@ class ChmodTask(SyncTask):
             self.dst_flist.remove_recursively(full_dst_path)
 
             self.status = "skipped"
+
+        self.autocommit()
 
         return True
 
@@ -470,5 +480,7 @@ class ChownTask(SyncTask):
             self.dst_flist.remove_recursively(full_dst_path)
 
             self.status = "skipped"
+
+        self.autocommit()
 
         return True
