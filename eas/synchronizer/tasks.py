@@ -191,6 +191,8 @@ class UploadTask(SyncTask):
             try:
                 temp_file = next(download_generator)
             except FileNotFoundError:
+                self.src_flist.remove(full_src_path)
+
                 self.status = "skipped"
                 return True
 
@@ -394,10 +396,15 @@ class ModifiedTask(SyncTask):
 
         assert(self.modified is not None)
 
-        self.dst.set_modified(dst_path, self.modified)
-        self.dst_flist.update_modified(full_dst_path, self.modified)
+        try:
+            self.dst.set_modified(dst_path, self.modified)
+            self.dst_flist.update_modified(full_dst_path, self.modified)
 
-        self.status = "finished"
+            self.status = "finished"
+        except FileNotFoundError:
+            self.dst_flist.remove_recursively(full_dst_path)
+
+            self.status = "skipped"
 
         return True
 
@@ -419,10 +426,15 @@ class ChmodTask(SyncTask):
 
         assert(self.mode is not None)
 
-        self.dst.chmod(dst_path, self.mode)
-        self.dst_flist.update_mode(full_dst_path, self.mode)
+        try:
+            self.dst.chmod(dst_path, self.mode)
+            self.dst_flist.update_mode(full_dst_path, self.mode)
 
-        self.status = "finished"
+            self.status = "finished"
+        except FileNotFoundError:
+            self.dst_flist.remove_recursively(full_dst_path)
+
+            self.status = "skipped"
 
         return True
 
@@ -442,18 +454,21 @@ class ChownTask(SyncTask):
         full_src_path = pathm.join(self.src.prefix, src_path)
         full_dst_path = pathm.join(self.dst.prefix, dst_path)
 
-        src_node = self.src_flist.find(full_src_path)
-
         assert(self.owner is not None or self.group is not None)
 
-        self.dst.chown(dst_path, self.owner, self.group)
+        try:
+            self.dst.chown(dst_path, self.owner, self.group)
 
-        if self.owner is not None:
-            self.dst_flist.update_owner(full_dst_path, self.owner)
+            if self.owner is not None:
+                self.dst_flist.update_owner(full_dst_path, self.owner)
 
-        if self.group is not None:
-            self.dst_flist.update_group(full_dst_path, self.group)
+            if self.group is not None:
+                self.dst_flist.update_group(full_dst_path, self.group)
 
-        self.status = "finished"
+            self.status = "finished"
+        except FileNotFoundError:
+            self.dst_flist.remove_recursively(full_dst_path)
+
+            self.status = "skipped"
 
         return True

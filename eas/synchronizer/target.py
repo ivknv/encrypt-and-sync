@@ -60,7 +60,7 @@ class SyncTarget(StagedTask):
 
         self.subpath1 = pathm.join_properly("/", self.subpath1)
         self.subpath2 = pathm.join_properly("/", self.subpath2)
-        
+
         self.skip_integrity_check = False
         self.enable_scan = True
         self.avoid_src_rescan = False
@@ -118,6 +118,11 @@ class SyncTarget(StagedTask):
 
     def autocommit(self):
         try:
+            if self.shared_flist1.time_since_last_commit() >= AUTOCOMMIT_INTERVAL:
+                self.emit_event("autocommit_started", self.shared_flist1)
+                self.shared_flist1.seamless_commit()
+                self.emit_event("autocommit_finished", self.shared_flist1)
+
             if self.shared_flist2.time_since_last_commit() >= AUTOCOMMIT_INTERVAL:
                 self.emit_event("autocommit_started", self.shared_flist2)
                 self.shared_flist2.seamless_commit()
@@ -347,6 +352,7 @@ class SyncTarget(StagedTask):
         differences = self.difflist.find_files(self.path1_with_proto,
                                                self.path2_with_proto)
 
+        self.shared_flist1.begin_transaction()
         self.shared_flist2.begin_transaction()
 
         if self.src.storage.parallelizable or self.dst.storage.parallelizable:
@@ -360,6 +366,7 @@ class SyncTarget(StagedTask):
         self.pool.join()
 
     def finalize_files(self):
+        self.shared_flist1.commit()
         self.shared_flist2.commit()
 
     def init_metadata(self):
