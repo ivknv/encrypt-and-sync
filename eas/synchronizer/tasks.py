@@ -111,7 +111,7 @@ class SyncTask(Task):
     def run(self):
         try:
             super().run()
-        except (ControllerInterrupt, eventlet.greenlet.GreenletExit):
+        except (KeyboardInterrupt, ControllerInterrupt, eventlet.greenlet.GreenletExit):
             return True
 
 class UploadTask(SyncTask):

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import ctypes
 import threading
 import sys
 
@@ -46,7 +47,35 @@ class WorkerThread(Worker):
     def ident(self):
         if self.thread is None:
             return None
+
         return self.thread.ident
+
+    def raise_exception(self, exception_class):
+        """
+            Asynchronously raise an exception.
+
+            :param exception_class: exception class to raise
+
+            :raises ValueError: if worker is not running (no exception was raised)
+            :raises SystemError: if the interpreter broke down
+        """
+
+        tid = self.ident
+
+        if tid is None:
+            raise ValueError("Worker %r is not running" % (self,))
+
+        affected_count = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid),
+                                                                    ctypes.py_object(exception_class))
+
+        if not affected_count:
+            raise ValueError("No workers were affected")
+
+        if affected_count > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid),
+                                                       ctypes.c_long(0))
+
+            raise SystemError("PyThreadState_SetAsyncExc() broke the interpreter state")
 
 def get_current_worker():
     ident = threading.get_ident()

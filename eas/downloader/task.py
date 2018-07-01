@@ -261,5 +261,5 @@ class DownloadTask(Task):
 
             if self.status in ("pending", None):
                 self.status = "finished"
-        except (ControllerInterrupt, eventlet.greenlet.GreenletExit):
+        except (ControllerInterrupt, eventlet.greenlet.GreenletExit, KeyboardInterrupt):
             return True

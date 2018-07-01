@@ -33,8 +33,8 @@ class DuplicateRemoverTask(Task):
 
             encoding = self.filename_encoding
             encpath = self.config.encrypt_path(self.path, self.prefix,
-                                                IVs=self.ivs,
-                                                filename_encoding=encoding)[0]
+                                               IVs=self.ivs,
+                                               filename_encoding=encoding)[0]
 
             if self.parent.preserve_modified and self.storage.supports_set_modified:
                 if not pathm.is_equal(self.path, self.prefix):
@@ -56,7 +56,7 @@ class DuplicateRemoverTask(Task):
                 self.storage.remove(encpath)
                 removed = True
             except FileNotFoundError:
-                removed = False 
+                removed = False
 
             self.duplist.remove(self.ivs, self.path)
 
@@ -64,9 +64,9 @@ class DuplicateRemoverTask(Task):
 
             # Preserve parent modified date
             if self.parent.preserve_modified and self.path not in ("", "/") and removed:
-                if self.storage.supports_set_modified and parent_modified:
-                    self.storage.set_modified(pathm.split(encpath)[0], parent_modified)
+                if self.storage.supports_set_modified and parent_modified is not None:
+                    self.storage.set_modified(pathm.dirname(encpath), parent_modified)
 
             self.status = "finished"
-        except eventlet.greenlet.GreenletExit:
+        except (eventlet.greenlet.GreenletExit, KeyboardInterrupt):
             return

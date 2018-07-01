@@ -20,6 +20,12 @@ class GenericSignalManager(SignalManager):
             target = target_runner.cur_target
 
             if target is not None:
+                for worker in target.pool.get_worker_list():
+                    try:
+                        worker.raise_exception(KeyboardInterrupt)
+                    except ValueError:
+                        pass
+
                 target.pool.join()
 
             _exit(signum)

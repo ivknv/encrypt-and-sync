@@ -31,7 +31,7 @@ class ScanTask(Task):
     def run(self):
         try:
             super().run()
-        except eventlet.greenlet.GreenletExit:
+        except (eventlet.greenlet.GreenletExit, KeyboardInterrupt):
             return False
 
 class DecryptedScanTask(ScanTask):
