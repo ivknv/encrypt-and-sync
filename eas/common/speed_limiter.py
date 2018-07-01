@@ -41,7 +41,7 @@ class SpeedLimiter(object):
         self._sleeper.sleep(duration)
 
     def delay(self):
-        if self._quantity < self.limit * self.interval:
+        if self.limit is not None and self._quantity < self.limit * self.interval:
             return
 
         dt = min(time.monotonic() - self._last_delay, self.interval)

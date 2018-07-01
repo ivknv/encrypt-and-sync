@@ -201,7 +201,7 @@ class DropboxUploadTask(UploadTask):
 class DropboxDownloadTask(DownloadTask):
     def __init__(self, config, dbx, in_path, out_file, **kwargs):
         self.response = None
-        self.speed_limiter = StoppableSpeedLimiter(self, None)
+        self.speed_limiter = StoppableSpeedLimiter(None)
 
         DownloadTask.__init__(self, config, out_file, **kwargs)
 
@@ -209,7 +209,8 @@ class DropboxDownloadTask(DownloadTask):
         self.in_path = in_path
 
     def __del__(self):
-        DownloadTask.__del__(self)
+        if hasattr(DownloadTask, "__del__"):
+            DownloadTask.__del__(self)
 
         if self.response is not None:
             self.response.close()
