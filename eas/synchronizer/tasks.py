@@ -3,8 +3,6 @@
 import time
 import weakref
 
-import eventlet
-
 from .logging import TaskFailLogReceiver
 
 from ..events import Receiver
@@ -110,8 +108,8 @@ class SyncTask(Task):
 
     def run(self):
         try:
-            super().run()
-        except (KeyboardInterrupt, ControllerInterrupt, eventlet.greenlet.GreenletExit):
+            return super().run()
+        except (KeyboardInterrupt, ControllerInterrupt):
             return True
 
 class UploadTask(SyncTask):

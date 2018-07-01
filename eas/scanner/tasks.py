@@ -2,8 +2,6 @@
 
 from functools import reduce
 
-import eventlet
-
 from ..task import Task
 from ..scannable import scan_files
 from ..worker import get_current_worker
@@ -30,8 +28,8 @@ class ScanTask(Task):
 
     def run(self):
         try:
-            super().run()
-        except (eventlet.greenlet.GreenletExit, KeyboardInterrupt):
+            return super().run()
+        except KeyboardInterrupt:
             return False
 
 class DecryptedScanTask(ScanTask):

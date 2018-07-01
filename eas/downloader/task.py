@@ -2,8 +2,6 @@
 
 import weakref
 
-import eventlet
-
 from ..task import Task
 from ..events import Receiver
 from ..common import get_file_size
@@ -261,5 +259,5 @@ class DownloadTask(Task):
 
             if self.status in ("pending", None):
                 self.status = "finished"
-        except (ControllerInterrupt, eventlet.greenlet.GreenletExit, KeyboardInterrupt):
+        except (ControllerInterrupt, KeyboardInterrupt):
             return True

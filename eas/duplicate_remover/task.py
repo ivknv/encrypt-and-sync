@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import eventlet
-
 from ..task import Task
 from ..filelist import Filelist
 from .. import pathm
@@ -68,5 +66,5 @@ class DuplicateRemoverTask(Task):
                     self.storage.set_modified(pathm.dirname(encpath), parent_modified)
 
             self.status = "finished"
-        except (eventlet.greenlet.GreenletExit, KeyboardInterrupt):
+        except KeyboardInterrupt:
             return

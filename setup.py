@@ -6,10 +6,11 @@ import sys
 
 from setuptools import setup, find_packages
 
-requirements = ["s3m>=1.1.0", "pycryptodome", "portalocker", "eventlet"]
+requirements = ["s3m>=1.1.0", "pycryptodome", "portalocker"]
 
 if sys.platform.startswith("win"):
     requirements.append("pypiwin32")
+    requirements.append("eventlet")
 
 if os.environ.get("USE_FASTER_SCRIPTS", None):
     entry_points = {}

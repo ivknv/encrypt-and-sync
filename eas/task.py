@@ -2,9 +2,6 @@
 
 from collections import Counter
 import threading
-import time
-
-import eventlet
 
 from .events import Emitter
 
@@ -27,9 +24,6 @@ class Task(Emitter):
         self.stopped = False
 
         self._lock = threading.RLock()
-
-        self._killer_coroutine = None
-        self._coroutine = None
 
     def wait(self, timeout=None):
         self._completed.wait(timeout)
@@ -93,23 +87,10 @@ class Task(Emitter):
     def complete(self):
         raise NotImplementedError
 
-    def _killer_func(self):
-        while not self.stopped and not self._completed.is_set():
-            time.sleep(0.5)
-
-        if self._coroutine is not None:
-            self._coroutine.kill()
-
     def run(self):
         try:
             self._completed.clear()
 
-            self._killer_coroutine = eventlet.spawn(self._killer_func)
-            self._coroutine = eventlet.spawn(self.complete)
-
-            return self._coroutine.wait()
+            return self.complete()
         finally:
             self._completed.set()
-
-            if self._killer_coroutine is not None:
-                self._killer_coroutine.kill()
