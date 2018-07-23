@@ -423,7 +423,14 @@ class SFTPStorage(Storage):
 
         def attempt():
             connection = self.get_connection(host_address)
-            connection.mkdir(path)
+
+            try:
+                connection.mkdir(path)
+            except OSError as e:
+                if str(e) == "Failure":
+                    raise FileExistsError("Path already exists")
+
+                raise e
 
         auto_retry(attempt, n_retries, 0.0)
 
