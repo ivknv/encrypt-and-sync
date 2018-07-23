@@ -73,7 +73,7 @@ class SFTPConnection(pysftp.Connection):
 
 class SFTPUploadTask(UploadTask):
     def __init__(self, config, storage, in_file, out_path, **kwargs):
-        self.speed_limiter = StoppableSpeedLimiter(self, None)
+        self.speed_limiter = StoppableSpeedLimiter(None)
         UploadTask.__init__(self, config, in_file, **kwargs)
 
         self.storage = storage
@@ -136,7 +136,7 @@ class SFTPUploadTask(UploadTask):
 
 class SFTPDownloadTask(DownloadTask):
     def __init__(self, config, storage, in_path, out_file, **kwargs):
-        self.speed_limiter = StoppableSpeedLimiter(self, None)
+        self.speed_limiter = StoppableSpeedLimiter(None)
 
         DownloadTask.__init__(self, config, out_file, **kwargs)
 
