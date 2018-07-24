@@ -125,11 +125,12 @@ class FilenameEncodingCommand(Command):
         folder["filename_encoding"] = arg
 
 class AddPatternCommand(Command):
-    def evaluate(self, config, table):
+    def evaluate(self, config, folder, table):
         if len(self.args) != 1:
             raise EvaluationError(self, "Expected only 1 pattern")
 
-        path, path_type = recognize_path(self.args[0])
+        path = self.args[0]
+        path_type = folder["type"]
 
         table.setdefault(path_type, [])
         table[path_type].append(path)
@@ -159,7 +160,7 @@ class ExcludeBlock(ConfigBlock):
             raise EvaluationError(self, "Expected 0 arguments")
 
     def evaluate_body(self, config, folder):
-        ConfigBlock.evaluate_body(self, config, self.exclude_table)
+        ConfigBlock.evaluate_body(self, config, folder, self.exclude_table)
 
     def end(self, config, folder):
         for path_type, patterns in self.exclude_table.items():
@@ -179,7 +180,7 @@ class IncludeBlock(ConfigBlock):
             raise EvaluationError(self, "Expected 0 arguments")
 
     def evaluate_body(self, config, folder):
-        ConfigBlock.evaluate_body(self, config, self.include_table)
+        ConfigBlock.evaluate_body(self, config, folder, self.include_table)
 
     def end(self, config, folder):
         for path_type, patterns in self.include_table.items():
