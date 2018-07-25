@@ -100,6 +100,7 @@ class SFTPUploadTask(UploadTask):
         connection = self.storage.get_connection(host_address)
 
         with connection.open(out_path, "wb") as out_file:
+            out_file.set_pipelined(True)
             self.speed_limiter.begin()
             self.speed_limiter.quantity = 0
 
@@ -183,6 +184,7 @@ class SFTPDownloadTask(DownloadTask):
         connection = self.storage.get_connection(host_address)
 
         with connection.open(in_path, "rb") as in_file:
+            in_file.set_pipelined(True)
             self.speed_limiter.begin()
             self.speed_limiter.quantity = 0
 
