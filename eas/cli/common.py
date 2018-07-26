@@ -68,12 +68,11 @@ def get_progress_str(task):
 
     if isinstance(task, SyncTask):
         path = pathm.join(task.parent.subpath2, task.path)
+        path = path.lstrip("/") or "/"
     elif isinstance(task, DownloadTask):
         path = task.src_path
     else:
-        path = task.path
-
-    path = path.lstrip("/") or "/"
+        path = task.path.lstrip("/") or "/"
 
     if target.expected_total_children == -1:
         return "[N/A][%s]" % (path,)
@@ -85,7 +84,7 @@ def make_size_readable(size, suffixes=None):
         return str(size)
 
     if suffixes is None:
-        suffixes= [" B", " KiB", " MiB", " GiB", " TiB"]
+        suffixes = [" B", " KiB", " MiB", " GiB", " TiB"]
 
     suffix = suffixes[0]
 
