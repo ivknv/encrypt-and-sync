@@ -10,8 +10,8 @@ Installation
 Installing on Windows
 ---------------------
 
-.. _here (32-bit): https://encrypt-and-sync.com/download/windows/eas-0.7.0-win32.zip
-.. _here (64-bit): https://encrypt-and-sync.com/download/windows/eas-0.7.0-win64.zip
+.. _here (32-bit): https://encryptandsync.com/download/windows/eas-0.7.0-win32.zip
+.. _here (64-bit): https://encryptandsync.com/download/windows/eas-0.7.0-win64.zip
 
 1. Download the portable zip archive from `here (64-bit)`_ or `here (32-bit)`_
 2. Unpack it anywhere you want
@@ -63,7 +63,7 @@ Install from PyPI using pip:
 Installing from the website
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Download the python wheel from `here <https://encrypt-and-sync.com/download/python/eas-0.7.0-py3-none-any.whl>`_
+1. Download the python wheel from `here <https://encryptandsync.com/download/python/eas-0.7.0-py3-none-any.whl>`_
 2. Install it with pip:
 
 .. code:: bash
