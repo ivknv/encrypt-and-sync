@@ -31,8 +31,8 @@ This list will expand in the future.
 Links
 =====
 
-* `Official website <https://encrypt-and-sync.com>`_
-* `Documentation <https://docs.encrypt-and-sync.com>`_
+* `Official website <https://encryptandsync.com>`_
+* `Documentation <https://docs.encryptandsync.com>`_
 * `GitHub <https://github.com/ivknv/encrypt-and-sync>`_
 * `PyPI <https://pypi.org/project/eas>`_
 * `Contact <mailto:ivknv0@gmail.com>`_
