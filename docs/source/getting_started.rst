@@ -10,8 +10,8 @@ Installation
 Installing on Windows
 ---------------------
 
-.. _here (32-bit): https://encryptandsync.com/download/windows/eas-0.7.0-win32.zip
-.. _here (64-bit): https://encryptandsync.com/download/windows/eas-0.7.0-win64.zip
+.. _here (32-bit): https://encryptandsync.com/download/windows/eas-0.7.2-win32.zip
+.. _here (64-bit): https://encryptandsync.com/download/windows/eas-0.7.2-win64.zip
 
 1. Download the portable zip archive from `here (64-bit)`_ or `here (32-bit)`_
 2. Unpack it anywhere you want
@@ -28,22 +28,22 @@ Install the package from AUR using aurman:
 
    aurman -S python-eas
 
----------------------------
-Installing on Ubuntu
----------------------------
+.. ---------------------------
+   Installing on Ubuntu
+   ---------------------------
 
-1. Add the PPA:
+   1. Add the PPA:
 
-.. code:: bash
+   .. code:: bash
 
-   sudo add-apt-repository ppa:ivknv/encrypt-and-sync
+      sudo add-apt-repository ppa:ivknv/encrypt-and-sync
 
-2. Install the package with apt-get:
+   2. Install the package with apt-get:
 
-.. code:: bash
+   .. code:: bash
 
-   sudo apt-get update
-   sudo apt-get install python3-eas
+      sudo apt-get update
+      sudo apt-get install python3-eas
 
 ---------------------------
 Installing on other systems
@@ -63,12 +63,12 @@ Install from PyPI using pip:
 Installing from the website
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Download the python wheel from `here <https://encryptandsync.com/download/python/eas-0.7.0-py3-none-any.whl>`_
+1. Download the python wheel from `here <https://encryptandsync.com/download/python/eas-0.7.2-py3-none-any.whl>`_
 2. Install it with pip:
 
 .. code:: bash
 
-   pip install eas-0.7.0-py3-none-any.whl
+   pip install eas-0.7.2-py3-none-any.whl
 
 =============
 Configuration
