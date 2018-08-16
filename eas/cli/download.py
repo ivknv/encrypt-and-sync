@@ -217,10 +217,10 @@ def download(env, paths):
 
         downloader.add_target(target)
 
-    storage_names = {i.src_storage_name for i in targets}
-    storage_names |= {i.dst_storage_name for i in targets}
+    paths = {i.src_storage_name + "://" + i.src_path for i in targets}
+    paths |= {i.dst_storage_name + "://" + i.dst_path for i in targets}
 
-    ret = authenticate_storages(env, storage_names)
+    ret = authenticate_storages(env, paths)
 
     if ret:
         return ret

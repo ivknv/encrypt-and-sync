@@ -12,7 +12,7 @@ _NAME_REGEX = re.compile(r"^[a-zA-Z0-9_][a-zA-Z0-9-_.]{0,63}$")
 
 class Authenticator(object):
     """
-        This class is used for storage authentication.
+        This class is used for folder authentication.
         
         :cvar registered_authenticators: `LazyDict`, contains registered authenticator classes (don't touch it!)
 
@@ -100,25 +100,41 @@ class Authenticator(object):
         except KeyError:
             raise UnknownAuthenticatorError("unregistered authenticator %r" % (name,))
 
-    def login(self, config, *args, **kwargs):
+    def get_auth_id(self, config, folder, *args, **kwargs):
+        """
+            Get an authentication ID to avoid further unnecessary authentication.
+
+            :param config: `Config`, current configuration
+            :param folder: `dict`, folder to get authentication ID for
+            :param args: additional positional arguments
+            :param kwargs: additional keyword arguments
+
+            :returns: can be anything that is hashable
+        """
+
+        raise NotImplementedError
+
+    def login(self, config, folder, *args, **kwargs):
         """
             Log into a storage.
             Should also store an instance of `Storage` in `config.storages`.
 
             :param config: `Config`, current configuration
+            :param folder: `dict`, folder to be logged into
             :param args: additional positional arguments
-            :param args: additional keyword arguments
+            :param kwargs: additional keyword arguments
         """
 
         raise NotImplementedError
 
-    def logout(self, config, *args, **kwargs):
+    def logout(self, config, folder, *args, **kwargs):
         """
             Log out of a storage.
 
             :param config: `Config`, current configuration
+            :param folder: `dict`, folder to be logged out of
             :param args: additional positional arguments
-            :param args: additional keyword arguments
+            :param kwargs: additional keyword arguments
         """
 
         raise NotImplementedError

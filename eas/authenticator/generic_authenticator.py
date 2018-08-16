@@ -16,6 +16,9 @@ class GenericAuthenticator(Authenticator):
     def __init__(self, storage_name):
         self.storage_name = storage_name
 
+    def get_auth_id(self, config, *args, **kwargs):
+        return "_generic"
+
     def login(self, config, *args, **kwargs):
         try:
             config.storages[self.storage_name] = Storage.get_storage(self.storage_name)(config)

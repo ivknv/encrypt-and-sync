@@ -24,6 +24,25 @@ __all__ = ["SFTPStorage"]
 
 MIN_READ_SIZE = 4 * 1024**2 # Bytes
 
+def load_ssh_key(path, password=None):
+    key_classes = [paramiko.RSAKey, paramiko.DSSKey, paramiko.ECDSAKey, paramiko.Ed25519Key]
+    error = None
+
+    for key_class in key_classes:
+        key = None
+
+        try:
+            key = key_class.from_private_key_file(path, password)
+        except paramiko.ssh_exception.PasswordRequiredException as e:
+            raise e
+        except paramiko.ssh_exception.SSHException as e:
+            error = e
+        else:
+            return key
+
+    if error is not None:
+        raise error
+
 def auto_retry(attempt, n_retries, retry_interval):
     for i in range(n_retries + 1):
         try:
@@ -45,7 +64,7 @@ def auto_retry(attempt, n_retries, retry_interval):
             if str(e).startswith("No hostkey for host "):
                 raise e
 
-            if str(e).startswith("not a valid DSA"):
+            if str(e).startswith("not a valid "):
                 raise e
 
             if i == n_retries:
@@ -300,24 +319,53 @@ class SFTPStorage(Storage):
         return self.make_connection(username, host, port, tid)
 
     def make_connection(self, username, host, port, tid):
-        agent = paramiko.Agent()
-        keys = agent.get_keys() + (None,)
-
         connection = None
         error = None
 
-        for key in keys:
-            try:
-                connection = SFTPConnection(host, port=port, username=username,
-                                            private_key=key)
-                break
-            except paramiko.ssh_exception.AuthenticationException as e:
-                error = e
+        ssh_auth = self.config.encrypted_data.get("ssh_auth", {})
+        k = "%s@%s:%d" % (username, host, port)
+        host_auth = ssh_auth.get(k, {})
+        auth_method = host_auth.get("method")
 
-        assert(connection is not None or error is not None)
+        if auth_method == "agent":
+            agent = paramiko.Agent()
+            keys = agent.get_keys()
 
-        if connection is None:
-            raise error
+            if not keys:
+                raise paramiko.ssh_exception.AuthenticationException("No keys available")
+
+            for key in keys:
+                try:
+                    connection = SFTPConnection(host, port=port, username=username,
+                                                private_key=key)
+                    break
+                except paramiko.ssh_exception.AuthenticationException as e:
+                    error = e
+
+            assert(connection is not None or error is not None)
+
+            if connection is None:
+                raise error
+        elif auth_method == "key":
+            key_path = host_auth.get("key_path")
+            key_password = host_auth.get("key_password")
+
+            if key_path is None:
+                raise paramiko.ssh_exception.AuthenticationException("No SSH key specified")
+
+            key = load_ssh_key(key_path, key_password)
+            connection = SFTPConnection(host, port=port, username=username,
+                                        private_key=key)
+        elif auth_method == "password":
+            password = host_auth.get("password")
+
+            if password is None:
+                raise paramiko.ssh_exception.AuthenticationException("No password specified")
+
+            connection = SFTPConnection(host, port=port, username=username,
+                                        password=password)
+        else:
+            raise ValueError("Unknown SFTP authentication method: %r" % (auth_method,))
 
         if isinstance(self.config.timeout, collections.Iterable):
             connection.timeout = self.config.timeout[1]

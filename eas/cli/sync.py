@@ -815,10 +815,11 @@ def do_sync(env, names_or_paths):
 
         print("%s" % (display_name,))
 
-    storage_names = {i.folder1["type"] for i in targets}
-    storage_names |= {i.folder2["type"] for i in targets}
 
-    ret = authenticate_storages(env, storage_names)
+    paths = {i.folder1["type"] + "://" + i.folder1["path"] for i in targets}
+    paths |= {i.folder2["type"] + "://" + i.folder2["path"] for i in targets}
+
+    ret = authenticate_storages(env, paths)
 
     if ret:
         return ret

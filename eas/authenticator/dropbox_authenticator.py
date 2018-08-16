@@ -15,7 +15,10 @@ __all__ = ["DropboxAuthenticator"]
 class DropboxAuthenticator(Authenticator):
     name = "dropbox"
 
-    def login(self, config, env, *args, **kwargs):
+    def get_auth_id(self, config, path, env, *args, **kwargs):
+        return "dropbox"
+
+    def login(self, config, path, env, *args, **kwargs):
         token = config.encrypted_data.get("dropbox_token", "")
 
         token_valid = True
@@ -70,7 +73,7 @@ class DropboxAuthenticator(Authenticator):
         config.encrypted_data["dropbox_token"] = token
         config.storages["dropbox"] = Storage.get_storage("dropbox")(config)
 
-    def logout(self, config, env, *args, **kwargs):
+    def logout(self, config, path, env, *args, **kwargs):
         token = config.encrypted_data.get("dropbox_token", "")
         if not token:
             return

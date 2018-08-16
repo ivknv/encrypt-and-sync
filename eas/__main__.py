@@ -77,7 +77,7 @@ def main(args=None):
     # Top-level environment
     genv = Environment()
     genv["force_ask_password"] = ns.force_ask_password
-    
+
     if ns.master_password is None and not ns.force_ask_password and ns.action != "password_prompt":
         try:
             genv["master_password"] = os.environ["EAS_MASTER_PASSWORD"]
@@ -165,8 +165,8 @@ def main(args=None):
                "set_master_password": lambda: set_master_password(env),
                "password_prompt": lambda: password_prompt(env),
                "configure": lambda: configure(env),
-               "logout": lambda: logout(env, ns.storages),
-               "login": lambda: authenticate_storages(env, ns.storages or None)}
+               "logout": lambda: logout(env, ns.paths),
+               "login": lambda: authenticate_storages(env, ns.paths or None)}
 
     try:
         common.cleanup(genv)
@@ -265,7 +265,7 @@ def parse_args(args):
     sync_parser.add_argument("--no-progress", action="store_true",
                              help="Don't show intermediate progress")
     sync_parser.set_defaults(action="sync")
-    
+
     download_parser = subparsers.add_parser("download", aliases=["d"],
                                             help="Download files/directories")
     download_parser.add_argument("paths", nargs="+", help="List of paths to download")
@@ -280,7 +280,7 @@ def parse_args(args):
     download_parser.add_argument("--no-skip", action="store_true",
                                  help="Don't skip already downloaded files")
     download_parser.set_defaults(action="download")
-    
+
     rmdup_parser = subparsers.add_parser("rmdup", aliases=["remove-duplicates"],
                                          help="Remove duplicates")
     rmdup_parser.add_argument("paths", nargs="*", help="pathm to remove duplicates from")
@@ -302,7 +302,7 @@ def parse_args(args):
     rmdup_parser.add_argument("--no-progress", action="store_true",
                               help="Don't show intermediate progress")
     rmdup_parser.set_defaults(action="rmdup")
-    
+
     encrypt_parser = subparsers.add_parser("encrypt", help="Encrypt files")
     encrypt_parser.add_argument("paths", nargs="+", help="List of files to encrypt")
     encrypt_parser.add_argument("--no-ask", action="store_true",
@@ -314,7 +314,7 @@ def parse_args(args):
     decrypt_parser.add_argument("--no-ask", action="store_true",
                                 help="Don't ask for any user input")
     decrypt_parser.set_defaults(action="decrypt")
-    
+
     encrypt_path_parser = subparsers.add_parser("encrypt-path",
                                                 help="Encrypt paths")
     encrypt_path_parser.add_argument("paths", nargs="+",
@@ -345,14 +345,14 @@ def parse_args(args):
     duplicates_parser.add_argument("paths", nargs="+",
                                    help="List of paths to show duplicates for")
     duplicates_parser.set_defaults(action="duplicates")
-    
+
     console_parser = subparsers.add_parser("console", help="Run console")
     console_parser.add_argument("--no-auth-check", action="store_true",
                                 help="Disable the authentication check")
     console_parser.add_argument("--no-ask", action="store_true",
                                 help="Don't ask for any user input")
     console_parser.set_defaults(action="console")
-    
+
     make_config_parser = subparsers.add_parser("make-config",
                                                help="Make a template config")
     make_config_parser.add_argument("path", help="Path to the new configuration")
@@ -364,14 +364,14 @@ def parse_args(args):
     execute_parser.add_argument("--no-auth-check", action="store_true",
                                 help="Disable the authentication check")
     execute_parser.set_defaults(action="execute")
-    
+
     execute_script_parser = subparsers.add_parser("execute-script", aliases=["exec-script"],
                                                   help="Execute a console script")
     execute_script_parser.add_argument("script", help="Path to the script to execute")
     execute_script_parser.add_argument("--no-auth-check", action="store_true",
                                        help="Disable the authentication check")
     execute_script_parser.set_defaults(action="execute_script")
-    
+
     set_key_parser = subparsers.add_parser("set-key", help="Set encryption key")
     set_key_parser.set_defaults(action="set_key")
 
@@ -395,8 +395,8 @@ def parse_args(args):
 
     login_parser = subparsers.add_parser("login",
                                          help="Log into a storage")
-    login_parser.add_argument("storages", nargs="*",
-                              help="List of storage names to log into. default: all storages used in folders")
+    login_parser.add_argument("paths", nargs="*",
+                              help="List of paths to storages to log into. default: all folders")
     login_parser.add_argument("--no-auth-check", action="store_true",
                               help="Disable the authentication check")
     login_parser.add_argument("--no-ask", action="store_true",
@@ -405,8 +405,8 @@ def parse_args(args):
 
     logout_parser = subparsers.add_parser("logout",
                                           help="Log out of a storage")
-    logout_parser.add_argument("storages", nargs="*",
-                               help="List of storage names to logout from. default: all storages")
+    logout_parser.add_argument("paths", nargs="*",
+                               help="List of paths to storages to logout from. default: everything")
     logout_parser.add_argument("--no-auth-check", action="store_true",
                                help="Disable the authentication check")
     logout_parser.set_defaults(action="logout")

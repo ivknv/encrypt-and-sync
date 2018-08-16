@@ -16,7 +16,10 @@ __all__ = ["YaDiskAuthenticator"]
 class YaDiskAuthenticator(Authenticator):
     name = "yadisk"
 
-    def login(self, config, env, *args, **kwargs):
+    def get_auth_id(self, config, path, env, *args, **kwargs):
+        return "yadisk"
+
+    def login(self, config, path, env, *args, **kwargs):
         y = yadisk.YaDisk(YADISK_APP_ID, YADISK_APP_SECRET,
                           config.encrypted_data.get("yadisk_token", ""))
 
@@ -80,6 +83,6 @@ class YaDiskAuthenticator(Authenticator):
 
         config.storages["yadisk"] = Storage.get_storage("yadisk")(config)
 
-    def logout(self, config, env, *args, **kwargs):
+    def logout(self, config, path, env, *args, **kwargs):
         config.encrypted_data.pop("yadisk_token", None)
         config.encrypted_data.pop("yadisk_refresh_token", None)

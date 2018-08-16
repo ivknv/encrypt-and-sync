@@ -255,7 +255,7 @@ def remove_duplicates(env, paths):
 
     duprem.add_receiver(DuplicateRemoverReceiver(env, duprem))
 
-    ret = authenticate_storages(env, {i.storage_name for i in targets})
+    ret = authenticate_storages(env, {i.storage_name + "://" + i.path for i in targets})
 
     if ret:
         return ret

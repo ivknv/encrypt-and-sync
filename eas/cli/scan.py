@@ -235,7 +235,7 @@ def do_scan(env, names_or_paths):
 
     scanner.add_receiver(scanner_receiver)
 
-    ret = authenticate_storages(env, {i.type for i in targets})
+    ret = authenticate_storages(env, {i.type + "://" + i.path for i in targets})
 
     if ret:
         return ret
