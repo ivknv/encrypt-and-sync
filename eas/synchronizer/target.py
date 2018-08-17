@@ -257,11 +257,9 @@ class SyncTarget(StagedTask):
 
         self.scanner.run()
 
-        if self.stopped:
-            return
-
         if any(i.status != "finished" for i in targets):
             self.status = "failed"
+            self.stop()
 
     def init_scan(self):
         if not self.enable_scan and not self.force_scan:
