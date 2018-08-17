@@ -3,7 +3,6 @@
 import importlib
 
 from .authenticator import Authenticator
-from .generic_authenticator import GenericAuthenticator
 
 __all__ = ["Authenticator"]
 
@@ -33,8 +32,6 @@ def _get_sftp_authenticator():
             raise ImportError("Missing optional dependency: %r" % (e.name,), name=e.name)
 
         raise e
-
-GenericAuthenticator.register()
 
 Authenticator.register_lazy("yadisk", _get_yadisk_authenticator)
 Authenticator.register_lazy("dropbox", _get_dropbox_authenticator)

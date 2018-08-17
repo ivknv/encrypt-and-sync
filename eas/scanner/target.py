@@ -6,6 +6,7 @@ from ..duplicate_list import DuplicateList
 from ..scannable import DecryptedScannable, EncryptedScannable
 from ..worker import WorkerPool, get_current_worker
 from ..common import recognize_path
+from ..storage import Storage
 from .. import path_match
 from .. import pathm
 from .tasks import EncryptedScanTask, DecryptedScanTask
@@ -123,7 +124,7 @@ class ScanTarget(Task):
 
         worker = get_current_worker()
 
-        self.storage = self.config.storages[self.type]
+        self.storage = Storage.get_storage(self.type)(self.config)
         self.shared_duplist = DuplicateList(self.storage.name, self.scanner.directory)
 
         if not self.scanner.enable_journal:

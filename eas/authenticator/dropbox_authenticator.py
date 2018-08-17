@@ -6,7 +6,6 @@ import requests
 from .authenticator import Authenticator
 from .exceptions import LoginError, LogoutError
 
-from ..storage import Storage
 from ..constants import DROPBOX_APP_KEY, DROPBOX_APP_SECRET
 from ..cli.common import show_error
 
@@ -40,7 +39,6 @@ class DropboxAuthenticator(Authenticator):
                 raise LoginError("Dropbox error: %s: %s" % (e.__class__.__name__, e))
 
         if token_valid:
-            config.storages["dropbox"] = Storage.get_storage("dropbox")(config)
             return
 
         if not env.get("ask", False):
@@ -71,7 +69,6 @@ class DropboxAuthenticator(Authenticator):
             break
 
         config.encrypted_data["dropbox_token"] = token
-        config.storages["dropbox"] = Storage.get_storage("dropbox")(config)
 
     def logout(self, config, path, env, *args, **kwargs):
         token = config.encrypted_data.get("dropbox_token", "")

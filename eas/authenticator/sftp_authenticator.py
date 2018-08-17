@@ -9,7 +9,6 @@ import pysftp
 from .authenticator import Authenticator
 from .exceptions import LoginError, LogoutError
 
-from ..storage import Storage
 from ..cli.common import show_error
 from ..cli.prompter import LoopedPrompter
 from .. import pathm
@@ -199,8 +198,6 @@ class SFTPAuthenticator(Authenticator):
         except ValueError as e:
             raise LoginError("invalid SFTP address %r: %s" % (path, e))
 
-        storage = Storage.get_storage("sftp")(config)
-
         ssh_auth = config.encrypted_data.setdefault("ssh_auth", {})
 
         k = "%s@%s:%d" % (username, host, port)
@@ -219,8 +216,6 @@ class SFTPAuthenticator(Authenticator):
                 if not no_auth_check:
                     authenticate_using_agent(username, host, port)
 
-                config.storages["sftp"] = storage
-
                 return
             except paramiko.ssh_exception.AuthenticationException:
                 pass
@@ -236,8 +231,6 @@ class SFTPAuthenticator(Authenticator):
                         if not no_auth_check:
                             authenticate_using_key(username, host, port, key)
 
-                        config.storages["sftp"] = storage
-
                         return
                     except paramiko.ssh_exception.AuthenticationException:
                         pass
@@ -250,8 +243,6 @@ class SFTPAuthenticator(Authenticator):
                 try:
                     if not no_auth_check:
                         authenticate_using_password(username, host, port, password)
-
-                    config.storages["sftp"] = storage
 
                     return
                 except paramiko.ssh_exception.AuthenticationException:
@@ -322,8 +313,6 @@ class SFTPAuthenticator(Authenticator):
                 break
             except ValueError:
                 show_error("Error: invalid choice %r" % (choice,))
-
-        config.storages["sftp"] = storage
 
     def logout(self, config, path, env, *args, **kwargs):
         ssh_auth = config.encrypted_data.setdefault("ssh_auth", {})

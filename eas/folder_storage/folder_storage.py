@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ..filelist import Filelist
+from ..storage import Storage
 from .. import encryption
 from .. import pathm
 
@@ -26,7 +27,7 @@ class FolderStorage(object):
         self.config = config
         self.folder = config.folders[folder_name]
         self.encrypted = self.folder["encrypted"]
-        self.storage = config.storages[self.folder["type"]]
+        self.storage = Storage.get_storage(self.folder["type"])(config)
         self.prefix = pathm.dir_normalize(self.folder["path"])
         self.filename_encoding = self.folder["filename_encoding"]
 

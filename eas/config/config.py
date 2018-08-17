@@ -45,9 +45,8 @@ class Config(object):
         self.allowed_paths = {}
 
         self.encrypted_data = {}
-        self.storages = {}
 
-        self.sync_targets = [] 
+        self.sync_targets = []
 
         self._master_key = b""
 

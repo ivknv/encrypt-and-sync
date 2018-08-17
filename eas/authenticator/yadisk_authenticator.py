@@ -7,7 +7,6 @@ from yadisk.exceptions import YaDiskError
 from .authenticator import Authenticator
 from .exceptions import LoginError
 
-from ..storage import Storage
 from ..constants import YADISK_APP_ID, YADISK_APP_SECRET
 from ..cli.common import show_error
 
@@ -48,7 +47,6 @@ class YaDiskAuthenticator(Authenticator):
                 token_valid = True
 
             if token_valid:
-                config.storages["yadisk"] = Storage.get_storage("yadisk")(config)
                 return
         except YaDiskError as e:
             raise LoginError("Yandex.Disk error: %s: %s" % (e.error_type, e))
@@ -80,8 +78,6 @@ class YaDiskAuthenticator(Authenticator):
 
         config.encrypted_data["yadisk_token"] = token
         config.encrypted_data["yadisk_refresh_token"] = refresh_token
-
-        config.storages["yadisk"] = Storage.get_storage("yadisk")(config)
 
     def logout(self, config, path, env, *args, **kwargs):
         config.encrypted_data.pop("yadisk_token", None)

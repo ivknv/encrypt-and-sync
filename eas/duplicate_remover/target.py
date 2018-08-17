@@ -7,6 +7,7 @@ from ..task import Task
 from ..duplicate_list import DuplicateList
 from ..constants import AUTOCOMMIT_INTERVAL
 from ..worker import WorkerPool
+from ..storage import Storage
 from ..common import threadsafe_iterator
 from .. import pathm
 from .worker import DuplicateRemoverWorker
@@ -91,7 +92,7 @@ class DuplicateRemoverTarget(Task):
 
         self.status = "pending"
 
-        self.storage = self.config.storages[self.storage_name]
+        self.storage = Storage.get_storage(self.storage_name)(self.config)
 
         self.shared_duplist = DuplicateList(self.storage.name, self.duprem.directory)
 

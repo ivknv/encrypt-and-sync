@@ -25,12 +25,9 @@ def authenticate_storages(env, paths=None, auth_cache=None):
         path, path_type = recognize_path(path)
 
         try:
-            if path_type == "_generic":
-                authenticator = Authenticator.get_authenticator("_generic")(path_type)
-            else:
-                authenticator = Authenticator.get_authenticator(path_type)()
+            authenticator = Authenticator.get_authenticator(path_type)()
         except UnknownAuthenticatorError:
-            authenticator = Authenticator.get_authenticator("_generic")(path_type)
+            continue
 
         try:
             auth_id = authenticator.get_auth_id(config, path, env)

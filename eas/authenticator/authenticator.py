@@ -117,7 +117,6 @@ class Authenticator(object):
     def login(self, config, folder, *args, **kwargs):
         """
             Log into a storage.
-            Should also store an instance of `Storage` in `config.storages`.
 
             :param config: `Config`, current configuration
             :param folder: `dict`, folder to be logged into
