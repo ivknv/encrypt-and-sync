@@ -281,7 +281,7 @@ class EncryptedScannable(BaseScannable):
                                                    mode=meta["mode"],
                                                    owner=meta["owner"],
                                                    group=meta["group"],
-                                                   link=meta["link"],
+                                                   link_path=meta["link"],
                                                    filename_encoding=self.filename_encoding)
 
                     if path_match.match(scannable.path, allowed_paths):
