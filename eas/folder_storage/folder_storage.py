@@ -105,9 +105,11 @@ class FolderStorage(object):
         meta = self.storage.get_meta(path, *args, **kwargs)
 
         if self.encrypted:
-            meta["name"] = pathm.split(path)[0]
-            meta["link"] = self.config.decrypt_path(meta["link"],
-                                                    filename_encoding=self.filename_encoding)[0]
+            meta["name"] = pathm.split(path)[1]
+
+            if meta["link"] is not None:
+                meta["link"] = self.config.decrypt_path(meta["link"],
+                                                        filename_encoding=self.filename_encoding)[0]
 
         return meta
 
@@ -123,8 +125,9 @@ class FolderStorage(object):
             for meta in result:
                 meta["name"] = self.config.decrypt_path(meta["name"],
                                                         filename_encoding=self.filename_encoding)[0]
-                meta["link"] = self.config.decrypt_path(meta["link"],
-                                                        filename_encoding=self.filename_encoding)[0]
+                if meta["link"] is not None:
+                    meta["link"] = self.config.decrypt_path(meta["link"],
+                                                            filename_encoding=self.filename_encoding)[0]
 
                 yield meta
         else:
